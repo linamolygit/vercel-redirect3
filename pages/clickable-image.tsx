@@ -3,6 +3,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import Cropper from "react-cropper";
 
 interface ImageAdjustment {
   zoom: number;
@@ -46,12 +47,15 @@ export default function ClickableImage() {
   const [collageImageUrl, setCollageImageUrl] = useState("");
   const [copiedImgUrl, setCopiedImgUrl] = useState(false);
   const [uploadingCollage, setUploadingCollage] = useState(false);
+  const [isDraggingCustomImg, setIsDraggingCustomImg] = useState(false);
+  const [uploadingCustomImg, setUploadingCustomImg] = useState(false);
 
   // Drag state
   const [dragOver, setDragOver] = useState<number | null>(null);
 
   const router = useRouter();
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const cropperRef = useRef<any>(null);
 
   const slotCount = layout === "5-photos" ? 5 : layout === "4-photos" ? 4 : layout === "3-photos" ? 3 : layout === "2-photos" ? 2 : 1;
 
@@ -295,6 +299,25 @@ export default function ClickableImage() {
     }
   };
 
+  const handleCustomImageUpload = async (file: File) => {
+    setUploadingCustomImg(true);
+    setErrorMessage("");
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch("https://api.imgbb.com/1/upload?key=7acb2b5955d0a1e35ba91e981a8d1da8", {
+        method: "POST", body: fd
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error?.message || "Upload failed");
+      setCollageImageUrl(data.data.url);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Upload error");
+    } finally {
+      setUploadingCustomImg(false);
+    }
+  };
+
   // Upload collage to ImgBB and get hosted URL
   const handleUploadCollage = async () => {
     setUploadingCollage(true);
@@ -489,6 +512,7 @@ export default function ClickableImage() {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
       </Head>
 
       <Header />
@@ -796,6 +820,68 @@ export default function ClickableImage() {
                       rows={2}
                     />
                   </div>
+
+                  <div className="form-field">
+                    <label>Custom Image (Drag & Drop or Upload)</label>
+                    <div 
+                      className={`dropzone ${isDraggingCustomImg ? "dragging" : ""} ${collageImageUrl ? "has-image" : ""}`}
+                      onDragOver={(e) => { e.preventDefault(); setIsDraggingCustomImg(true); }}
+                      onDragLeave={() => setIsDraggingCustomImg(false)}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        setIsDraggingCustomImg(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file && file.type.startsWith("image/")) {
+                          await handleCustomImageUpload(file);
+                        }
+                      }}
+                      onClick={() => document.getElementById("customImageFile")?.click()}
+                    >
+                      <input
+                        type="file"
+                        id="customImageFile"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) await handleCustomImageUpload(file);
+                        }}
+                        style={{ display: "none" }}
+                      />
+                      
+                      {collageImageUrl ? (
+                        <div className="dropzone-preview">
+                          <img src={collageImageUrl} alt="Preview" className="img-preview" />
+                          <div className="dropzone-overlay">
+                            <svg className="upload-icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            <span>Change Image</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="dropzone-prompt">
+                          <svg className="upload-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          {uploadingCustomImg ? (
+                            <span>Uploading to ImgBB... ⏳</span>
+                          ) : (
+                            <span><strong>Choose a file</strong> or drag & drop here (ImgBB)</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="image-url-manual">
+                      <span className="or-divider">Or enter URL manually:</span>
+                      <input
+                        type="url"
+                        placeholder="https://yourblog.com/wp-content/uploads/photo.jpg"
+                        value={collageImageUrl}
+                        onChange={(e) => setCollageImageUrl(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </fieldset>
 
                 {errorMessage && (
@@ -863,94 +949,54 @@ export default function ClickableImage() {
             </div>
 
             <div className="modal-preview">
-              <img
+              <Cropper
+                ref={cropperRef}
                 src={images[editingSlot]!}
-                alt={`Editing photo ${editingSlot + 1}`}
-                style={{
-                  transform: `translate(${adjustments[editingSlot].x * 0.5}%, ${adjustments[editingSlot].y * 0.5}%) scale(${adjustments[editingSlot].zoom}) rotate(${adjustments[editingSlot].rotate}deg)`,
-                  filter: adjustments[editingSlot].blur > 0 ? `blur(${adjustments[editingSlot].blur}px)` : "none",
-                }}
+                style={{ height: 400, width: "100%", background: "#1a1a1a" }}
+                zoomTo={1}
+                viewMode={1}
+                background={false}
+                responsive={true}
+                autoCropArea={1}
+                checkOrientation={false}
+                guides={true}
               />
             </div>
 
             <div className="modal-controls">
-              <div className="modal-ctrl">
-                <div className="modal-ctrl-header">
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                  </svg>
-                  <span>Zoom</span>
-                  <span className="ctrl-val">{adjustments[editingSlot].zoom.toFixed(2)}x</span>
-                </div>
-                <input type="range" min="1.0" max="3.0" step="0.05"
-                  value={adjustments[editingSlot].zoom}
-                  onChange={(e) => handleCropChange(editingSlot, "zoom", parseFloat(e.target.value))} />
-              </div>
-
-              <div className="modal-ctrl">
-                <div className="modal-ctrl-header">
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  <span>Horizontal</span>
-                  <span className="ctrl-val">{adjustments[editingSlot].x}%</span>
-                </div>
-                <input type="range" min="-100" max="100"
-                  value={adjustments[editingSlot].x}
-                  onChange={(e) => handleCropChange(editingSlot, "x", parseInt(e.target.value))} />
-              </div>
-
-              <div className="modal-ctrl">
-                <div className="modal-ctrl-header">
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                  </svg>
-                  <span>Vertical</span>
-                  <span className="ctrl-val">{adjustments[editingSlot].y}%</span>
-                </div>
-                <input type="range" min="-100" max="100"
-                  value={adjustments[editingSlot].y}
-                  onChange={(e) => handleCropChange(editingSlot, "y", parseInt(e.target.value))} />
-              </div>
-
-              <div className="modal-ctrl">
-                <div className="modal-ctrl-header">
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <span>Blur</span>
-                  <span className="ctrl-val">{adjustments[editingSlot].blur}px</span>
-                </div>
-                <input type="range" min="0" max="20" step="1"
-                  value={adjustments[editingSlot].blur}
-                  onChange={(e) => handleCropChange(editingSlot, "blur", parseInt(e.target.value))} />
-              </div>
-
-              <div className="modal-ctrl">
-                <div className="modal-ctrl-header">
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span>Rotate</span>
-                  <span className="ctrl-val">{adjustments[editingSlot].rotate}°</span>
-                </div>
-                <input type="range" min="-180" max="180" step="1"
-                  value={adjustments[editingSlot].rotate}
-                  onChange={(e) => handleCropChange(editingSlot, "rotate", parseInt(e.target.value))} />
-              </div>
-
               <div className="modal-actions">
+                <button className="btn-crop" onClick={() => {
+                  const cropper = cropperRef.current?.cropper;
+                  if (cropper) {
+                    const croppedCanvas = cropper.getCroppedCanvas();
+                    if (croppedCanvas) {
+                      const dataUrl = croppedCanvas.toDataURL("image/jpeg", 0.9);
+                      const newImages = [...images];
+                      newImages[editingSlot] = dataUrl;
+                      setImages(newImages);
+                      // Reset adjustments just in case
+                      const newAdj = [...adjustments];
+                      newAdj[editingSlot] = { ...DEFAULT_ADJ };
+                      setAdjustments(newAdj);
+                      setEditingSlot(null);
+                    }
+                  }
+                }}>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Crop & Save
+                </button>
                 <button className="btn-replace" onClick={() => { fileInputRefs.current[editingSlot]?.click(); }}>
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
                   Replace Photo
                 </button>
-                <button className="btn-reset" onClick={() => { handleCropChange(editingSlot, "zoom", 1); handleCropChange(editingSlot, "x", 0); handleCropChange(editingSlot, "y", 0); handleCropChange(editingSlot, "blur", 0); handleCropChange(editingSlot, "rotate", 0); }}>
-                  Reset
+                <button className="btn-reset" onClick={() => cropperRef.current?.cropper.reset()}>
+                  Reset View
                 </button>
-                <button className="btn-done" onClick={() => setEditingSlot(null)}>Done</button>
+                <button className="btn-done" onClick={() => setEditingSlot(null)}>Cancel</button>
               </div>
             </div>
           </div>
@@ -2062,6 +2108,97 @@ export default function ClickableImage() {
 
         :root.light-theme .og-override-panel {
           background: rgba(139, 92, 246, 0.03);
+        }
+
+        /* Dropzone Styles */
+        .dropzone {
+          border: 2px dashed var(--card-border);
+          border-radius: 12px;
+          background: rgba(168, 85, 247, 0.02);
+          cursor: pointer;
+          transition: all 0.2s;
+          text-align: center;
+          overflow: hidden;
+          position: relative;
+          min-height: 120px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-top: 8px;
+        }
+
+        .dropzone:hover, .dropzone.dragging {
+          border-color: #a855f7;
+          background: rgba(168, 85, 247, 0.08);
+        }
+
+        .dropzone-prompt {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+          padding: 20px;
+        }
+
+        .upload-icon {
+          width: 36px;
+          height: 36px;
+          color: #a855f7;
+        }
+
+        .dropzone-preview {
+          width: 100%;
+          height: 100%;
+          position: relative;
+        }
+
+        .img-preview {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          max-height: 200px;
+        }
+
+        .dropzone-overlay {
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          opacity: 0;
+          transition: opacity 0.2s;
+          gap: 8px;
+          font-size: 0.85rem;
+          font-weight: 600;
+        }
+
+        .dropzone:hover .dropzone-overlay {
+          opacity: 1;
+        }
+
+        .btn-crop {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 10px 16px;
+          background: var(--accent);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 0.82rem;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+        }
+
+        .btn-crop:hover {
+          opacity: 0.9;
         }
       `}</style>
     </div>
