@@ -134,8 +134,7 @@ const RedirectPage: React.FC<RedirectProps> = ({
         <meta name="twitter:description" content={description} />
         {imageUrl && <meta name="twitter:image" content={imageUrl} />}
 
-        {/* Client-side backup redirects */}
-        <meta http-equiv="refresh" content={`0; url=${destination}`} />
+        {/* Client-side backup redirects (Use JavaScript redirect to prevent crawlers from following) */}
         <script
           dangerouslySetInnerHTML={{
             __html: `

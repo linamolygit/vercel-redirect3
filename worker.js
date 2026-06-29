@@ -306,8 +306,7 @@ function buildOGHtml({ post, requestUrl, siteHost }) {
   <meta name="twitter:description" content="${description}" />
   ${imageUrl ? `<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />` : ""}
 
-  <!-- Auto-redirect normal users to the real WordPress post -->
-  <meta http-equiv="refresh" content="0; url=${escapeHtml(post.link)}" />
+  <!-- Auto-redirect normal users to the real WordPress post (JavaScript only to keep bots on the worker page) -->
   <script>
     if (typeof window !== "undefined") {
       window.location.replace(${JSON.stringify(post.link)});
