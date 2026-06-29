@@ -107,7 +107,7 @@ const Home: NextPage = () => {
       setWpPostPath(data.postPath || "");
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(err.message || "WordPress details nahi mil payi. Kya slug sahi hai?");
+      setErrorMessage(err.message || "WordPress details nahi mil payi. Kripya check karein ki us website par 'WPGraphQL' plugin active aur configured hai. (Setup guidance niche check karein).");
     } finally {
       setFetchingMeta(false);
     }
@@ -439,6 +439,28 @@ const Home: NextPage = () => {
                 </tbody>
               </table>
             )}
+          </div>
+        </div>
+
+        {/* WPGraphQL Setup Guide Card */}
+        <div className="card guide-card">
+          <h2>⚙️ WordPress WPGraphQL Setup Guide</h2>
+          <p className="guide-intro">
+            Agar aap kisi WordPress URL se title aur image dynamic-fetch karna chahte hain, to us WordPress site par <strong>WPGraphQL</strong> plugin active hona zaruri hai. Apne users ko ye configure karne ko kahein:
+          </p>
+          <div className="steps-container">
+            <div className="step-item">
+              <h3>Step 1: Install Plugin 🔌</h3>
+              <p>Apne WordPress Dashboard me <strong>Plugins &rarr; Add New</strong> par jayein. Search karein <strong>WPGraphQL</strong>, use Install aur <strong>Activate</strong> karein.</p>
+            </div>
+            <div className="step-item">
+              <h3>Step 2: Verify & Test 🧪</h3>
+              <p>Setup verify karne ke liye apne browser me <code>https://yoursite.com/graphql</code> open karein. Agar blank page ya GraphQL JSON response aaye, to ye active hai.</p>
+            </div>
+            <div className="step-item">
+              <h3>Step 3: Auto Fetch Link ⚡</h3>
+              <p>Bas, ab apna post URL dashboard par paste karke <strong>Auto Fetch</strong> click karein. Title, Description aur Image automatic load ho jayenge!</p>
+            </div>
           </div>
         </div>
       </main>
@@ -944,6 +966,78 @@ const Home: NextPage = () => {
           background: rgba(34, 197, 94, 0.15);
           border-color: rgba(34, 197, 94, 0.2);
           color: #4ade80;
+        }
+
+        .guide-card {
+          margin-top: 25px;
+          animation: fadeIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          background: rgba(255, 255, 255, 0.01) !important;
+          border: 1px solid rgba(255, 255, 255, 0.04) !important;
+          padding: 30px !important;
+        }
+
+        .guide-card h2 {
+          font-size: 1.3rem;
+          font-weight: 700;
+          color: #c084fc;
+          margin-bottom: 10px;
+        }
+
+        .guide-intro {
+          font-size: 0.9rem;
+          color: var(--text-muted);
+          margin-bottom: 20px;
+          line-height: 1.5;
+        }
+
+        .steps-container {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+
+        @media (min-width: 640px) {
+          .steps-container {
+            flex-direction: row;
+            gap: 20px;
+          }
+        }
+
+        .step-item {
+          flex: 1;
+          background: rgba(255, 255, 255, 0.015);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          padding: 20px;
+          border-radius: 12px;
+          transition: all 0.25s ease;
+        }
+
+        .step-item:hover {
+          border-color: rgba(168, 85, 247, 0.35);
+          background: rgba(168, 85, 247, 0.03);
+          transform: translateY(-2px);
+        }
+
+        .step-item h3 {
+          font-size: 0.95rem;
+          font-weight: 700;
+          color: var(--text);
+          margin-bottom: 8px;
+        }
+
+        .step-item p {
+          font-size: 0.82rem;
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        .step-item code {
+          background: rgba(0, 0, 0, 0.4);
+          padding: 2px 6px;
+          border-radius: 4px;
+          color: #f472b6;
+          font-family: monospace;
+          font-size: 0.8rem;
         }
 
         @media (max-width: 768px) {
