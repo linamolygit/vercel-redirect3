@@ -9,9 +9,10 @@ interface ImageAdjustment {
   x: number;
   y: number;
   blur: number;
+  rotate: number;
 }
 
-const DEFAULT_ADJ: ImageAdjustment = { zoom: 1.0, x: 0, y: 0, blur: 0 };
+const DEFAULT_ADJ: ImageAdjustment = { zoom: 1.0, x: 0, y: 0, blur: 0, rotate: 0 };
 
 export default function ClickableImage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -41,6 +42,10 @@ export default function ClickableImage() {
   const [resultUrl, setResultUrl] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  const [fetchingMeta, setFetchingMeta] = useState(false);
+  const [collageImageUrl, setCollageImageUrl] = useState("");
+  const [copiedImgUrl, setCopiedImgUrl] = useState(false);
+  const [uploadingCollage, setUploadingCollage] = useState(false);
 
   // Drag state
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -129,12 +134,12 @@ export default function ClickableImage() {
     });
   };
 
-  // Draw cover image on canvas
+  // Draw cover image on canvas with rotation support
   const drawCoverImage = (
     ctx: CanvasRenderingContext2D,
     img: HTMLImageElement,
     dx: number, dy: number, dw: number, dh: number,
-    zoom: number, shiftX: number, shiftY: number, blur: number
+    zoom: number, shiftX: number, shiftY: number, blur: number, rotate: number = 0
   ) => {
     const iw = img.naturalWidth;
     const ih = img.naturalHeight;
@@ -150,14 +155,26 @@ export default function ClickableImage() {
     sx = Math.max(0, Math.min(iw - sw, sx));
     sy = Math.max(0, Math.min(ih - sh, sy));
 
+    ctx.save();
+    // Clip to slot area
+    ctx.beginPath();
+    ctx.rect(dx, dy, dw, dh);
+    ctx.clip();
+
     if (blur > 0) {
-      ctx.save();
       ctx.filter = `blur(${blur}px)`;
-      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
-      ctx.restore();
-    } else {
-      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
     }
+
+    if (rotate !== 0) {
+      const cx = dx + dw / 2;
+      const cy = dy + dh / 2;
+      ctx.translate(cx, cy);
+      ctx.rotate((rotate * Math.PI) / 180);
+      ctx.translate(-cx, -cy);
+    }
+
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    ctx.restore();
   };
 
   // Get slot coordinates for canvas
@@ -209,7 +226,8 @@ export default function ClickableImage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    ctx.fillStyle = "#1a1a1a";
+    // White canvas background for gaps between photos
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, 1200, 630);
 
     const coords = getSlotCoordinates(layout, gap);
@@ -220,7 +238,7 @@ export default function ClickableImage() {
       const adj = adjustments[i] || DEFAULT_ADJ;
 
       if (!imgUrl) {
-        ctx.fillStyle = "#2a2a2a";
+        ctx.fillStyle = "#e5e7eb";
         ctx.fillRect(coord.x, coord.y, coord.w, coord.h);
         continue;
       }
@@ -234,9 +252,9 @@ export default function ClickableImage() {
       });
 
       if (img) {
-        drawCoverImage(ctx, img, coord.x, coord.y, coord.w, coord.h, adj.zoom, adj.x, adj.y, adj.blur);
+        drawCoverImage(ctx, img, coord.x, coord.y, coord.w, coord.h, adj.zoom, adj.x, adj.y, adj.blur, adj.rotate);
       } else {
-        ctx.fillStyle = "#2a2a2a";
+        ctx.fillStyle = "#e5e7eb";
         ctx.fillRect(coord.x, coord.y, coord.w, coord.h);
       }
     }
@@ -258,15 +276,16 @@ export default function ClickableImage() {
     return canvas;
   };
 
-  // Download PNG
+  // Download compressed JPEG (high quality)
   const handleDownload = async () => {
     setExporting(true);
     try {
       const canvas = await generateCollageCanvas();
       if (!canvas) throw new Error("Canvas render failed");
-      const dataUrl = canvas.toDataURL("image/png");
+      // Use JPEG at 0.88 quality for good compression without visible quality loss
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
       const link = document.createElement("a");
-      link.download = `fb-collage-${Date.now()}.png`;
+      link.download = `fb-collage-${Date.now()}.jpg`;
       link.href = dataUrl;
       link.click();
     } catch (err: any) {
@@ -276,11 +295,65 @@ export default function ClickableImage() {
     }
   };
 
-  // Convert & upload
+  // Upload collage to ImgBB and get hosted URL
+  const handleUploadCollage = async () => {
+    setUploadingCollage(true);
+    setCollageImageUrl("");
+    setErrorMessage("");
+    try {
+      const canvas = await generateCollageCanvas();
+      if (!canvas) throw new Error("Canvas render failed");
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.88);
+      });
+      if (!blob) throw new Error("Compression failed");
+      const fd = new FormData();
+      fd.append("image", blob, "collage.jpg");
+      const res = await fetch("https://api.imgbb.com/1/upload?key=7acb2b5955d0a1e35ba91e981a8d1da8", {
+        method: "POST", body: fd,
+      });
+      if (!res.ok) throw new Error("ImgBB upload failed");
+      const data = await res.json();
+      setCollageImageUrl(data.data.url);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Upload failed");
+    } finally {
+      setUploadingCollage(false);
+    }
+  };
+
+  // Fetch metadata from WordPress URL
+  const handleFetchMetadata = async () => {
+    if (!wpUrl) {
+      setErrorMessage("Please enter a WordPress URL first.");
+      return;
+    }
+    setFetchingMeta(true);
+    setErrorMessage("");
+    try {
+      const res = await fetch(`/api/fetch-wp?url=${encodeURIComponent(wpUrl)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch WordPress details.");
+      setCustomTitle(data.title || "");
+      setCustomDesc(data.excerpt || "");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Auto-fetch failed.");
+    } finally {
+      setFetchingMeta(false);
+    }
+  };
+
+  const copyImgUrl = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedImgUrl(true);
+    setTimeout(() => setCopiedImgUrl(false), 2000);
+  };
+
+  // Convert: upload collage to ImgBB then create redirect
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wpUrl) {
-      setErrorMessage("Please enter a destination URL");
+      setErrorMessage("Please enter a WordPress Post URL");
       return;
     }
     setConverting(true);
@@ -288,25 +361,25 @@ export default function ClickableImage() {
     setErrorMessage("");
 
     try {
-      const canvas = await generateCollageCanvas();
-      if (!canvas) throw new Error("Canvas render failed");
-
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92);
-      });
-      if (!blob) throw new Error("Image compression failed");
-
-      const uploadData = new FormData();
-      uploadData.append("image", blob, "collage.jpg");
-
-      const uploadRes = await fetch("https://api.imgbb.com/1/upload?key=7acb2b5955d0a1e35ba91e981a8d1da8", {
-        method: "POST",
-        body: uploadData,
-      });
-      if (!uploadRes.ok) throw new Error("Image hosting upload failed");
-
-      const imgJson = await uploadRes.json();
-      const uploadedImageUrl = imgJson.data.url;
+      // Use already-uploaded collage image URL if available, otherwise upload now
+      let imageUrl = collageImageUrl;
+      if (!imageUrl) {
+        const canvas = await generateCollageCanvas();
+        if (!canvas) throw new Error("Canvas render failed");
+        const blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((b) => resolve(b), "image/jpeg", 0.88);
+        });
+        if (!blob) throw new Error("Image compression failed");
+        const fd = new FormData();
+        fd.append("image", blob, "collage.jpg");
+        const uploadRes = await fetch("https://api.imgbb.com/1/upload?key=7acb2b5955d0a1e35ba91e981a8d1da8", {
+          method: "POST", body: fd,
+        });
+        if (!uploadRes.ok) throw new Error("ImgBB upload failed");
+        const imgJson = await uploadRes.json();
+        imageUrl = imgJson.data.url;
+        setCollageImageUrl(imageUrl);
+      }
 
       const response = await fetch("/api/create-redirect", {
         method: "POST",
@@ -315,7 +388,7 @@ export default function ClickableImage() {
           originalUrl: wpUrl,
           customTitle: customTitle || "Photo Collection",
           customDesc: customDesc || "Click to view more photos",
-          customImage: uploadedImageUrl,
+          customImage: imageUrl,
           userEmail: userEmail || null,
         }),
       });
@@ -364,7 +437,7 @@ export default function ClickableImage() {
                 src={imgUrl}
                 alt={`Photo ${idx + 1}`}
                 style={{
-                  transform: `translate(${adj.x * 0.5}%, ${adj.y * 0.5}%) scale(${adj.zoom})`,
+                  transform: `translate(${adj.x * 0.5}%, ${adj.y * 0.5}%) scale(${adj.zoom}) rotate(${adj.rotate}deg)`,
                   filter: adj.blur > 0 ? `blur(${adj.blur}px)` : "none",
                 }}
               />
@@ -643,52 +716,87 @@ export default function ClickableImage() {
             {/* Export Actions */}
             <div className="actions-row">
               <button className="btn-download" onClick={handleDownload} disabled={exporting}>
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                {exporting ? "Exporting..." : "Download PNG"}
+                {exporting ? "Exporting..." : "Download Image"}
+              </button>
+              <button className="btn-upload-imgbb" onClick={handleUploadCollage} disabled={uploadingCollage}>
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                {uploadingCollage ? "Uploading..." : "Upload to ImgBB"}
               </button>
             </div>
 
-            {/* Redirect Form */}
-            <div className="redirect-form-card">
-              <div className="form-header">
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-                Create Redirect Link
-              </div>
-              <form onSubmit={handleConvert}>
-                <div className="form-field">
-                  <label>Destination URL</label>
-                  <input
-                    type="url"
-                    placeholder="https://yourblog.com/landing-page/"
-                    value={wpUrl}
-                    onChange={(e) => setWpUrl(e.target.value)}
-                    required
-                  />
+            {/* Hosted Image URL */}
+            {collageImageUrl && (
+              <div className="imgbb-result">
+                <div className="imgbb-label">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Hosted Image URL
                 </div>
-                <div className="form-row-2">
+                <div className="imgbb-url-row">
+                  <span className="imgbb-url">{collageImageUrl}</span>
+                  <button
+                    className={`btn-copy-sm ${copiedImgUrl ? "copied" : ""}`}
+                    onClick={() => copyImgUrl(collageImageUrl)}
+                  >
+                    {copiedImgUrl ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Redirect Form - Dashboard Style */}
+            <div className="redirect-form-card">
+              <form onSubmit={handleConvert}>
+                {/* WordPress Post URL */}
+                <div className="form-field">
+                  <label>WordPress Post URL</label>
+                  <div className="url-fetch-row">
+                    <input
+                      type="url"
+                      placeholder="https://yourblog.com/my-awesome-post/"
+                      value={wpUrl}
+                      onChange={(e) => setWpUrl(e.target.value)}
+                      required
+                    />
+                    <button type="button" className="btn-fetch" onClick={handleFetchMetadata} disabled={fetchingMeta}>
+                      {fetchingMeta ? "Fetching..." : "Auto Fetch Details"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Facebook OG Tags Override */}
+                <fieldset className="og-override-panel">
+                  <legend>Facebook OG Tags Override (Optional)</legend>
+                  <p className="og-hint">
+                    Customize preview titles and descriptions to optimize your click-through rates (CTR) on social media platforms:
+                  </p>
+
                   <div className="form-field">
-                    <label>OG Title</label>
+                    <label>Custom Title</label>
                     <input
                       type="text"
-                      placeholder="Custom title for preview..."
+                      placeholder="Enter custom title for Facebook feed..."
                       value={customTitle}
                       onChange={(e) => setCustomTitle(e.target.value)}
                     />
                   </div>
+
                   <div className="form-field">
-                    <label>OG Description</label>
-                    <input
-                      type="text"
-                      placeholder="Short description..."
+                    <label>Custom Description</label>
+                    <textarea
+                      placeholder="Enter custom description..."
                       value={customDesc}
                       onChange={(e) => setCustomDesc(e.target.value)}
+                      rows={2}
                     />
                   </div>
-                </div>
+                </fieldset>
 
                 {errorMessage && (
                   <div className="error-msg">
@@ -710,7 +818,7 @@ export default function ClickableImage() {
               {/* Result */}
               {resultUrl && (
                 <div className="result-box">
-                  <div className="result-label">Generated Link</div>
+                  <div className="result-label">Generated Cloaked Link (Ready to share on social media):</div>
                   <div className="result-row">
                     <span className="result-url">{resultUrl}</span>
                     <button
@@ -759,7 +867,7 @@ export default function ClickableImage() {
                 src={images[editingSlot]!}
                 alt={`Editing photo ${editingSlot + 1}`}
                 style={{
-                  transform: `translate(${adjustments[editingSlot].x * 0.5}%, ${adjustments[editingSlot].y * 0.5}%) scale(${adjustments[editingSlot].zoom})`,
+                  transform: `translate(${adjustments[editingSlot].x * 0.5}%, ${adjustments[editingSlot].y * 0.5}%) scale(${adjustments[editingSlot].zoom}) rotate(${adjustments[editingSlot].rotate}deg)`,
                   filter: adjustments[editingSlot].blur > 0 ? `blur(${adjustments[editingSlot].blur}px)` : "none",
                 }}
               />
@@ -819,6 +927,19 @@ export default function ClickableImage() {
                   onChange={(e) => handleCropChange(editingSlot, "blur", parseInt(e.target.value))} />
               </div>
 
+              <div className="modal-ctrl">
+                <div className="modal-ctrl-header">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Rotate</span>
+                  <span className="ctrl-val">{adjustments[editingSlot].rotate}°</span>
+                </div>
+                <input type="range" min="-180" max="180" step="1"
+                  value={adjustments[editingSlot].rotate}
+                  onChange={(e) => handleCropChange(editingSlot, "rotate", parseInt(e.target.value))} />
+              </div>
+
               <div className="modal-actions">
                 <button className="btn-replace" onClick={() => { fileInputRefs.current[editingSlot]?.click(); }}>
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -826,7 +947,7 @@ export default function ClickableImage() {
                   </svg>
                   Replace Photo
                 </button>
-                <button className="btn-reset" onClick={() => { handleCropChange(editingSlot, "zoom", 1); handleCropChange(editingSlot, "x", 0); handleCropChange(editingSlot, "y", 0); handleCropChange(editingSlot, "blur", 0); }}>
+                <button className="btn-reset" onClick={() => { handleCropChange(editingSlot, "zoom", 1); handleCropChange(editingSlot, "x", 0); handleCropChange(editingSlot, "y", 0); handleCropChange(editingSlot, "blur", 0); handleCropChange(editingSlot, "rotate", 0); }}>
                   Reset
                 </button>
                 <button className="btn-done" onClick={() => setEditingSlot(null)}>Done</button>
@@ -1739,15 +1860,19 @@ export default function ClickableImage() {
           .ci-page {
             padding: 16px;
           }
+
+          .url-fetch-row {
+            flex-direction: column;
+          }
+
+          .actions-row {
+            flex-direction: column;
+          }
         }
 
         @media (max-width: 600px) {
           .ci-header h1 {
             font-size: 1.2rem;
-          }
-
-          .form-row-2 {
-            grid-template-columns: 1fr;
           }
 
           .edit-modal {
@@ -1762,6 +1887,181 @@ export default function ClickableImage() {
           .overlay-number {
             font-size: 1.2rem !important;
           }
+        }
+
+        /* Upload to ImgBB button */
+        .btn-upload-imgbb {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          flex: 1;
+          padding: 12px 20px;
+          background: rgba(168, 85, 247, 0.08);
+          border: 1px solid rgba(168, 85, 247, 0.2);
+          border-radius: 10px;
+          color: #a855f7;
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: inherit;
+        }
+
+        .btn-upload-imgbb:hover {
+          background: rgba(168, 85, 247, 0.15);
+          border-color: rgba(168, 85, 247, 0.4);
+        }
+
+        .btn-upload-imgbb:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        :root.light-theme .btn-upload-imgbb {
+          background: rgba(139, 92, 246, 0.06);
+          border-color: rgba(139, 92, 246, 0.2);
+          color: #7c3aed;
+        }
+
+        /* Hosted Image URL result */
+        .imgbb-result {
+          background: rgba(34, 197, 94, 0.05);
+          border: 1px solid rgba(34, 197, 94, 0.15);
+          border-radius: 12px;
+          padding: 12px 16px;
+        }
+
+        .imgbb-label {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #22c55e;
+          margin-bottom: 8px;
+        }
+
+        .imgbb-url-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          border-radius: 8px;
+          padding: 8px 12px;
+        }
+
+        .imgbb-url {
+          flex: 1;
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #22c55e;
+          word-break: break-all;
+          font-family: monospace;
+        }
+
+        .btn-copy-sm {
+          padding: 4px 10px;
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+          border-radius: 6px;
+          color: #22c55e;
+          font-size: 0.72rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: inherit;
+          white-space: nowrap;
+        }
+
+        .btn-copy-sm:hover {
+          background: rgba(34, 197, 94, 0.2);
+        }
+
+        .btn-copy-sm.copied {
+          background: rgba(34, 197, 94, 0.15);
+          color: #16a34a;
+        }
+
+        /* WordPress URL + Fetch row */
+        .url-fetch-row {
+          display: flex;
+          gap: 8px;
+        }
+
+        .url-fetch-row input {
+          flex: 1;
+        }
+
+        .btn-fetch {
+          padding: 10px 16px;
+          background: var(--accent);
+          border: none;
+          border-radius: 8px;
+          color: #fff;
+          font-size: 0.82rem;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+          white-space: nowrap;
+          transition: opacity 0.2s;
+        }
+
+        .btn-fetch:hover {
+          opacity: 0.9;
+        }
+
+        .btn-fetch:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        /* OG Override Panel */
+        .og-override-panel {
+          border: 1px solid var(--card-border);
+          border-radius: 12px;
+          padding: 16px;
+          margin: 16px 0;
+          background: rgba(168, 85, 247, 0.02);
+        }
+
+        .og-override-panel legend {
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: var(--text);
+          padding: 0 8px;
+        }
+
+        .og-hint {
+          font-size: 0.78rem;
+          color: var(--text-muted);
+          margin: 4px 0 12px;
+          line-height: 1.4;
+        }
+
+        .og-override-panel textarea {
+          width: 100%;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          border-radius: 8px;
+          padding: 10px 12px;
+          font-size: 0.85rem;
+          color: var(--text);
+          outline: none;
+          font-family: inherit;
+          transition: border-color 0.2s;
+          resize: vertical;
+        }
+
+        .og-override-panel textarea:focus {
+          border-color: #a855f7;
+        }
+
+        :root.light-theme .og-override-panel {
+          background: rgba(139, 92, 246, 0.03);
         }
       `}</style>
     </div>
