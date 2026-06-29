@@ -23,7 +23,7 @@ export default function ClickableImage() {
           <span className="badge-featured">🔥 UPCOMING PREMIUM FEATURE</span>
           <h1>+ Clickable Image Links</h1>
           <p className="description">
-            Apne social media links ko visual images me convert karein. Jab koi user Facebook ya WhatsApp par aapki post image par click karega, to wo aapki target site ya affiliate offer par redirect ho jayega.
+            Convert your social media links into fully interactive visual images. When users click the shared image on Facebook or WhatsApp, they will be redirected to your target destination or affiliate offer.
           </p>
         </div>
 
@@ -36,7 +36,7 @@ export default function ClickableImage() {
               </svg>
             </div>
             <h3>Fake Video Player Mockup</h3>
-            <p>Apni kisi bhi image par play-button overlay lagayein taaki user click karne par majboor ho jaye.</p>
+            <p>Overlay a play button on top of any preview image to double your click-through rates.</p>
           </div>
 
           {/* Box 2 */}
@@ -47,7 +47,7 @@ export default function ClickableImage() {
               </svg>
             </div>
             <h3>Direct Click Hijacking</h3>
-            <p>User image par click karega aur seedhe target destination par land ho jayega. No leak, high CTR.</p>
+            <p>Users who click the image will instantly land on your target article, bypassing intermediate steps.</p>
           </div>
 
           {/* Box 3 */}
@@ -58,7 +58,7 @@ export default function ClickableImage() {
               </svg>
             </div>
             <h3>Real-Time Analytics</h3>
-            <p>Track karein ki kis image par kitne clicks aaye aur kaunsa creative sabse best revenue de raha hai.</p>
+            <p>Track exactly how many clicks your custom images receive and compare creatives to maximize revenue.</p>
           </div>
         </div>
 
@@ -70,7 +70,7 @@ export default function ClickableImage() {
           </div>
           <h2>Under Active Development 🛠️</h2>
           <p>
-            Bhai, ye feature abhi processing me hai. Hum iska direct database schema aur image rendering system link kar rahe hain. Jald hi ye dashboard par live ho jayega!
+            We are currently linking the database schema and Cloudflare worker rules for custom clickable image redirects. This feature will go live on the dashboard soon!
           </p>
         </div>
       </main>

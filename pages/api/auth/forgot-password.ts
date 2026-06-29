@@ -32,7 +32,7 @@ export default async function handler(
       console.log(`Password reset requested for unregistered email: ${email}`);
       return res.status(200).json({
         success: true,
-        message: "Agar ye email registered hai, to reset link bhej diya gaya hai.",
+        message: "If this email is registered, a password reset link has been sent to it.",
       });
     }
 
@@ -62,12 +62,12 @@ export default async function handler(
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <h2 style="color: #6366f1; text-align: center;">Password Reset Request</h2>
-        <p>Namaste,</p>
-        <p>Aapne apne <b>WP Link Cloaker</b> account ka password reset karne ki request ki hai. Password reset karne ke liye niche diye gaye button par click karein:</p>
+        <p>Hello,</p>
+        <p>You are receiving this email because you requested a password reset for your <b>WP Link Cloaker</b> account. Click the button below to set a new password:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${resetLink}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
         </div>
-        <p>Ye link <b>1 ghante</b> tak valid rahegi. Agar aapne ye request nahi ki hai, to aap is email ko ignore kar sakte hain.</p>
+        <p>This link is valid for <b>1 hour</b>. If you did not make this request, you can safely ignore this email.</p>
         <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;" />
         <p style="font-size: 0.8rem; color: #9ca3af; text-align: center;">WP Link Cloaker Engine</p>
       </div>
@@ -77,9 +77,8 @@ export default async function handler(
 
     return res.status(200).json({
       success: true,
-      message: "Agar ye email registered hai, to reset link bhej diya gaya hai.",
-      // Return token in dev logs fallback if SMTP is absent (allows user to see it in terminal)
-      devMode: !process.env.SMTP_HOST ? true : false
+      message: "If this email is registered, a password reset link has been sent to it.",
+      devMode: !emailSent,
     });
   } catch (error: any) {
     console.error("Forgot-password error:", error);

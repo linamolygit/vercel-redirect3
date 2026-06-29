@@ -29,20 +29,20 @@ export default function Contact() {
 
   const faqs = [
     {
-      q: "Facebook par redirection kaam kyu nahi kar raha aur 403 error aa raha hai?",
-      a: "Bhai, ye isliye hota hai kyuki aapki original WordPress hosting/firewall Facebook bots (facebookexternalhit) ko query karne se block kar rahi hai. Humne code se redirect meta-tags ko remove kar diya hai taaki Facebook crawler bina kisi blockage ke seedha LinkPika ke database se custom tags load kar le aur redirection redirect server-level 302 se trigger ho.",
+      q: "Why is Facebook redirection failing or returning a 403 Forbidden error?",
+      a: "This happens because your WordPress hosting firewall blocks Facebook crawlers (facebookexternalhit) from reading dynamic responses directly from your site. We solved this by bypassing client-side meta tags and serving customized database meta directly from LinkPika to Facebook. Normal visitors are redirected at the server-side 320 redirect level instantly.",
     },
     {
-      q: "Kya hum is tool ko bina login kiye use kar sakte hain?",
-      a: "Haan bhai! LinkPika me 'Guest Mode' hai. Agar aap bina sign-up kiye link convert karna chahte hain to direct paste kar sakte hain. Aapka history data safe rahega browser ke localStorage me.",
+      q: "Can I use the tool without logging in?",
+      a: "Yes! LinkPika supports Guest Mode. You can convert any WordPress post link immediately without signing up. Your generated links history will be stored securely inside your browser's localStorage.",
     },
     {
-      q: "ImgBB upload limit kya hai?",
-      a: "Hamara uploader standard ImgBB API key use karta hai jo up to 32MB single image file aur completely unlimited total storage allow karta hai.",
+      q: "What is the ImgBB upload limit?",
+      a: "Our uploader uses standard ImgBB API keys, supporting files up to 32MB each and completely unlimited total hosting storage.",
     },
     {
-      q: "Custom domains kaise set karein?",
-      a: "Aap apne short URL domain ko Cloudflare Workers ya Vercel par point karke custom DNS domain add kar sakte hain (e.g. go.yourblog.com).",
+      q: "How do I configure custom domains?",
+      a: "You can point your custom DNS CNAME records (e.g., links.yourblog.com) to our Vercel or Cloudflare Worker endpoints to host cloaked links under your custom brand domain name.",
     },
   ];
 
@@ -64,7 +64,7 @@ export default function Contact() {
         <header className="page-header">
           <h1>Get in Touch</h1>
           <p className="subtitle">
-            Bhai, koi sawal hai ya guidance chahiye? Hamein message karein ya neeche FAQ section check karein.
+            Have any questions or need guidance? Send us a message or find quick answers in the FAQ section below.
           </p>
         </header>
 
@@ -72,7 +72,7 @@ export default function Contact() {
           {/* Form */}
           <div className="card form-card">
             <h2>Send a Message ✉️</h2>
-            {success && <div className="success-banner">Message sent successfully! Hamein aapka mail mil gaya hai. ✅</div>}
+            {success && <div className="success-banner">Message sent successfully! We have received your query. ✅</div>}
             
             <form onSubmit={handleSubmit} className="form-panel">
               <div className="input-group">
@@ -119,13 +119,13 @@ export default function Contact() {
           <div className="info-column">
             <div className="info-card">
               <h3>Support Email</h3>
-              <p>Hamein kisi bhi bug report ya special integration ke liye mail karein:</p>
+              <p>For custom plans, bug reports, or partnership inquiries, reach out to us at:</p>
               <a href="mailto:support@linkpika.com" className="email-link">support@linkpika.com</a>
             </div>
 
             <div className="info-card">
               <h3>Instant Response</h3>
-              <p>Hum aam taur par 24 ghante ke andar respond karte hain. Please details complete mention karein.</p>
+              <p>Our support team processes incoming tickets and responds within 24 hours. Please include links and error screenshots.</p>
             </div>
           </div>
         </div>

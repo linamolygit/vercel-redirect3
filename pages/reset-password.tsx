@@ -22,13 +22,13 @@ const ResetPassword: NextPage = () => {
     setSuccessMessage("");
 
     if (!token) {
-      setErrorMessage("Reset token missing. Kripya correct link use karein.");
+      setErrorMessage("Reset token missing. Please use the correct link.");
       setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMessage("Passwords aapas me match nahi kar rahe hain.");
+      setErrorMessage("Passwords do not match.");
       setLoading(false);
       return;
     }
@@ -45,7 +45,7 @@ const ResetPassword: NextPage = () => {
         throw new Error(data.error || "Password reset failed");
       }
 
-      setSuccessMessage("Password successfully reset ho gaya! Ab aap login kar sakte hain.");
+      setSuccessMessage("Password successfully reset! You can now log in.");
       setTimeout(() => {
         router.push("/login");
       }, 2500);
@@ -77,7 +77,7 @@ const ResetPassword: NextPage = () => {
           <header className="header">
             <span className="logo-icon">🔒</span>
             <h1>New Password</h1>
-            <p className="description">Apna naya password enter karein account access restore karne ke liye.</p>
+            <p className="description">Enter your new password to restore account access.</p>
           </header>
 
           {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
@@ -85,11 +85,11 @@ const ResetPassword: NextPage = () => {
 
           <form onSubmit={handleSubmit} className="form-panel">
             <div className="input-group">
-              <label htmlFor="password">Naya Password</label>
+              <label htmlFor="password">New Password</label>
               <input
                 type="password"
                 id="password"
-                placeholder="Kam se kam 6 character..."
+                placeholder="At least 6 characters..."
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -97,11 +97,11 @@ const ResetPassword: NextPage = () => {
             </div>
 
             <div className="input-group">
-              <label htmlFor="confirmPassword">Confirm Naya Password</label>
+              <label htmlFor="confirmPassword">Confirm New Password</label>
               <input
                 type="password"
                 id="confirmPassword"
-                placeholder="Naya password dobara likhein..."
+                placeholder="Repeat new password..."
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required

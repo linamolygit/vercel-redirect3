@@ -13,7 +13,7 @@ export default async function handler(
   // Get authenticated user
   const user = getAuthUser(req);
   if (!user) {
-    return res.status(401).json({ error: "Unauthorized. Kripya login karein." });
+    return res.status(401).json({ error: "Unauthorized. Please log in." });
   }
 
   try {

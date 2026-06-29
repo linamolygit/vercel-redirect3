@@ -26,28 +26,28 @@ export default function Privacy() {
           <section>
             <h2>1. Information We Collect</h2>
             <p>
-              Bhai, LinkPika aapki privacy ki izzat karta hai. Hum aapse sign-up ke waqt sirf aapka basic email address collect karte hain. Guest mode me use karne par hum koi bhi personal information central server par collect nahi karte; aapka links data completely aapke local browser storage (localStorage) me hi save hota hai.
+              LinkPika respects your privacy. We only collect your email address at sign-up to manage your credentials. When using our tool in Guest Mode, we do not store any personal information on our central servers; your link history is stored entirely in your local browser storage (localStorage).
             </p>
           </section>
 
           <section>
             <h2>2. Link Data & Overrides</h2>
             <p>
-              Jab aap hamare tool ke through kisi WordPress URL ko convert karte hain, to short link redirects coordinate karne ke liye hum target url, custom override titles, aur image urls ko Hostinger MySQL database me secure store karte hain.
+              When you convert a WordPress URL using our tool, we store the target destination URL, custom override titles, descriptions, and image links in our Hostinger MySQL database to coordinate short link redirection.
             </p>
           </section>
 
           <section>
             <h2>3. Third Party Integrations</h2>
             <p>
-              Hum aapke direct photo uploads ko store karne ke liye **ImgBB** standard upload API utilize karte hain. ImgBB par uploaded images unke privacy rules ke anusaar process hoti hain. Hamein in images ke storage rules par control nahi hai.
+              We utilize the standard ImgBB upload API to host your custom preview images. Uploaded images are processed according to ImgBB&apos;s privacy terms. We do not exercise control over their external storage rules.
             </p>
           </section>
 
           <section>
             <h2>4. Security</h2>
             <p>
-              Aapka password secure, one-way cryptographic hash functions (bcrypt) ke sath store kiya jata hai aur sessions HTTP-Only JWT tokens se encrypt kiye jate hain taaki koi cookies leak na ho sakein.
+              Your passwords are encrypted using one-way cryptographic hash functions (bcrypt) and sessions are managed securely using HTTP-Only JWT cookies to prevent unauthorized leakage or token interception.
             </p>
           </section>
         </div>

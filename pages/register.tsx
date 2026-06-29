@@ -22,7 +22,7 @@ const Register: NextPage = () => {
     setSuccessMessage("");
 
     if (password !== confirmPassword) {
-      setErrorMessage("Passwords aapas me match nahi kar rahe hain.");
+      setErrorMessage("Passwords do not match.");
       setLoading(false);
       return;
     }
@@ -39,12 +39,12 @@ const Register: NextPage = () => {
         throw new Error(data.error || "Registration failed");
       }
 
-      setSuccessMessage("Account successfully create ho gaya! Redirecting... ⏳");
+      setSuccessMessage("Account successfully created! Redirecting... ⏳");
       setTimeout(() => {
         router.push("/");
       }, 2000);
     } catch (err: any) {
-      setErrorMessage(err.message || "Registration fail ho gaya. Kripya check karein.");
+      setErrorMessage(err.message || "Registration failed. Please check the fields and try again.");
     } finally {
       setLoading(false);
     }
@@ -71,7 +71,7 @@ const Register: NextPage = () => {
           <header className="header">
             <span className="logo-icon">🚀</span>
             <h1>Get Started</h1>
-            <p className="description">Apna email aur password daal kar naya account banayein.</p>
+            <p className="description">Enter your email and password to create a new account.</p>
           </header>
 
           {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
@@ -95,7 +95,7 @@ const Register: NextPage = () => {
               <input
                 type="password"
                 id="password"
-                placeholder="Kam se kam 6 character..."
+                placeholder="At least 6 characters..."
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -107,7 +107,7 @@ const Register: NextPage = () => {
               <input
                 type="password"
                 id="confirmPassword"
-                placeholder="Password dobara likhein..."
+                placeholder="Repeat password..."
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required

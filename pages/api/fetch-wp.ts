@@ -146,7 +146,7 @@ export default async function handler(
 
     if (!resultData) {
       return res.status(404).json({
-        error: "WordPress site se metadata fetch nahi kiya ja saka. Kripya check karein ki target WordPress URL aur settings sahi hain.",
+        error: "Could not fetch metadata from the WordPress site. Please verify the target WordPress URL and settings.",
       });
     }
 
@@ -159,7 +159,7 @@ export default async function handler(
   } catch (error: any) {
     console.error("WordPress metadata fetch error:", error);
     return res.status(500).json({
-      error: `WordPress post details process fail ho gayi: ${error.message || error}`,
+      error: `Failed to process WordPress post details: ${error.message || error}`,
     });
   }
 }

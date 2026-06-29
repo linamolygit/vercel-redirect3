@@ -50,7 +50,7 @@ const Login: NextPage = () => {
 
       router.push("/");
     } catch (err: any) {
-      setErrorMessage(err.message || "Email ya password galat hai.");
+      setErrorMessage(err.message || "Invalid email or password.");
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ const Login: NextPage = () => {
           <header className="header">
             <span className="logo-icon">🔐</span>
             <h1>Welcome Back</h1>
-            <p className="description">Sign in karke apne links manage aur generate karein.</p>
+            <p className="description">Sign in to manage and generate your links.</p>
           </header>
 
           {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}

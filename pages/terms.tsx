@@ -26,28 +26,28 @@ export default function Terms() {
           <section>
             <h2>1. Agreement to Terms</h2>
             <p>
-              LinkPika platform ko use karke aap hamare in legal terms aur conditions ko fully accept karte hain. Agar aap in rules se sehmat nahi hain, to please is tool ka use na karein.
+              By accessing or using the LinkPika platform, you agree to be bound by these legal terms and conditions. If you do not agree with any of these rules, please discontinue use of this tool.
             </p>
           </section>
 
           <section>
             <h2>2. Acceptable Use Policy</h2>
             <p>
-              Aap is tool ko kisi bhi spamming, malware deployment, phishing activity, fake news, ya copyright violation redirects generate karne ke liye use nahi karenge. Aise links paye jaane par aapke redirects delete kar diye jayenge aur account access permanantly terminate kar diya jayega.
+              You agree not to use this tool for spamming, malware deployment, phishing activities, spreading fake news, or generating redirects that violate copyright laws. Any links found to be in violation will be deleted immediately and account access may be permanently terminated.
             </p>
           </section>
 
           <section>
             <h2>3. Service Availability & Database Limits</h2>
             <p>
-              LinkPika redirect edge network (Cloudflare/Vercel serverless) par high-availability support deta hai. Par hum aapke redirects database data ki backup integrity par absolute control guarantee nahi lete hain, isliye critical redirect configurations ka local back up jarur rakhein.
+              LinkPika redirect edge network (Cloudflare/Vercel serverless) operates on a high-availability infrastructure. However, we do not guarantee absolute data backup protection against host failures; we encourage users to keep a record of critical redirect configurations.
             </p>
           </section>
 
           <section>
             <h2>4. Limitation of Liability</h2>
             <p>
-              LinkPika ya uske developers kisi bhi financial losses, domain blacklist status (jaise social platform spam filters par block hona), ya target server downtime issues ke liye direct/indirect roop se zimmewar nahi honge.
+              LinkPika and its developers shall not be liable for any direct or indirect financial losses, domain blacklisting (e.g., social media platform spam flags), or target server downtime issues arising from the use of this service.
             </p>
           </section>
         </div>

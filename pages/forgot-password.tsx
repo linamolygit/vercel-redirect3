@@ -31,12 +31,12 @@ const ForgotPassword: NextPage = () => {
         throw new Error(data.error || "Request failed");
       }
 
-      setSuccessMessage(data.message || "Reset link send kar diya gaya hai.");
+      setSuccessMessage(data.message || "A password reset link has been sent to your email.");
       if (data.devMode) {
         setDevConsoleMode(true);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "Password recovery process fail ho gaya.");
+      setErrorMessage(err.message || "Password recovery process failed.");
     } finally {
       setLoading(false);
     }
@@ -63,7 +63,7 @@ const ForgotPassword: NextPage = () => {
           <header className="header">
             <span className="logo-icon">🔑</span>
             <h1>Reset Password</h1>
-            <p className="description">Apna email address daalein, hum aapko recovery link bhejenge.</p>
+            <p className="description">Enter your email address and we will send you a recovery link.</p>
           </header>
 
           {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
@@ -72,7 +72,7 @@ const ForgotPassword: NextPage = () => {
           {/* Local Developer SMTP Warning helper */}
           {devConsoleMode && (
             <div className="dev-banner">
-              <strong>💡 Dev Mode Helper:</strong> Aapka SMTP server configured nahi hai. Password reset link aapke <strong>VS Code Terminal Logs</strong> me print ho gaya hai! Wahan se link copy karke open karein.
+              <strong>💡 Dev Mode Helper:</strong> Your local SMTP server is not configured. The password reset link has been printed in your <strong>VS Code Terminal Logs</strong>! Please copy it from there to reset your password.
             </div>
           )}
 

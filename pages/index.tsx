@@ -330,7 +330,7 @@ const Home: NextPage = () => {
             <span className="logo-icon">🌐</span>
             <h1>WP Link Cloaker</h1>
             <p className="description">
-              Apne WordPress post links ko convert karein. Social platforms (Facebook/WA) ko overridden meta tags serve karein aur normal users ko WP site par redirect karein.
+              Convert your WordPress post links. Serve customized metadata tags to social crawlers (Facebook/Twitter/WhatsApp) while seamlessly redirecting real visitors to your target site.
             </p>
             <span className="badge">Full-Stack MySQL Mode</span>
           </header>
@@ -366,7 +366,7 @@ const Home: NextPage = () => {
             <fieldset className="override-panel">
               <legend>Facebook OG Tags Override (Optional)</legend>
               <p className="panel-hint">
-                Facebook aur Twitter preview images/titles ko customize karein click-through-rates optimize karne ke liye:
+                Customize preview images, titles, and descriptions to optimize your click-through rates (CTR) on social media platforms:
               </p>
 
               <div className="input-group">
@@ -451,7 +451,7 @@ const Home: NextPage = () => {
                 <span>Generating Short Link... ⏳</span>
               ) : (
                 <>
-                  <span>Link Convert & Save Karen</span>
+                  <span>Convert & Save Link</span>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                     <polyline points="12 5 19 12 12 19"></polyline>
@@ -463,10 +463,51 @@ const Home: NextPage = () => {
 
           {/* Success Result Panel */}
           {resultUrl && (
-            <div className="result-section">
-              <label>Generated Cloaked Link (Facebook par share karne ke liye):</label>
-              <div className="result-wrapper">
-                <div className="result-url">{resultUrl}</div>
+            <>
+              {/* Facebook Feed Preview */}
+              <div className="preview-container">
+                <label>Facebook Feed Preview 📱</label>
+                <div className="facebook-card">
+                  <div className="fb-header">
+                    <div className="fb-avatar">LP</div>
+                    <div className="fb-meta">
+                      <div className="fb-name">LinkPika Share Page</div>
+                      <div className="fb-time">
+                        Just now · 
+                        <svg className="globe-icon-small" fill="currentColor" viewBox="0 0 16 16" width="12" height="12" style={{ marginLeft: "4px", display: "inline-block", verticalAlign: "middle" }}>
+                          <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.006 8a6.978 6.978 0 0 1 1.545-4.385L6.03 7.09c-.066.38-.13.782-.13 1.139 0 .428.163.856.49 1.186l1.63 1.63c.33.33.758.49 1.186.49v2.115l-1.63 1.63c-.33.33-.758.49-1.186.49H6.03a1.99 1.99 0 0 1-1.414-.586L2.348 12.87A6.974 6.974 0 0 1 1.006 8zm13.988 0a6.975 6.975 0 0 1-1.342 4.385L12 10.758v-1.63c0-.428-.163-.856-.49-1.186L9.88 7.31c-.33-.33-.49-.758-.49-1.186V3.687l1.63-1.63c.33-.33.758-.49 1.186-.49h.56a1.99 1.99 0 0 1 1.414.586l2.268 2.268A6.98 6.98 0 0 1 14.994 8z"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="fb-post-text">Check this out!</div>
+                  <div className="fb-image-container">
+                    {customImg ? (
+                      <img src={customImg} alt="Preview" className="fb-preview-img" />
+                    ) : (
+                      <div className="fb-image-placeholder">No Image Available</div>
+                    )}
+                  </div>
+                  <div className="fb-card-footer">
+                    <div className="fb-card-domain">
+                      {(() => {
+                        try {
+                          return new URL(wpUrl).hostname.toUpperCase();
+                        } catch {
+                          return "YOURWEBSITE.COM";
+                        }
+                      })()}
+                    </div>
+                    <div className="fb-card-title">{customTitle || "Custom Title"}</div>
+                    <div className="fb-card-desc">{customDesc || "Click here to read the full story and learn more details."}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="result-section">
+                <label>Generated Cloaked Link (Ready to share on social media):</label>
+                <div className="result-wrapper">
+                  <div className="result-url">{resultUrl}</div>
                 <button
                   type="button"
                   className={`btn-copy ${copiedResult ? "copied" : ""}`}
@@ -486,7 +527,8 @@ const Home: NextPage = () => {
                 </button>
               </div>
             </div>
-          )}
+          </>
+        )}
         </div>
 
         {/* History Table Card */}
@@ -546,24 +588,24 @@ const Home: NextPage = () => {
           </div>
         </div>
 
-        {/* WPGraphQL Setup Guide Card */}
+        {/* WP Compatibility Guide */}
         <div className="card guide-card">
-          <h2>⚙️ WordPress WPGraphQL Setup Guide</h2>
+          <h2>⚙️ WordPress Integration Guide</h2>
           <p className="guide-intro">
-            Agar aap kisi WordPress URL se title aur image dynamic-fetch karna chahte hain, to us WordPress site par <strong>WPGraphQL</strong> plugin active hona zaruri hai. Apne users ko ye configure karne ko kahein:
+            LinkPika retrieves metadata directly from your WordPress posts using the native WP REST API (`wp-json`) with fallback models. No additional plugins are required on your WordPress site!
           </p>
           <div className="steps-container">
             <div className="step-item">
-              <h3>Step 1: Install Plugin 🔌</h3>
-              <p>Apne WordPress Dashboard me <strong>Plugins &rarr; Add New</strong> par jayein. Search karein <strong>WPGraphQL</strong>, use Install aur <strong>Activate</strong> karein.</p>
+              <h3>Step 1: Paste Post URL 🔗</h3>
+              <p>Paste the full URL of any WordPress page or article into the input field above.</p>
             </div>
             <div className="step-item">
-              <h3>Step 2: Verify & Test 🧪</h3>
-              <p>Setup verify karne ke liye apne browser me <code>https://yoursite.com/graphql</code> open karein. Agar blank page ya GraphQL JSON response aaye, to ye active hai.</p>
+              <h3>Step 2: Auto Fetch Details ⚡</h3>
+              <p>Click &quot;Auto Fetch Details&quot; to query the post. Title, description, and featured image will be loaded instantly.</p>
             </div>
             <div className="step-item">
-              <h3>Step 3: Auto Fetch Link ⚡</h3>
-              <p>Bas, ab apna post URL dashboard par paste karke <strong>Auto Fetch</strong> click karein. Title, Description aur Image automatic load ho jayenge!</p>
+              <h3>Step 3: Customize & Save 💾</h3>
+              <p>Optionally edit the title, description, or upload a custom preview image before generating your cloaked link.</p>
             </div>
           </div>
         </div>
@@ -939,6 +981,153 @@ const Home: NextPage = () => {
           color: #4ade80;
           font-weight: 600;
           margin-top: 4px;
+        }
+
+        /* Facebook OG Card Preview Styles */
+        .preview-container {
+          margin-top: 25px;
+          margin-bottom: 25px;
+          animation: fadeIn 0.4s ease forwards;
+        }
+
+        .preview-container label {
+          display: block;
+          font-size: 0.85rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: var(--text-muted);
+          margin-bottom: 12px;
+          text-align: left;
+        }
+
+        .facebook-card {
+          background: #ffffff;
+          color: #1c1e21;
+          border-radius: 12px;
+          border: 1px solid #dddfe2;
+          overflow: hidden;
+          font-family: Helvetica, Arial, sans-serif;
+          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+          text-align: left;
+          max-width: 500px;
+          margin: 0 auto;
+        }
+
+        .fb-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px;
+        }
+
+        .fb-avatar {
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+          color: #fff;
+          font-weight: 800;
+          font-size: 0.85rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .fb-meta {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .fb-name {
+          font-weight: 700;
+          font-size: 0.85rem;
+          color: #050505;
+        }
+
+        .fb-time {
+          font-size: 0.75rem;
+          color: #65676b;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 2px;
+        }
+
+        .fb-post-text {
+          font-size: 0.9rem;
+          padding: 0 12px 10px;
+          color: #050505;
+        }
+
+        .fb-image-container {
+          width: 100%;
+          height: 260px;
+          overflow: hidden;
+          background: #f0f2f5;
+          border-top: 1px solid #ebedf0;
+          border-bottom: 1px solid #ebedf0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .fb-preview-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .fb-image-placeholder {
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #8a8d91;
+          font-size: 0.9rem;
+        }
+
+        .fb-card-footer {
+          background: #f0f2f5;
+          padding: 12px;
+          border-top: 1px solid #ebedf0;
+        }
+
+        .fb-card-domain {
+          font-size: 0.7rem;
+          color: #65676b;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+        }
+
+        .fb-card-title {
+          font-weight: 700;
+          font-size: 0.95rem;
+          color: #050505;
+          line-height: 1.25;
+          margin-bottom: 4px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .fb-card-desc {
+          font-size: 0.8rem;
+          color: #65676b;
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        /* Responsive modifications */
+        @media (max-width: 580px) {
+          .fb-image-container {
+            height: 180px;
+          }
         }
 
         .error-banner {

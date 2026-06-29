@@ -22,7 +22,7 @@ export default function Pricing() {
         <header className="page-header">
           <h1>Choose Your Plan</h1>
           <p className="subtitle">
-            Bina kisi complexity ke apne link optimization process ko scale karein. Start for free, upgrade when you grow.
+            Scale your link optimization process without any complexity. Start for free, upgrade when you grow.
           </p>
         </header>
 
