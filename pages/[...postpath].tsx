@@ -65,6 +65,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       path,
       post: data.post,
       host: ctx.req.headers.host,
+      fbAppId: process.env.FB_APP_ID || "966882222",
     },
   };
 };
@@ -73,10 +74,11 @@ interface PostProps {
   post: any;
   host: string;
   path: string;
+  fbAppId: string;
 }
 
 const Post: React.FC<PostProps> = (props) => {
-  const { post, host, path } = props;
+  const { post, host, path, fbAppId } = props;
 
   // to remove tags from excerpt
   const removeTags = (str: string) => {
@@ -88,6 +90,9 @@ const Post: React.FC<PostProps> = (props) => {
   return (
     <>
       <Head>
+        {/* Facebook App ID */}
+        <meta property="fb:app_id" content={fbAppId} />
+
         <meta property="og:title" content={post.title} />
         <link rel="canonical" href={`https://${host}/${path}`} />
         <meta property="og:description" content={removeTags(post.excerpt)} />

@@ -40,11 +40,11 @@ export default async function handler(
     }
 
     // Set signed JWT cookie
-    setAuthCookie(res, { id: user.id, email: user.email });
+    setAuthCookie(res, { id: user.id, email: user.email, name: user.name, username: user.username });
 
     return res.status(200).json({
       success: true,
-      user: { id: user.id, email: user.email },
+      user: { id: user.id, email: user.email, name: user.name, username: user.username },
     });
   } catch (error: any) {
     console.error("Sign-in error:", error);

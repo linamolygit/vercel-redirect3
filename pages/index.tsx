@@ -35,6 +35,9 @@ const Home: NextPage = () => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const [userEmail, setUserEmail] = useState("");
+  const [userName, setUserName] = useState("");
+  const [userUsername, setUserUsername] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
 
@@ -47,6 +50,8 @@ const Home: NextPage = () => {
           const data = await res.json();
           if (data.user) {
             setUserEmail(data.user.email);
+            setUserName(data.user.name || "");
+            setUserUsername(data.user.username || "");
             // Fetch history only after successful auth
             fetchHistory();
           } else {
@@ -271,7 +276,7 @@ const Home: NextPage = () => {
         <p>Verifying session... ⏳</p>
         <style jsx>{`
           .loader-screen {
-            background: #070215;
+            background: var(--bg);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -296,7 +301,14 @@ const Home: NextPage = () => {
         `}</style>
       </div>
     );
-  }
+  }  const filteredHistory = history.filter((link) => {
+    const term = searchQuery.toLowerCase();
+    return (
+      link.short_id.toLowerCase().includes(term) ||
+      link.original_url.toLowerCase().includes(term) ||
+      (link.custom_title || "").toLowerCase().includes(term)
+    );
+  });
 
   return (
     <div className="wrapper">
@@ -315,301 +327,288 @@ const Home: NextPage = () => {
         <div className="glow glow-2"></div>
       </div>
 
-      <main className="container">
-        {/* SaaS Hero Section */}
-        <section className="hero-section">
-          <h1>Optimize Social Link Previews 🌐</h1>
-          <p className="subtitle">
-            Paste your WordPress links, customize preview titles & images, upload files directly, and redirect users automatically at the edge with zero delay.
-          </p>
-        </section>
-
-        {/* Main Dashboard Card */}
-        <div className="card main-card">
-          <header className="header">
-            <span className="logo-icon">🌐</span>
-            <h1>WP Link Cloaker</h1>
-            <p className="description">
-              Convert your WordPress post links. Serve customized metadata tags to social crawlers (Facebook/Twitter/WhatsApp) while seamlessly redirecting real visitors to your target site.
-            </p>
-            <span className="badge">Full-Stack MySQL Mode</span>
-          </header>
-
-          <form onSubmit={handleConvert} className="form-panel">
-            {/* Input 1: WordPress URL with Auto Fetch */}
-            <div className="input-group">
-              <label htmlFor="wpUrl">WordPress Post URL</label>
-              <div className="input-with-action">
-                <input
-                  type="url"
-                  id="wpUrl"
-                  placeholder="https://yourblog.com/my-awesome-post/"
-                  value={wpUrl}
-                  onChange={(e) => setWpUrl(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  className="btn-fetch"
-                  onClick={handleFetchMetadata}
-                  disabled={fetchingMeta}
-                >
-                  {fetchingMeta ? "Fetching... ⏳" : "Auto Fetch Details"}
-                </button>
-              </div>
+      <div className="dashboard-layout">
+        {/* Left Sidebar */}
+        <aside className="dashboard-sidebar">
+          {/* User Profile Card */}
+          <div className="sidebar-profile-card">
+            <div className="profile-avatar">
+              {userName ? userName.substring(0, 2).toUpperCase() : "GU"}
             </div>
-
-            {/* Error Message Display */}
-            {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
-
-            {/* Social Override Panel */}
-            <fieldset className="override-panel">
-              <legend>Facebook OG Tags Override (Optional)</legend>
-              <p className="panel-hint">
-                Customize preview images, titles, and descriptions to optimize your click-through rates (CTR) on social media platforms:
-              </p>
-
-              <div className="input-group">
-                <label htmlFor="customTitle">Custom Title</label>
-                <input
-                  type="text"
-                  id="customTitle"
-                  placeholder="Facebook feed ke liye ek dhamakedar title..."
-                  value={customTitle}
-                  onChange={(e) => setCustomTitle(e.target.value)}
-                />
-              </div>
-
-              <div className="input-group">
-                <label htmlFor="customDesc">Custom Description</label>
-                <textarea
-                  id="customDesc"
-                  placeholder="Post ke bare me description..."
-                  value={customDesc}
-                  onChange={(e) => setCustomDesc(e.target.value)}
-                  rows={2}
-                />
-              </div>
-
-              <div className="input-group">
-                <label htmlFor="customImg">Custom Image (Drag & Drop or Upload)</label>
-                <div 
-                  className={`dropzone ${isDragging ? "dragging" : ""} ${customImg ? "has-image" : ""}`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={() => document.getElementById("imageFile")?.click()}
-                >
-                  <input
-                    type="file"
-                    id="imageFile"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    style={{ display: "none" }}
-                  />
-                  
-                  {customImg ? (
-                    <div className="dropzone-preview">
-                      <img src={customImg} alt="Preview" className="img-preview" />
-                      <div className="dropzone-overlay">
-                        <svg className="upload-icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        <span>Change Image</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="dropzone-prompt">
-                      <svg className="upload-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      {uploadingImage ? (
-                        <span>Uploading to ImgBB... ⏳</span>
-                      ) : (
-                        <span><strong>Choose a file</strong> or drag & drop here (ImgBB)</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="image-url-manual">
-                  <span className="or-divider">Or enter URL manually:</span>
-                  <input
-                    type="url"
-                    placeholder="https://yourblog.com/wp-content/uploads/photo.jpg"
-                    value={customImg}
-                    onChange={(e) => setCustomImg(e.target.value)}
-                  />
-                </div>
-                {uploadSuccess && <span className="upload-success-label">Image uploaded successfully! ✅</span>}
-              </div>
-            </fieldset>
-
-            {/* Convert Button */}
-            <button type="submit" className="btn-submit" disabled={converting}>
-              {converting ? (
-                <span>Generating Short Link... ⏳</span>
+            <div className="profile-info">
+              <h3>{userName || "Guest User"}</h3>
+              {userUsername ? (
+                <span className="profile-handle">@{userUsername}</span>
               ) : (
-                <>
-                  <span>Convert & Save Link</span>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                    <polyline points="12 5 19 12 12 19"></polyline>
-                  </svg>
-                </>
+                <span className="profile-guest-badge">Limited Access</span>
               )}
-            </button>
-          </form>
-
-          {/* Success Result Panel */}
-          {resultUrl && (
-            <>
-              {/* Facebook Feed Preview */}
-              <div className="preview-container">
-                <label>Facebook Feed Preview 📱</label>
-                <div className="facebook-card">
-                  <div className="fb-header">
-                    <div className="fb-avatar">LP</div>
-                    <div className="fb-meta">
-                      <div className="fb-name">LinkPika Share Page</div>
-                      <div className="fb-time">
-                        Just now · 
-                        <svg className="globe-icon-small" fill="currentColor" viewBox="0 0 16 16" width="12" height="12" style={{ marginLeft: "4px", display: "inline-block", verticalAlign: "middle" }}>
-                          <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.006 8a6.978 6.978 0 0 1 1.545-4.385L6.03 7.09c-.066.38-.13.782-.13 1.139 0 .428.163.856.49 1.186l1.63 1.63c.33.33.758.49 1.186.49v2.115l-1.63 1.63c-.33.33-.758.49-1.186.49H6.03a1.99 1.99 0 0 1-1.414-.586L2.348 12.87A6.974 6.974 0 0 1 1.006 8zm13.988 0a6.975 6.975 0 0 1-1.342 4.385L12 10.758v-1.63c0-.428-.163-.856-.49-1.186L9.88 7.31c-.33-.33-.49-.758-.49-1.186V3.687l1.63-1.63c.33-.33.758-.49 1.186-.49h.56a1.99 1.99 0 0 1 1.414.586l2.268 2.268A6.98 6.98 0 0 1 14.994 8z"/>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="fb-post-text">Check this out!</div>
-                  <div className="fb-image-container">
-                    {customImg ? (
-                      <img src={customImg} alt="Preview" className="fb-preview-img" />
-                    ) : (
-                      <div className="fb-image-placeholder">No Image Available</div>
-                    )}
-                  </div>
-                  <div className="fb-card-footer">
-                    <div className="fb-card-domain">
-                      {(() => {
-                        try {
-                          return new URL(wpUrl).hostname.toUpperCase();
-                        } catch {
-                          return "YOURWEBSITE.COM";
-                        }
-                      })()}
-                    </div>
-                    <div className="fb-card-title">{customTitle || "Custom Title"}</div>
-                    <div className="fb-card-desc">{customDesc || "Click here to read the full story and learn more details."}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="result-section">
-                <label>Generated Cloaked Link (Ready to share on social media):</label>
-                <div className="result-wrapper">
-                  <div className="result-url">{resultUrl}</div>
-                <button
-                  type="button"
-                  className={`btn-copy ${copiedResult ? "copied" : ""}`}
-                  onClick={() => copyToClipboard(resultUrl)}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    {copiedResult ? (
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    ) : (
-                      <>
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </>
-                    )}
-                  </svg>
-                  <span>{copiedResult ? "Copied! ✅" : "Copy"}</span>
-                </button>
-              </div>
             </div>
-          </>
-        )}
-        </div>
+          </div>
 
-        {/* History Table Card */}
-        <div className="card history-card">
-          <h2>Database Links History 🕒</h2>
-          <p className="hint">Hostinger MySQL database me stored generated links:</p>
+          <div className="sidebar-divider"></div>
 
-          <div className="table-responsive">
+          {/* Links list & Search */}
+          <div className="sidebar-search-sec">
+            <span className="sec-title">Redirect Links 🔗</span>
+            <div className="sidebar-search-box">
+              <svg className="search-icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search links..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="sidebar-links-list">
             {history.length === 0 ? (
-              <div className="empty-state">Database me abhi koi link nahi hai. Naya link banayein!</div>
+              <div className="sidebar-empty">
+                <p>No redirects generated yet. Convert your first link!</p>
+              </div>
+            ) : filteredHistory.length === 0 ? (
+              <div className="sidebar-empty">
+                <p>No matching redirects found.</p>
+              </div>
             ) : (
-              <table className="history-table">
-                <thead>
-                  <tr>
-                    <th>Short ID</th>
-                    <th>WordPress Link</th>
-                    <th>Custom Title</th>
-                    <th>Created At</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map((link) => {
-                    const host = typeof window !== "undefined" ? window.location.host : "yourdomain.com";
-                    const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
-                    const fullShortLink = `${protocol}//${host}/${link.short_id}`;
-                    
-                    return (
-                      <tr key={link.id}>
-                        <td>
-                          <span className="id-tag">{link.short_id}</span>
-                        </td>
-                        <td>
-                          <div className="truncate" title={link.original_url}>{link.original_url}</div>
-                        </td>
-                        <td>
-                          <div className="truncate" title={link.custom_title || "N/A"}>
-                            {link.custom_title || <span className="dim">No custom title</span>}
-                          </div>
-                        </td>
-                        <td>{new Date(link.created_at).toLocaleDateString()}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className={`btn-table-copy ${copiedId === link.id ? "copied" : ""}`}
-                            onClick={() => copyToClipboard(fullShortLink, link.id)}
-                          >
-                            {copiedId === link.id ? "Copied! ✅" : "Copy Link"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              filteredHistory.map((link) => {
+                const host = typeof window !== "undefined" ? window.location.host : "yourdomain.com";
+                const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
+                const fullShortLink = `${protocol}//${host}/${link.short_id}`;
+                const isCopied = copiedId === link.id;
+
+                return (
+                  <div className="sidebar-link-card" key={link.id}>
+                    <div className="link-card-meta">
+                      <span className="link-card-id">{link.short_id}</span>
+                      <span className="link-card-date">{new Date(link.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="link-card-title" title={link.custom_title || link.original_url}>
+                      {link.custom_title || link.original_url}
+                    </div>
+                    <div className="link-card-url" title={fullShortLink}>{fullShortLink}</div>
+                    <button
+                      type="button"
+                      className={`btn-sidebar-copy ${isCopied ? "copied" : ""}`}
+                      onClick={() => copyToClipboard(fullShortLink, link.id)}
+                    >
+                      {isCopied ? "Copied! ✅" : "Copy Link"}
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
-        </div>
+        </aside>
 
-        {/* WP Compatibility Guide */}
-        <div className="card guide-card">
-          <h2>⚙️ WordPress Integration Guide</h2>
-          <p className="guide-intro">
-            LinkPika retrieves metadata directly from your WordPress posts using the native WP REST API (`wp-json`) with fallback models. No additional plugins are required on your WordPress site!
-          </p>
-          <div className="steps-container">
-            <div className="step-item">
-              <h3>Step 1: Paste Post URL 🔗</h3>
-              <p>Paste the full URL of any WordPress page or article into the input field above.</p>
-            </div>
-            <div className="step-item">
-              <h3>Step 2: Auto Fetch Details ⚡</h3>
-              <p>Click &quot;Auto Fetch Details&quot; to query the post. Title, description, and featured image will be loaded instantly.</p>
-            </div>
-            <div className="step-item">
-              <h3>Step 3: Customize & Save 💾</h3>
-              <p>Optionally edit the title, description, or upload a custom preview image before generating your cloaked link.</p>
-            </div>
+        {/* Center Main Work Area */}
+        <main className="dashboard-main-content">
+          <section className="dashboard-hero">
+            <h1>WP Link Cloaker ⚡</h1>
+            <p>Paste target link, customize preview details, upload custom featured image, and deploy instant server-side redirects.</p>
+          </section>
+
+          <div className="main-work-card">
+            <form onSubmit={handleConvert} className="form-panel">
+              {/* Input 1: WordPress URL with Auto Fetch */}
+              <div className="input-group">
+                <label htmlFor="wpUrl">WordPress Post URL</label>
+                <div className="input-with-action">
+                  <input
+                    type="url"
+                    id="wpUrl"
+                    placeholder="https://yourblog.com/my-awesome-post/"
+                    value={wpUrl}
+                    onChange={(e) => setWpUrl(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="btn-fetch"
+                    onClick={handleFetchMetadata}
+                    disabled={fetchingMeta}
+                  >
+                    {fetchingMeta ? "Fetching... ⏳" : "Auto Fetch Details"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Error Message Display */}
+              {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
+
+              {/* Social Override Panel */}
+              <fieldset className="override-panel">
+                <legend>Facebook OG Tags Override (Optional)</legend>
+                <p className="panel-hint">
+                  Customize preview images, titles, and descriptions to optimize your click-through rates (CTR) on social media platforms:
+                </p>
+
+                <div className="input-group">
+                  <label htmlFor="customTitle">Custom Title</label>
+                  <input
+                    type="text"
+                    id="customTitle"
+                    placeholder="Enter custom title for Facebook feed..."
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="customDesc">Custom Description</label>
+                  <textarea
+                    id="customDesc"
+                    placeholder="Enter custom description..."
+                    value={customDesc}
+                    onChange={(e) => setCustomDesc(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="customImg">Custom Image (Drag & Drop or Upload)</label>
+                  <div 
+                    className={`dropzone ${isDragging ? "dragging" : ""} ${customImg ? "has-image" : ""}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => document.getElementById("imageFile")?.click()}
+                  >
+                    <input
+                      type="file"
+                      id="imageFile"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      style={{ display: "none" }}
+                    />
+                    
+                    {customImg ? (
+                      <div className="dropzone-preview">
+                        <img src={customImg} alt="Preview" className="img-preview" />
+                        <div className="dropzone-overlay">
+                          <svg className="upload-icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                          <span>Change Image</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="dropzone-prompt">
+                        <svg className="upload-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {uploadingImage ? (
+                          <span>Uploading to ImgBB... ⏳</span>
+                        ) : (
+                          <span><strong>Choose a file</strong> or drag & drop here (ImgBB)</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="image-url-manual">
+                    <span className="or-divider">Or enter URL manually:</span>
+                    <input
+                      type="url"
+                      placeholder="https://yourblog.com/wp-content/uploads/photo.jpg"
+                      value={customImg}
+                      onChange={(e) => setCustomImg(e.target.value)}
+                    />
+                  </div>
+                  {uploadSuccess && <span className="upload-success-label">Image uploaded successfully! ✅</span>}
+                </div>
+              </fieldset>
+
+              {/* Convert Button */}
+              <button type="submit" className="btn-submit" disabled={converting}>
+                {converting ? (
+                  <span>Generating Short Link... ⏳</span>
+                ) : (
+                  <>
+                    <span>Convert</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Success Result Panel */}
+            {resultUrl && (
+              <>
+                {/* Facebook Feed Preview */}
+                <div className="preview-container">
+                  <label>Facebook Feed Preview 📱</label>
+                  <div className="facebook-card">
+                    <div className="fb-header">
+                      <div className="fb-avatar">LP</div>
+                      <div className="fb-meta">
+                        <div className="fb-name">LinkPika Share Page</div>
+                        <div className="fb-time">
+                          Just now · 
+                          <svg className="globe-icon-small" fill="currentColor" viewBox="0 0 16 16" width="12" height="12" style={{ marginLeft: "4px", display: "inline-block", verticalAlign: "middle" }}>
+                            <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.006 8a6.978 6.978 0 0 1 1.545-4.385L6.03 7.09c-.066.38-.13.782-.13 1.139 0 .428.163.856.49 1.186l1.63 1.63c.33.33.758.49 1.186.49v2.115l-1.63 1.63c-.33.33-.758.49-1.186.49H6.03a1.99 1.99 0 0 1-1.414-.586L2.348 12.87A6.974 6.974 0 0 1 1.006 8zm13.988 0a6.975 6.975 0 0 1-1.342 4.385L12 10.758v-1.63c0-.428-.163-.856-.49-1.186L9.88 7.31c-.33-.33-.49-.758-.49-1.186V3.687l1.63-1.63c.33-.33.758-.49 1.186-.49h.56a1.99 1.99 0 0 1 1.414.586l2.268 2.268A6.98 6.98 0 0 1 14.994 8z"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="fb-post-text">Check this out!</div>
+                    <div className="fb-image-container">
+                      {customImg ? (
+                        <img src={customImg} alt="Preview" className="fb-preview-img" />
+                      ) : (
+                        <div className="fb-image-placeholder">No Image Available</div>
+                      )}
+                    </div>
+                    <div className="fb-card-footer">
+                      <div className="fb-card-domain">
+                        {(() => {
+                          try {
+                            return new URL(wpUrl).hostname.toUpperCase();
+                          } catch {
+                            return "YOURWEBSITE.COM";
+                          }
+                        })()}
+                      </div>
+                      <div className="fb-card-title">{customTitle || "Custom Title"}</div>
+                      <div className="fb-card-desc">{customDesc || "Click here to read the full story and learn more details."}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="result-section">
+                  <label>Generated Cloaked Link (Ready to share on social media):</label>
+                  <div className="result-wrapper">
+                    <div className="result-url">{resultUrl}</div>
+                    <button
+                      type="button"
+                      className={`btn-copy ${copiedResult ? "copied" : ""}`}
+                      onClick={() => copyToClipboard(resultUrl)}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        {copiedResult ? (
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        ) : (
+                          <>
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </>
+                        )}
+                      </svg>
+                      <span>{copiedResult ? "Copied! ✅" : "Copy"}</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
+
       <Footer />
 
       {/* Embedded Vanilla CSS */}
@@ -623,6 +622,21 @@ const Home: NextPage = () => {
           --text: #f3f4f6;
           --text-muted: #9ca3af;
           --success: #22c55e;
+          --input-bg: rgba(255, 255, 255, 0.03);
+          --input-border: rgba(255, 255, 255, 0.08);
+        }
+
+        :root.light-theme {
+          --bg: #f9fafb;
+          --card-bg: #ffffff;
+          --card-border: #e5e7eb;
+          --accent: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
+          --accent-hover: linear-gradient(135deg, #3730a3 0%, #6d28d9 100%);
+          --text: #111827;
+          --text-muted: #4b5563;
+          --success: #16a34a;
+          --input-bg: #f3f4f6;
+          --input-border: #d1d5db;
         }
 
         * {
@@ -637,6 +651,7 @@ const Home: NextPage = () => {
           color: var(--text);
           min-height: 100vh;
           overflow-x: hidden;
+          transition: background 0.3s ease, color 0.3s ease;
         }
 
         .wrapper {
@@ -645,7 +660,8 @@ const Home: NextPage = () => {
           width: 100%;
           display: flex;
           flex-direction: column;
-          background: #070215;
+          background: var(--bg);
+          transition: background 0.3s ease;
         }
 
         .background-glows {
@@ -664,7 +680,12 @@ const Home: NextPage = () => {
           height: 45vw;
           border-radius: 50%;
           filter: blur(120px);
-          opacity: 0.15;
+          opacity: 0.12;
+          transition: opacity 0.3s ease;
+        }
+
+        :root.light-theme .glow {
+          opacity: 0.04;
         }
 
         .glow-1 {
@@ -679,59 +700,283 @@ const Home: NextPage = () => {
           background: #a855f7;
         }
 
-        .container {
+        /* Two-Column Dashboard Layout */
+        .dashboard-layout {
+          display: flex;
+          flex-direction: row;
           width: 100%;
-          max-width: 900px;
-          margin: 40px auto;
-          padding: 0 25px;
+          min-height: calc(100vh - 70px);
+          position: relative;
+          z-index: 10;
+          flex: 1;
+        }
+
+        /* Sidebar Styling */
+        .dashboard-sidebar {
+          width: 340px;
+          min-width: 340px;
+          background: rgba(255, 255, 255, 0.01);
+          border-right: 1px solid var(--card-border);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          padding: 24px;
           display: flex;
           flex-direction: column;
-          gap: 25px;
-          flex: 1;
-          z-index: 10;
+          gap: 20px;
+          max-height: calc(100vh - 70px);
+          overflow-y: auto;
+          box-shadow: 10px 0 30px rgba(0, 0, 0, 0.05);
         }
 
-        .hero-section {
-          text-align: center;
-          margin-bottom: 10px;
+        :root.light-theme .dashboard-sidebar {
+          background: rgba(255, 255, 255, 0.7);
         }
 
-        .hero-section h1 {
-          font-size: 2.8rem;
+        .sidebar-profile-card {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          padding: 16px;
+          border-radius: 16px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .profile-avatar {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: var(--accent);
+          color: #ffffff;
           font-weight: 800;
-          background: linear-gradient(135deg, #fff 0%, #a855f7 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.15rem;
+          box-shadow: 0 4px 15px rgba(168, 85, 247, 0.35);
+        }
+
+        .profile-info {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        .profile-info h3 {
+          font-size: 1rem;
+          font-weight: 700;
+          color: var(--text);
+          line-height: 1.2;
+          margin-bottom: 2px;
+        }
+
+        .profile-handle {
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          font-weight: 500;
+        }
+
+        .profile-guest-badge {
+          display: inline-block;
+          font-size: 0.75rem;
+          color: #a855f7;
+          background: rgba(168, 85, 247, 0.1);
+          padding: 2px 8px;
+          border-radius: 99px;
+          font-weight: 600;
+          width: max-content;
+        }
+
+        .sidebar-divider {
+          height: 1px;
+          background: var(--card-border);
+          width: 100%;
+        }
+
+        .sidebar-search-sec {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .sec-title {
+          font-size: 0.8rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: var(--text-muted);
+        }
+
+        .sidebar-search-box {
+          position: relative;
+          width: 100%;
+        }
+
+        .search-icon-small {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 16px;
+          height: 16px;
+          color: var(--text-muted);
+        }
+
+        .sidebar-search-box input {
+          width: 100%;
+          padding: 10px 12px 10px 38px;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          border-radius: 10px;
+          color: var(--text);
+          font-size: 0.85rem;
+          outline: none;
+          transition: all 0.25s ease;
+        }
+
+        .sidebar-search-box input:focus {
+          border-color: #a855f7;
+          box-shadow: 0 0 10px rgba(168, 85, 247, 0.15);
+        }
+
+        /* Sidebar Links List Scrollable */
+        .sidebar-links-list {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+
+        .sidebar-links-list::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        .sidebar-links-list::-webkit-scrollbar-thumb {
+          background: var(--card-border);
+          border-radius: 4px;
+        }
+
+        .sidebar-link-card {
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 14px;
+          padding: 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          transition: all 0.25s ease;
+        }
+
+        .sidebar-link-card:hover {
+          border-color: rgba(168, 85, 247, 0.35);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .link-card-meta {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 0.72rem;
+          color: var(--text-muted);
+        }
+
+        .link-card-id {
+          font-family: monospace;
+          background: rgba(168, 85, 247, 0.1);
+          color: #c084fc;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-weight: 700;
+        }
+
+        .link-card-title {
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: var(--text);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .link-card-url {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .btn-sidebar-copy {
+          width: 100%;
+          background: rgba(168, 85, 247, 0.08);
+          border: 1px solid rgba(168, 85, 247, 0.15);
+          color: #c084fc;
+          padding: 7px;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          text-align: center;
+        }
+
+        .btn-sidebar-copy:hover {
+          background: rgba(168, 85, 247, 0.15);
+          border-color: rgba(168, 85, 247, 0.35);
+        }
+
+        .btn-sidebar-copy.copied {
+          background: rgba(34, 197, 94, 0.1);
+          border-color: rgba(34, 197, 94, 0.3);
+          color: #4ade80;
+        }
+
+        /* Center Main Work Panel Area */
+        .dashboard-main-content {
+          flex: 1;
+          padding: 40px 60px;
+          overflow-y: auto;
+          max-height: calc(100vh - 70px);
+          display: flex;
+          flex-direction: column;
+          gap: 30px;
+        }
+
+        .dashboard-hero {
+          text-align: left;
+        }
+
+        .dashboard-hero h1 {
+          font-size: 2.5rem;
+          font-weight: 800;
+          background: var(--accent);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
-          margin-bottom: 12px;
-          letter-spacing: -1.5px;
+          margin-bottom: 8px;
+          letter-spacing: -1.2px;
         }
 
-        .subtitle {
-          font-size: 1.1rem;
+        .dashboard-hero p {
+          font-size: 1rem;
           color: var(--text-muted);
-          line-height: 1.6;
-          max-width: 700px;
-          margin: 0 auto;
+          line-height: 1.5;
+          max-width: 800px;
         }
 
-        /* Cleaned top bar - now modular inside Header */
-
-        .card {
+        .main-work-card {
           background: var(--card-bg);
           border: 1px solid var(--card-border);
           backdrop-filter: blur(24px);
           -webkit-backdrop-filter: blur(24px);
           border-radius: 24px;
-          padding: 40px;
-          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
-        }
-
-        .main-card {
-          animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        .history-card {
-          animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          padding: 35px;
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+          width: 100%;
+          animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         @keyframes fadeIn {
@@ -743,53 +988,6 @@ const Home: NextPage = () => {
             opacity: 1;
             transform: translateY(0);
           }
-        }
-
-        .header {
-          text-align: center;
-          margin-bottom: 35px;
-        }
-
-        .logo-icon {
-          font-size: 3.5rem;
-          margin-bottom: 15px;
-          display: inline-block;
-          animation: float 3s ease-in-out infinite;
-        }
-
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
-        }
-
-        h1 {
-          font-size: 2.6rem;
-          font-weight: 800;
-          letter-spacing: -1px;
-          background: var(--accent);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          margin-bottom: 10px;
-        }
-
-        .description {
-          font-size: 1rem;
-          color: var(--text-muted);
-          line-height: 1.6;
-          max-width: 620px;
-          margin: 0 auto;
-        }
-
-        .badge {
-          display: inline-block;
-          padding: 6px 14px;
-          border-radius: 99px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          background: rgba(168, 85, 247, 0.15);
-          color: #c084fc;
-          border: 1px solid rgba(168, 85, 247, 0.3);
-          margin-top: 15px;
         }
 
         .form-panel {
@@ -806,9 +1004,9 @@ const Home: NextPage = () => {
 
         label {
           font-size: 0.8rem;
-          font-weight: 700;
+          font-weight: 800;
           text-transform: uppercase;
-          letter-spacing: 1.5px;
+          letter-spacing: 1px;
           color: var(--text-muted);
         }
 
@@ -816,12 +1014,12 @@ const Home: NextPage = () => {
         input[type="text"],
         textarea {
           width: 100%;
-          padding: 15px 20px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 14px 18px;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
           border-radius: 12px;
           color: var(--text);
-          font-size: 1rem;
+          font-size: 0.95rem;
           font-family: inherit;
           outline: none;
           transition: all 0.3s ease;
@@ -830,17 +1028,13 @@ const Home: NextPage = () => {
         input:focus,
         textarea:focus {
           border-color: #a855f7;
-          box-shadow: 0 0 15px rgba(168, 85, 247, 0.25);
-          background: rgba(255, 255, 255, 0.04);
+          box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
+          background: var(--input-bg);
         }
 
         .input-with-action {
           display: flex;
           gap: 12px;
-        }
-
-        .input-with-action input {
-          flex: 1;
         }
 
         .btn-fetch {
@@ -849,10 +1043,15 @@ const Home: NextPage = () => {
           border: 1px solid rgba(255, 255, 255, 0.1);
           color: var(--text);
           border-radius: 12px;
-          font-weight: 600;
+          font-weight: 700;
           cursor: pointer;
           transition: all 0.2s ease;
           white-space: nowrap;
+        }
+
+        :root.light-theme .btn-fetch {
+          background: #e5e7eb;
+          border-color: #d1d5db;
         }
 
         .btn-fetch:hover:not(:disabled) {
@@ -867,7 +1066,7 @@ const Home: NextPage = () => {
 
         .dropzone {
           border: 2px dashed rgba(255, 255, 255, 0.15);
-          background: rgba(255, 255, 255, 0.02);
+          background: var(--input-bg);
           border-radius: 16px;
           padding: 30px;
           text-align: center;
@@ -879,6 +1078,10 @@ const Home: NextPage = () => {
           display: flex;
           justify-content: center;
           align-items: center;
+        }
+
+        :root.light-theme .dropzone {
+          border-color: #cbd5e1;
         }
 
         .dropzone:hover,
@@ -906,39 +1109,31 @@ const Home: NextPage = () => {
           color: rgba(255, 255, 255, 0.3);
         }
 
-        .dropzone.dragging .upload-icon {
-          color: #c084fc;
-          animation: bounce 1s infinite alternate;
-        }
-
-        @keyframes bounce {
-          from { transform: translateY(0); }
-          to { transform: translateY(-5px); }
+        :root.light-theme .upload-icon {
+          color: #94a3b8;
         }
 
         .dropzone-preview {
           position: relative;
           width: 100%;
-          height: 100%;
-          min-height: 140px;
+          height: 160px;
           border-radius: 8px;
           overflow: hidden;
         }
 
         .img-preview {
           width: 100%;
-          max-height: 160px;
+          height: 100%;
           object-fit: cover;
-          border-radius: 8px;
         }
 
         .dropzone-overlay {
           position: absolute;
           top: 0;
           left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(7, 2, 21, 0.7);
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.6);
           display: flex;
           flex-direction: column;
           justify-content: center;
@@ -947,8 +1142,6 @@ const Home: NextPage = () => {
           opacity: 0;
           transition: opacity 0.25s ease;
           color: #fff;
-          font-weight: 600;
-          font-size: 0.9rem;
         }
 
         .dropzone-preview:hover .dropzone-overlay {
@@ -956,9 +1149,8 @@ const Home: NextPage = () => {
         }
 
         .upload-icon-small {
-          width: 20px;
-          height: 20px;
-          color: #c084fc;
+          width: 24px;
+          height: 24px;
         }
 
         .image-url-manual {
@@ -970,9 +1162,9 @@ const Home: NextPage = () => {
 
         .or-divider {
           font-size: 0.75rem;
-          font-weight: 700;
+          font-weight: 800;
           text-transform: uppercase;
-          color: rgba(255, 255, 255, 0.3);
+          color: var(--text-muted);
           letter-spacing: 1px;
         }
 
@@ -983,22 +1175,161 @@ const Home: NextPage = () => {
           margin-top: 4px;
         }
 
-        /* Facebook OG Card Preview Styles */
+        .override-panel {
+          border: 1px solid var(--card-border);
+          border-radius: 16px;
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          background: rgba(255, 255, 255, 0.01);
+        }
+
+        :root.light-theme .override-panel {
+          background: #f9fafb;
+        }
+
+        .override-panel legend {
+          font-size: 0.8rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          padding: 0 10px;
+          color: var(--text);
+        }
+
+        .panel-hint {
+          font-size: 0.82rem;
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        .btn-submit {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          width: 100%;
+          background: var(--accent);
+          color: white;
+          border: none;
+          padding: 16px;
+          border-radius: 12px;
+          font-size: 1rem;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+          background: var(--accent-hover);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(168, 85, 247, 0.45);
+        }
+
+        .btn-submit:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .error-banner {
+          background: rgba(239, 68, 68, 0.08);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          color: #fca5a5;
+          padding: 12px 18px;
+          border-radius: 10px;
+          font-size: 0.9rem;
+          text-align: left;
+        }
+
+        :root.light-theme .error-banner {
+          color: #dc2626;
+          background: #fef2f2;
+          border-color: #fca5a5;
+        }
+
+        /* Success Results Area */
+        .result-section {
+          margin-top: 30px;
+          background: rgba(34, 197, 94, 0.04);
+          border: 1px solid rgba(34, 197, 94, 0.15);
+          border-radius: 16px;
+          padding: 24px;
+          animation: fadeIn 0.4s ease forwards;
+        }
+
+        :root.light-theme .result-section {
+          background: #f0fdf4;
+          border-color: #bbf7d0;
+        }
+
+        .result-section label {
+          color: var(--success);
+          margin-bottom: 8px;
+        }
+
+        .result-wrapper {
+          display: flex;
+          gap: 12px;
+          margin-top: 8px;
+        }
+
+        .result-url {
+          flex: 1;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid var(--card-border);
+          padding: 14px 18px;
+          border-radius: 10px;
+          color: #fff;
+          font-family: monospace;
+          font-size: 0.95rem;
+          word-break: break-all;
+        }
+
+        :root.light-theme .result-url {
+          background: #f3f4f6;
+          color: #111827;
+        }
+
+        .btn-copy {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid rgba(34, 197, 94, 0.25);
+          color: #4ade80;
+          padding: 0 20px;
+          border-radius: 10px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-copy:hover {
+          background: rgba(34, 197, 94, 0.15);
+        }
+
+        .btn-copy.copied {
+          background: #22c55e;
+          color: #fff;
+        }
+
+        /* Facebook Preview Component Styles */
         .preview-container {
           margin-top: 25px;
-          margin-bottom: 25px;
+          margin-bottom: 10px;
           animation: fadeIn 0.4s ease forwards;
         }
 
         .preview-container label {
           display: block;
-          font-size: 0.85rem;
-          font-weight: 700;
+          font-size: 0.8rem;
+          font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 1px;
           color: var(--text-muted);
           margin-bottom: 12px;
-          text-align: left;
         }
 
         .facebook-card {
@@ -1008,10 +1339,8 @@ const Home: NextPage = () => {
           border: 1px solid #dddfe2;
           overflow: hidden;
           font-family: Helvetica, Arial, sans-serif;
-          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
-          text-align: left;
-          max-width: 500px;
-          margin: 0 auto;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+          max-width: 550px;
         }
 
         .fb-header {
@@ -1025,7 +1354,7 @@ const Home: NextPage = () => {
           width: 38px;
           height: 38px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+          background: var(--accent);
           color: #fff;
           font-weight: 800;
           font-size: 0.85rem;
@@ -1062,7 +1391,7 @@ const Home: NextPage = () => {
 
         .fb-image-container {
           width: 100%;
-          height: 260px;
+          height: 280px;
           overflow: hidden;
           background: #f0f2f5;
           border-top: 1px solid #ebedf0;
@@ -1124,85 +1453,29 @@ const Home: NextPage = () => {
           text-overflow: ellipsis;
         }
 
-        /* Responsive modifications */
+        @media (max-width: 992px) {
+          .dashboard-layout {
+            flex-direction: column;
+          }
+          
+          .dashboard-sidebar {
+            width: 100%;
+            min-width: 100%;
+            max-height: 350px;
+            border-right: none;
+            border-bottom: 1px solid var(--card-border);
+          }
+          
+          .dashboard-main-content {
+            padding: 30px 20px;
+            max-height: none;
+          }
+        }
+
         @media (max-width: 580px) {
           .fb-image-container {
             height: 180px;
           }
-        }
-
-        .error-banner {
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.25);
-          color: #fca5a5;
-          padding: 12px 18px;
-          border-radius: 10px;
-          font-size: 0.9rem;
-        }
-
-        .override-panel {
-          border: 1px solid rgba(168, 85, 247, 0.15);
-          border-radius: 16px;
-          padding: 24px;
-          background: rgba(168, 85, 247, 0.02);
-          display: flex;
-          flex-direction: column;
-          gap: 18px;
-        }
-
-        .override-panel legend {
-          font-weight: 700;
-          font-size: 0.85rem;
-          text-transform: uppercase;
-          letter-spacing: 1.5px;
-          color: #c084fc;
-          padding: 0 10px;
-        }
-
-        .panel-hint {
-          font-size: 0.85rem;
-          color: var(--text-muted);
-          line-height: 1.5;
-          margin-bottom: 5px;
-        }
-
-        .btn-submit {
-          width: 100%;
-          padding: 18px;
-          border: none;
-          border-radius: 12px;
-          background: var(--accent);
-          color: white;
-          font-size: 1.05rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          box-shadow: 0 8px 30px rgba(99, 102, 241, 0.3);
-        }
-
-        .btn-submit:hover:not(:disabled) {
-          background: var(--accent-hover);
-          transform: translateY(-2px);
-          box-shadow: 0 12px 35px rgba(99, 102, 241, 0.4);
-        }
-
-        .btn-submit:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          box-shadow: none;
-        }
-
-        .result-section {
-          margin-top: 30px;
-          padding-top: 30px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
-          animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }

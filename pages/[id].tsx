@@ -79,6 +79,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
         imageUrl: redirectData.custom_image || "",
         canonicalUrl: requestUrl,
         siteName: host.split(".")[0],
+        fbAppId: process.env.FB_APP_ID || "966882222",
       },
     };
   } catch (error) {
@@ -101,6 +102,7 @@ interface RedirectProps {
   imageUrl: string;
   canonicalUrl: string;
   siteName: string;
+  fbAppId: string;
 }
 
 const RedirectPage: React.FC<RedirectProps> = ({
@@ -110,6 +112,7 @@ const RedirectPage: React.FC<RedirectProps> = ({
   imageUrl,
   canonicalUrl,
   siteName,
+  fbAppId,
 }) => {
   return (
     <>
@@ -118,6 +121,9 @@ const RedirectPage: React.FC<RedirectProps> = ({
         <title>{title}</title>
         <meta name="description" content={description} />
         <link rel="canonical" href={canonicalUrl} />
+
+        {/* Facebook App ID */}
+        <meta property="fb:app_id" content={fbAppId} />
 
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="article" />

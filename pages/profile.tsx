@@ -17,6 +17,8 @@ interface SavedLink {
 
 export default function Profile() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userUsername, setUserUsername] = useState<string | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [links, setLinks] = useState<SavedLink[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(false);
@@ -32,6 +34,8 @@ export default function Profile() {
           const data = await res.json();
           if (data.user) {
             setUserEmail(data.user.email);
+            setUserName(data.user.name || null);
+            setUserUsername(data.user.username || null);
             fetchUserLinks();
           } else {
             router.push("/login");
@@ -87,7 +91,7 @@ export default function Profile() {
         <p>Loading Profile... ⏳</p>
         <style jsx>{`
           .loader-screen {
-            background: #070215;
+            background: var(--bg);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -138,10 +142,11 @@ export default function Profile() {
         <div className="card info-card">
           <div className="avatar-sec">
             <div className="avatar-large">
-              {userEmail ? userEmail.substring(0, 2).toUpperCase() : "U"}
+              {userName ? userName.substring(0, 2).toUpperCase() : "U"}
             </div>
             <div className="avatar-info">
-              <h2>{userEmail}</h2>
+              <h2>{userName || userEmail}</h2>
+              {userUsername && <span className="profile-handle" style={{ color: "#a855f7", fontSize: "0.85rem", display: "block", marginTop: "2px" }}>@{userUsername}</span>}
               <span className="badge-user">PRO Member</span>
             </div>
           </div>
@@ -238,7 +243,7 @@ export default function Profile() {
       <style jsx>{`
         .wrapper {
           min-height: 100vh;
-          background: #070215;
+          background: var(--bg);
           color: #f3f4f6;
           font-family: 'Outfit', sans-serif;
           position: relative;

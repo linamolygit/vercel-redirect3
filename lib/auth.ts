@@ -7,6 +7,8 @@ const JWT_SECRET = process.env.JWT_SECRET || "rishav_super_secret_jwt_key_999";
 export interface AuthUser {
   id: number;
   email: string;
+  name?: string;
+  username?: string;
 }
 
 // Simple cookie parser helper
@@ -44,7 +46,7 @@ export function getAuthUser(req: NextApiRequest): AuthUser | null {
 // Set httpOnly secure JWT cookie on login/signup
 export function setAuthCookie(res: NextApiResponse, user: AuthUser) {
   const token = jwt.sign(
-    { id: user.id, email: user.email },
+    { id: user.id, email: user.email, name: user.name, username: user.username },
     JWT_SECRET,
     { expiresIn: "7d" }
   );

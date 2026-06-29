@@ -170,7 +170,7 @@ export default function Pricing() {
       <style jsx>{`
         .wrapper {
           min-height: 100vh;
-          background: #070215;
+          background: var(--bg);
           color: #f3f4f6;
           font-family: 'Outfit', sans-serif;
           position: relative;

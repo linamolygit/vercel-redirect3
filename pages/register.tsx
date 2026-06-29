@@ -7,6 +7,8 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 
 const Register: NextPage = () => {
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,7 +33,7 @@ const Register: NextPage = () => {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name, username }),
       });
 
       const data = await res.json();
@@ -79,6 +81,30 @@ const Register: NextPage = () => {
 
           <form onSubmit={handleSubmit} className="form-panel">
             <div className="input-group">
+              <label htmlFor="name">Full Name</label>
+              <input
+                type="text"
+                id="name"
+                placeholder="Enter your name..."
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="username">Username</label>
+              <input
+                type="text"
+                id="username"
+                placeholder="Choose a username..."
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="input-group">
               <label htmlFor="email">Email Address</label>
               <input
                 type="email"
@@ -115,14 +141,14 @@ const Register: NextPage = () => {
             </div>
 
             <button type="submit" className="btn-submit" disabled={loading}>
-              {loading ? "Account banaya ja raha hai... ⏳" : "Sign Up"}
+              {loading ? "Creating Account... ⏳" : "Sign Up"}
             </button>
           </form>
 
           <footer className="card-footer">
-            Pehle se account hai?{" "}
+            Already have an account?{" "}
             <Link href="/login">
-              <a className="login-link">Log In Karen</a>
+              <a className="login-link">Log In</a>
             </Link>
           </footer>
         </div>
@@ -162,7 +188,7 @@ const Register: NextPage = () => {
           width: 100%;
           display: flex;
           flex-direction: column;
-          background: #070215;
+          background: var(--bg);
         }
 
         .background-glows {

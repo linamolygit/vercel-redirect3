@@ -155,7 +155,7 @@ const ResetPassword: NextPage = () => {
           width: 100%;
           display: flex;
           flex-direction: column;
-          background: #070215;
+          background: var(--bg);
         }
 
         .background-glows {

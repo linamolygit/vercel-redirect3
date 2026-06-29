@@ -4,9 +4,21 @@ import { useRouter } from "next/router";
 
 export default function Header() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userUsername, setUserUsername] = useState<string | null>(null);
+  const [theme, setTheme] = useState("dark");
   const router = useRouter();
 
   useEffect(() => {
+    // Initial theme load
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    setTheme(savedTheme);
+    if (savedTheme === "light") {
+      document.documentElement.classList.add("light-theme");
+    } else {
+      document.documentElement.classList.remove("light-theme");
+    }
+
     const fetchUser = async () => {
       try {
         const res = await fetch("/api/auth/user");
@@ -14,6 +26,8 @@ export default function Header() {
           const data = await res.json();
           if (data.user) {
             setUserEmail(data.user.email);
+            setUserName(data.user.name || null);
+            setUserUsername(data.user.username || null);
           }
         }
       } catch (err) {
@@ -21,12 +35,25 @@ export default function Header() {
       }
     };
     fetchUser();
-  }, [router.pathname]); // Re-run when navigation occurs to update login state
+  }, [router.pathname]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    if (newTheme === "light") {
+      document.documentElement.classList.add("light-theme");
+    } else {
+      document.documentElement.classList.remove("light-theme");
+    }
+  };
 
   const handleSignout = async () => {
     try {
       await fetch("/api/auth/signout", { method: "POST" });
       setUserEmail(null);
+      setUserName(null);
+      setUserUsername(null);
       router.push("/login");
     } catch (err) {
       console.error("Signout failed:", err);
@@ -84,6 +111,19 @@ export default function Header() {
 
         {/* User Auth Section */}
         <div className="auth-section">
+          {/* Theme Toggle Button */}
+          <button onClick={toggleTheme} className="theme-toggle-btn" title="Toggle Light/Dark Theme">
+            {theme === "dark" ? (
+              <svg className="theme-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.364l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+              </svg>
+            ) : (
+              <svg className="theme-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            )}
+          </button>
+
           {userEmail ? (
             <div className="user-profile">
               <Link href="/profile">
@@ -92,7 +132,7 @@ export default function Header() {
                     <svg className="badge-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    <span className="user-text">{userEmail}</span>
+                    <span className="user-text">{userName || userEmail}</span>
                   </span>
                 </a>
               </Link>
@@ -194,6 +234,31 @@ export default function Header() {
         .auth-section {
           display: flex;
           align-items: center;
+          gap: 15px;
+        }
+
+        .theme-toggle-btn {
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #9ca3af;
+          padding: 8px;
+          border-radius: 50%;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .theme-toggle-btn:hover {
+          color: #f3f4f6;
+          background: rgba(255, 255, 255, 0.08);
+          transform: scale(1.05);
+        }
+
+        .theme-icon {
+          width: 18px;
+          height: 18px;
         }
 
         .user-profile,

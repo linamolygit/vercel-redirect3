@@ -263,7 +263,7 @@ function escapeHtml(str) {
 }
 
 // ─── OG TAG HTML BUILDER ──────────────────────────────────────────────────────
-function buildOGHtml({ post, requestUrl, siteHost }) {
+function buildOGHtml({ post, requestUrl, siteHost, fbAppId = "966882222" }) {
   const imageUrl =
     post.featuredImage?.node?.sourceUrl || CONFIG.FALLBACK_IMAGE || "";
   const imageAlt = escapeHtml(
@@ -287,6 +287,9 @@ function buildOGHtml({ post, requestUrl, siteHost }) {
   <meta name="description" content="${description}" />
   ${authorName ? `<meta name="author" content="${authorName}" />` : ""}
   <link rel="canonical" href="${canonicalUrl}" />
+
+  <!-- Facebook App ID -->
+  <meta property="fb:app_id" content="${escapeHtml(fbAppId)}" />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="article" />
@@ -1073,6 +1076,7 @@ export async function handleRequest(request, env = {}) {
       requestUrl: request.url,
       siteHost: url.hostname,
       fallbackImage: env.FALLBACK_IMAGE,
+      fbAppId: env.FB_APP_ID || "966882222",
     });
 
     return new Response(html, {
@@ -1110,6 +1114,7 @@ export async function handleRequest(request, env = {}) {
       post: mockPost,
       requestUrl: request.url,
       siteHost: url.hostname,
+      fbAppId: env.FB_APP_ID || "966882222",
     });
     return new Response(html, {
       status: 200,
@@ -1135,6 +1140,7 @@ export async function handleRequest(request, env = {}) {
       post,
       requestUrl: request.url,
       siteHost: url.hostname,
+      fbAppId: env.FB_APP_ID || "966882222",
     });
 
     return new Response(html, {

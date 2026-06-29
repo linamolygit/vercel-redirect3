@@ -33,6 +33,8 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS users (
       id INT AUTO_INCREMENT PRIMARY KEY,
       email VARCHAR(255) NOT NULL UNIQUE,
+      name VARCHAR(255) NULL,
+      username VARCHAR(255) NULL UNIQUE,
       password_hash VARCHAR(255) NOT NULL,
       reset_token VARCHAR(255) NULL,
       reset_token_expiry TIMESTAMP NULL,
@@ -58,6 +60,14 @@ export async function initDb() {
   try {
     // 1. Create users table first
     await query(createUsersTableQuery);
+
+    // Dynamic schema migrations for existing databases
+    try {
+      await query("ALTER TABLE users ADD COLUMN name VARCHAR(255) NULL");
+    } catch (e) {}
+    try {
+      await query("ALTER TABLE users ADD COLUMN username VARCHAR(255) NULL UNIQUE");
+    } catch (e) {}
     
     // 2. Create redirects table (depends on users table)
     await query(createRedirectsTableQuery);
