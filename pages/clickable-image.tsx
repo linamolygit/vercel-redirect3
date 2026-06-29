@@ -34,6 +34,15 @@ export default function ClickableImage() {
   // Edit modal state
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
 
+  const [isCropping, setIsCropping] = useState(false);
+
+  // When editingSlot changes to null, reset isCropping
+  useEffect(() => {
+    if (editingSlot === null) {
+      setIsCropping(false);
+    }
+  }, [editingSlot]);
+
   // Form states
   const [wpUrl, setWpUrl] = useState("");
   const [customTitle, setCustomTitle] = useState("");
@@ -948,57 +957,154 @@ export default function ClickableImage() {
               </button>
             </div>
 
-            <div className="modal-preview">
-              <Cropper
-                ref={cropperRef}
-                src={images[editingSlot]!}
-                style={{ height: 400, width: "100%", background: "#1a1a1a" }}
-                zoomTo={1}
-                viewMode={1}
-                background={false}
-                responsive={true}
-                autoCropArea={1}
-                checkOrientation={false}
-                guides={true}
-              />
-            </div>
+            {isCropping ? (
+              <>
+                <div className="modal-preview">
+                  <Cropper
+                    ref={cropperRef}
+                    src={images[editingSlot]!}
+                    style={{ height: 400, width: "100%", background: "#1a1a1a" }}
+                    zoomTo={1}
+                    viewMode={1}
+                    background={false}
+                    responsive={true}
+                    autoCropArea={1}
+                    checkOrientation={false}
+                    guides={true}
+                  />
+                </div>
+                <div className="modal-controls">
+                  <div className="modal-actions">
+                    <button className="btn-crop" onClick={() => {
+                      const cropper = cropperRef.current?.cropper;
+                      if (cropper) {
+                        const croppedCanvas = cropper.getCroppedCanvas();
+                        if (croppedCanvas) {
+                          const dataUrl = croppedCanvas.toDataURL("image/jpeg", 0.9);
+                          const newImages = [...images];
+                          newImages[editingSlot] = dataUrl;
+                          setImages(newImages);
+                          // Reset adjustments just in case
+                          const newAdj = [...adjustments];
+                          newAdj[editingSlot] = { ...DEFAULT_ADJ };
+                          setAdjustments(newAdj);
+                          setIsCropping(false);
+                        }
+                      }
+                    }}>
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Crop & Save
+                    </button>
+                    <button className="btn-reset" onClick={() => cropperRef.current?.cropper.reset()}>
+                      Reset View
+                    </button>
+                    <button className="btn-done" onClick={() => setIsCropping(false)}>Cancel</button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="modal-preview">
+                  <img
+                    src={images[editingSlot]!}
+                    alt={`Editing photo ${editingSlot + 1}`}
+                    style={{
+                      transform: `translate(${adjustments[editingSlot].x * 0.5}%, ${adjustments[editingSlot].y * 0.5}%) scale(${adjustments[editingSlot].zoom}) rotate(${adjustments[editingSlot].rotate}deg)`,
+                      filter: adjustments[editingSlot].blur > 0 ? `blur(${adjustments[editingSlot].blur}px)` : "none",
+                    }}
+                  />
+                </div>
 
-            <div className="modal-controls">
-              <div className="modal-actions">
-                <button className="btn-crop" onClick={() => {
-                  const cropper = cropperRef.current?.cropper;
-                  if (cropper) {
-                    const croppedCanvas = cropper.getCroppedCanvas();
-                    if (croppedCanvas) {
-                      const dataUrl = croppedCanvas.toDataURL("image/jpeg", 0.9);
-                      const newImages = [...images];
-                      newImages[editingSlot] = dataUrl;
-                      setImages(newImages);
-                      // Reset adjustments just in case
-                      const newAdj = [...adjustments];
-                      newAdj[editingSlot] = { ...DEFAULT_ADJ };
-                      setAdjustments(newAdj);
-                      setEditingSlot(null);
-                    }
-                  }
-                }}>
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  Crop & Save
-                </button>
-                <button className="btn-replace" onClick={() => { fileInputRefs.current[editingSlot]?.click(); }}>
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Replace Photo
-                </button>
-                <button className="btn-reset" onClick={() => cropperRef.current?.cropper.reset()}>
-                  Reset View
-                </button>
-                <button className="btn-done" onClick={() => setEditingSlot(null)}>Cancel</button>
-              </div>
-            </div>
+                <div className="modal-controls">
+                  <div className="modal-ctrl">
+                    <div className="modal-ctrl-header">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                      </svg>
+                      <span>Zoom</span>
+                      <span className="ctrl-val">{adjustments[editingSlot].zoom.toFixed(2)}x</span>
+                    </div>
+                    <input type="range" min="1.0" max="3.0" step="0.05"
+                      value={adjustments[editingSlot].zoom}
+                      onChange={(e) => handleCropChange(editingSlot, "zoom", parseFloat(e.target.value))} />
+                  </div>
+
+                  <div className="modal-ctrl">
+                    <div className="modal-ctrl-header">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      <span>Horizontal</span>
+                      <span className="ctrl-val">{adjustments[editingSlot].x}%</span>
+                    </div>
+                    <input type="range" min="-100" max="100"
+                      value={adjustments[editingSlot].x}
+                      onChange={(e) => handleCropChange(editingSlot, "x", parseInt(e.target.value))} />
+                  </div>
+
+                  <div className="modal-ctrl">
+                    <div className="modal-ctrl-header">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                      </svg>
+                      <span>Vertical</span>
+                      <span className="ctrl-val">{adjustments[editingSlot].y}%</span>
+                    </div>
+                    <input type="range" min="-100" max="100"
+                      value={adjustments[editingSlot].y}
+                      onChange={(e) => handleCropChange(editingSlot, "y", parseInt(e.target.value))} />
+                  </div>
+
+                  <div className="modal-ctrl">
+                    <div className="modal-ctrl-header">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span>Blur</span>
+                      <span className="ctrl-val">{adjustments[editingSlot].blur}px</span>
+                    </div>
+                    <input type="range" min="0" max="20" step="1"
+                      value={adjustments[editingSlot].blur}
+                      onChange={(e) => handleCropChange(editingSlot, "blur", parseInt(e.target.value))} />
+                  </div>
+
+                  <div className="modal-ctrl">
+                    <div className="modal-ctrl-header">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Rotate</span>
+                      <span className="ctrl-val">{adjustments[editingSlot].rotate}°</span>
+                    </div>
+                    <input type="range" min="-180" max="180" step="1"
+                      value={adjustments[editingSlot].rotate}
+                      onChange={(e) => handleCropChange(editingSlot, "rotate", parseInt(e.target.value))} />
+                  </div>
+
+                  <div className="modal-actions">
+                    <button className="btn-crop" onClick={() => setIsCropping(true)}>
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      Crop Tool
+                    </button>
+                    <button className="btn-replace" onClick={() => { fileInputRefs.current[editingSlot]?.click(); }}>
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      Replace Photo
+                    </button>
+                    <button className="btn-reset" onClick={() => { handleCropChange(editingSlot, "zoom", 1); handleCropChange(editingSlot, "x", 0); handleCropChange(editingSlot, "y", 0); handleCropChange(editingSlot, "blur", 0); handleCropChange(editingSlot, "rotate", 0); }}>
+                      Reset
+                    </button>
+                    <button className="btn-done" onClick={() => setEditingSlot(null)}>Done</button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
