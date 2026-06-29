@@ -1075,7 +1075,8 @@ const Home: NextPage = () => {
         .fb-preview-img {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
+          background: #f0f2f5;
         }
 
         .fb-image-placeholder {
