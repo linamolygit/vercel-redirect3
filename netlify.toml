@@ -1,0 +1,30 @@
+# Netlify Configuration
+# ============================================================
+# Deploy: git push → Netlify auto-deploy
+# Local:  netlify dev
+# ============================================================
+
+# Edge Functions configuration
+[[edge_functions]]
+  # Ye edge function har path pe run hogi
+  path = "/*"
+  function = "redirect"
+
+# Build settings (koi build nahi chahiye — pure JS)
+[build]
+  # No build command needed — direct edge function
+  publish = "public"
+
+# Environment Variables
+# Inhe Netlify dashboard → Site settings → Environment variables mein set karo:
+#   GRAPHQL_ENDPOINT = https://YOUR-WORDPRESS-SITE.com/graphql
+#   WP_BASE_URL      = https://YOUR-WORDPRESS-SITE.com
+#   FALLBACK_IMAGE   = (optional)
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

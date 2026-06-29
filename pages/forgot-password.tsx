@@ -1,0 +1,335 @@
+import type { NextPage } from "next";
+import Head from "next/head";
+import Link from "next/link";
+import React, { useState } from "react";
+
+const ForgotPassword: NextPage = () => {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [devConsoleMode, setDevConsoleMode] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+    setDevConsoleMode(false);
+
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Request failed");
+      }
+
+      setSuccessMessage(data.message || "Reset link send kar diya gaya hai.");
+      if (data.devMode) {
+        setDevConsoleMode(true);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Password recovery process fail ho gaya.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="wrapper">
+      <Head>
+        <title>Forgot Password — WP Link Cloaker</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+      </Head>
+
+      <div className="background-glows">
+        <div className="glow glow-1"></div>
+        <div className="glow glow-2"></div>
+      </div>
+
+      <main className="container">
+        <div className="card forgot-card">
+          <header className="header">
+            <span className="logo-icon">🔑</span>
+            <h1>Reset Password</h1>
+            <p className="description">Apna email address daalein, hum aapko recovery link bhejenge.</p>
+          </header>
+
+          {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
+          {successMessage && <div className="success-banner">✅ {successMessage}</div>}
+
+          {/* Local Developer SMTP Warning helper */}
+          {devConsoleMode && (
+            <div className="dev-banner">
+              <strong>💡 Dev Mode Helper:</strong> Aapka SMTP server configured nahi hai. Password reset link aapke <strong>VS Code Terminal Logs</strong> me print ho gaya hai! Wahan se link copy karke open karein.
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="form-panel">
+            <div className="input-group">
+              <label htmlFor="email">Email Address</label>
+              <input
+                type="email"
+                id="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            <button type="submit" className="btn-submit" disabled={loading}>
+              {loading ? "Link bheja ja raha hai... ⏳" : "Get Reset Link"}
+            </button>
+          </form>
+
+          <footer className="card-footer">
+            Wapas login par jayein?{" "}
+            <Link href="/login">
+              <a className="login-link">Log In Karen</a>
+            </Link>
+          </footer>
+        </div>
+      </main>
+
+      <style jsx global>{`
+        :root {
+          --bg: #070215;
+          --card-bg: rgba(255, 255, 255, 0.02);
+          --card-border: rgba(255, 255, 255, 0.08);
+          --accent: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+          --accent-hover: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+          --text: #f3f4f6;
+          --text-muted: #9ca3af;
+        }
+
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        body {
+          font-family: 'Outfit', sans-serif;
+          background: var(--bg);
+          color: var(--text);
+          min-height: 100vh;
+          overflow-x: hidden;
+        }
+
+        .wrapper {
+          position: relative;
+          min-height: 100vh;
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 40px 20px;
+        }
+
+        .background-glows {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: -1;
+          pointer-events: none;
+        }
+
+        .glow {
+          position: absolute;
+          width: 45vw;
+          height: 45vw;
+          border-radius: 50%;
+          filter: blur(120px);
+          opacity: 0.15;
+        }
+
+        .glow-1 {
+          top: -10%;
+          left: -10%;
+          background: #6366f1;
+        }
+
+        .glow-2 {
+          bottom: -10%;
+          right: -10%;
+          background: #a855f7;
+        }
+
+        .container {
+          width: 100%;
+          max-width: 450px;
+        }
+
+        .card {
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border-radius: 24px;
+          padding: 40px;
+          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+          animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+
+        .logo-icon {
+          font-size: 3.5rem;
+          margin-bottom: 12px;
+          display: inline-block;
+        }
+
+        h1 {
+          font-size: 2.2rem;
+          font-weight: 800;
+          letter-spacing: -1px;
+          background: var(--accent);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin-bottom: 6px;
+        }
+
+        .description {
+          font-size: 0.95rem;
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        .form-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        label {
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          color: var(--text-muted);
+        }
+
+        input {
+          width: 100%;
+          padding: 14px 18px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 12px;
+          color: var(--text);
+          font-size: 0.95rem;
+          font-family: inherit;
+          outline: none;
+          transition: all 0.3s ease;
+        }
+
+        input:focus {
+          border-color: #a855f7;
+          box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+          background: rgba(255, 255, 255, 0.04);
+        }
+
+        .error-banner {
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.25);
+          color: #fca5a5;
+          padding: 12px 16px;
+          border-radius: 10px;
+          font-size: 0.9rem;
+          margin-bottom: 20px;
+        }
+
+        .success-banner {
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid rgba(34, 197, 94, 0.25);
+          color: #a7f3d0;
+          padding: 12px 16px;
+          border-radius: 10px;
+          font-size: 0.9rem;
+          margin-bottom: 20px;
+        }
+
+        .dev-banner {
+          background: rgba(99, 102, 241, 0.1);
+          border: 1px solid rgba(99, 102, 241, 0.25);
+          color: #c7d2fe;
+          padding: 12px 16px;
+          border-radius: 10px;
+          font-size: 0.85rem;
+          margin-bottom: 20px;
+          line-height: 1.5;
+        }
+
+        .btn-submit {
+          width: 100%;
+          padding: 16px;
+          border: none;
+          border-radius: 12px;
+          background: var(--accent);
+          color: white;
+          font-size: 1rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+          margin-top: 10px;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+          background: var(--accent-hover);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 28px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-submit:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+
+        .card-footer {
+          margin-top: 25px;
+          text-align: center;
+          font-size: 0.9rem;
+          color: var(--text-muted);
+        }
+
+        .login-link {
+          color: #818cf8;
+          text-decoration: none;
+          font-weight: 700;
+          transition: color 0.2s ease;
+        }
+
+        .login-link:hover {
+          color: #a855f7;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default ForgotPassword;
