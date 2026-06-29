@@ -3,6 +3,8 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 const Register: NextPage = () => {
   const [email, setEmail] = useState("");
@@ -56,6 +58,8 @@ const Register: NextPage = () => {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
       </Head>
+
+      <Header />
 
       <div className="background-glows">
         <div className="glow glow-1"></div>
@@ -124,6 +128,8 @@ const Register: NextPage = () => {
         </div>
       </main>
 
+      <Footer />
+
       <style jsx global>{`
         :root {
           --bg: #070215;
@@ -155,9 +161,8 @@ const Register: NextPage = () => {
           min-height: 100vh;
           width: 100%;
           display: flex;
-          justify-content: center;
-          align-items: center;
-          padding: 40px 20px;
+          flex-direction: column;
+          background: #070215;
         }
 
         .background-glows {
@@ -194,6 +199,9 @@ const Register: NextPage = () => {
         .container {
           width: 100%;
           max-width: 450px;
+          margin: 60px auto;
+          padding: 0 20px;
+          flex: 1;
         }
 
         .card {

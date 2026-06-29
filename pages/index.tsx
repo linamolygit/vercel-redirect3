@@ -2,6 +2,8 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React, { useState, useEffect } from "react";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 interface SavedLink {
   id: number;
@@ -179,6 +181,32 @@ const Home: NextPage = () => {
     }
   };
 
+  // Drag and Drop Image Upload Listeners
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      const mockEvent = {
+        target: {
+          files: [file]
+        }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      await handleImageUpload(mockEvent);
+    }
+  };
+
   // ImgBB Image Upload Handler
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -273,12 +301,14 @@ const Home: NextPage = () => {
   return (
     <div className="wrapper">
       <Head>
-        <title>WP Link Converter Dashboard</title>
+        <title>SaaS Link Cloaker Dashboard</title>
         <meta name="description" content="WordPress Full-stack Social Media Redirect Tool" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
       </Head>
+
+      <Header />
 
       <div className="background-glows">
         <div className="glow glow-1"></div>
@@ -286,18 +316,13 @@ const Home: NextPage = () => {
       </div>
 
       <main className="container">
-        {/* Top Profile Header Bar */}
-        {userEmail ? (
-          <div className="top-bar">
-            <span className="user-email">Logged in as: <strong>{userEmail}</strong></span>
-            <button onClick={handleSignout} className="btn-signout">Sign Out</button>
-          </div>
-        ) : (
-          <div className="top-bar">
-            <span className="user-email">Using as <strong>Guest Mode</strong></span>
-            <button onClick={() => router.push("/login")} className="btn-signin">Sign In / Register</button>
-          </div>
-        )}
+        {/* SaaS Hero Section */}
+        <section className="hero-section">
+          <h1>Optimize Social Link Previews 🌐</h1>
+          <p className="subtitle">
+            Paste your WordPress links, customize preview titles & images, upload files directly, and redirect users automatically at the edge with zero delay.
+          </p>
+        </section>
 
         {/* Main Dashboard Card */}
         <div className="card main-card">
@@ -367,34 +392,56 @@ const Home: NextPage = () => {
               </div>
 
               <div className="input-group">
-                <label htmlFor="customImg">Custom Image URL</label>
-                <div className="image-input-container">
+                <label htmlFor="customImg">Custom Image (Drag & Drop or Upload)</label>
+                <div 
+                  className={`dropzone ${isDragging ? "dragging" : ""} ${customImg ? "has-image" : ""}`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById("imageFile")?.click()}
+                >
+                  <input
+                    type="file"
+                    id="imageFile"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    style={{ display: "none" }}
+                  />
+                  
+                  {customImg ? (
+                    <div className="dropzone-preview">
+                      <img src={customImg} alt="Preview" className="img-preview" />
+                      <div className="dropzone-overlay">
+                        <svg className="upload-icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span>Change Image</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="dropzone-prompt">
+                      <svg className="upload-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {uploadingImage ? (
+                        <span>Uploading to ImgBB... ⏳</span>
+                      ) : (
+                        <span><strong>Choose a file</strong> or drag & drop here (ImgBB)</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="image-url-manual">
+                  <span className="or-divider">Or enter URL manually:</span>
                   <input
                     type="url"
-                    id="customImg"
-                    placeholder="https://yourblog.com/wp-content/uploads/custom-photo.jpg"
+                    placeholder="https://yourblog.com/wp-content/uploads/photo.jpg"
                     value={customImg}
                     onChange={(e) => setCustomImg(e.target.value)}
                   />
-                  <div className="upload-wrapper">
-                    <input
-                      type="file"
-                      id="imageFile"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      style={{ display: "none" }}
-                    />
-                    <button
-                      type="button"
-                      className="btn-upload"
-                      onClick={() => document.getElementById("imageFile")?.click()}
-                      disabled={uploadingImage}
-                    >
-                      {uploadingImage ? "Uploading... ⏳" : "Upload Image 📤"}
-                    </button>
-                  </div>
                 </div>
-                {uploadSuccess && <span className="upload-success-label">Image uploaded successfully to ImgBB! ✅</span>}
+                {uploadSuccess && <span className="upload-success-label">Image uploaded successfully! ✅</span>}
               </div>
             </fieldset>
 
@@ -521,6 +568,7 @@ const Home: NextPage = () => {
           </div>
         </div>
       </main>
+      <Footer />
 
       {/* Embedded Vanilla CSS */}
       <style jsx global>{`
@@ -554,9 +602,8 @@ const Home: NextPage = () => {
           min-height: 100vh;
           width: 100%;
           display: flex;
-          justify-content: center;
-          align-items: center;
-          padding: 40px 20px;
+          flex-direction: column;
+          background: #070215;
         }
 
         .background-glows {
@@ -592,67 +639,40 @@ const Home: NextPage = () => {
 
         .container {
           width: 100%;
-          max-width: 850px;
+          max-width: 900px;
+          margin: 40px auto;
+          padding: 0 25px;
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 25px;
+          flex: 1;
+          z-index: 10;
         }
 
-        .top-bar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid var(--card-border);
-          border-radius: 16px;
-          padding: 14px 28px;
-          backdrop-filter: blur(20px);
-          font-size: 0.95rem;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-          animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .hero-section {
+          text-align: center;
+          margin-bottom: 10px;
         }
 
-        .user-email strong {
-          color: #c084fc;
+        .hero-section h1 {
+          font-size: 2.8rem;
+          font-weight: 800;
+          background: linear-gradient(135deg, #fff 0%, #a855f7 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin-bottom: 12px;
+          letter-spacing: -1.5px;
         }
 
-        .btn-signout {
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.2);
-          color: #fca5a5;
-          padding: 8px 18px;
-          border-radius: 8px;
-          font-weight: 600;
-          font-family: inherit;
-          cursor: pointer;
-          transition: all 0.2s ease;
+        .subtitle {
+          font-size: 1.1rem;
+          color: var(--text-muted);
+          line-height: 1.6;
+          max-width: 700px;
+          margin: 0 auto;
         }
 
-        .btn-signout:hover {
-          background: rgba(239, 68, 68, 0.2);
-          color: #f87171;
-          border-color: rgba(239, 68, 68, 0.3);
-          transform: translateY(-1px);
-        }
-
-        .btn-signin {
-          background: rgba(99, 102, 241, 0.15);
-          border: 1px solid rgba(99, 102, 241, 0.3);
-          color: #818cf8;
-          padding: 8px 18px;
-          border-radius: 8px;
-          font-weight: 600;
-          font-family: inherit;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .btn-signin:hover {
-          background: rgba(99, 102, 241, 0.25);
-          color: #a5b4fc;
-          border-color: rgba(99, 102, 241, 0.45);
-          transform: translateY(-1px);
-        }
+        /* Cleaned top bar - now modular inside Header */
 
         .card {
           background: var(--card-bg);
@@ -803,40 +823,115 @@ const Home: NextPage = () => {
           cursor: not-allowed;
         }
 
-        .image-input-container {
-          display: flex;
-          gap: 12px;
-        }
-
-        .image-input-container input {
-          flex: 1;
-        }
-
-        .upload-wrapper {
-          display: flex;
-        }
-
-        .btn-upload {
-          padding: 0 20px;
-          background: rgba(168, 85, 247, 0.1);
-          border: 1px solid rgba(168, 85, 247, 0.25);
-          color: #c084fc;
-          border-radius: 12px;
-          font-weight: 600;
+        .dropzone {
+          border: 2px dashed rgba(255, 255, 255, 0.15);
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 16px;
+          padding: 30px;
+          text-align: center;
           cursor: pointer;
-          transition: all 0.2s ease;
-          white-space: nowrap;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+          min-height: 120px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
         }
 
-        .btn-upload:hover:not(:disabled) {
-          background: rgba(168, 85, 247, 0.18);
-          border-color: rgba(168, 85, 247, 0.45);
-          transform: translateY(-1px);
+        .dropzone:hover,
+        .dropzone.dragging {
+          border-color: #a855f7;
+          background: rgba(168, 85, 247, 0.03);
         }
 
-        .btn-upload:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+        .dropzone-prompt {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          color: var(--text-muted);
+          font-size: 0.9rem;
+        }
+
+        .dropzone-prompt strong {
+          color: #c084fc;
+        }
+
+        .upload-icon {
+          width: 32px;
+          height: 32px;
+          color: rgba(255, 255, 255, 0.3);
+        }
+
+        .dropzone.dragging .upload-icon {
+          color: #c084fc;
+          animation: bounce 1s infinite alternate;
+        }
+
+        @keyframes bounce {
+          from { transform: translateY(0); }
+          to { transform: translateY(-5px); }
+        }
+
+        .dropzone-preview {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          min-height: 140px;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .img-preview {
+          width: 100%;
+          max-height: 160px;
+          object-fit: cover;
+          border-radius: 8px;
+        }
+
+        .dropzone-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(7, 2, 21, 0.7);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+          opacity: 0;
+          transition: opacity 0.25s ease;
+          color: #fff;
+          font-weight: 600;
+          font-size: 0.9rem;
+        }
+
+        .dropzone-preview:hover .dropzone-overlay {
+          opacity: 1;
+        }
+
+        .upload-icon-small {
+          width: 20px;
+          height: 20px;
+          color: #c084fc;
+        }
+
+        .image-url-manual {
+          margin-top: 15px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .or-divider {
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: rgba(255, 255, 255, 0.3);
+          letter-spacing: 1px;
         }
 
         .upload-success-label {
