@@ -1050,7 +1050,7 @@ export async function handleRequest(request, env = {}) {
       if (apiRes.ok) {
         dbRedirectData = await apiRes.json();
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error("[WP-Redirect Worker] Vercel DB Lookup failed:", e.message);
     }
   }
