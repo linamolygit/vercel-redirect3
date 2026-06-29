@@ -29,6 +29,8 @@ const Home: NextPage = () => {
   const [copiedResult, setCopiedResult] = useState(false);
   const [history, setHistory] = useState<SavedLink[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const [userEmail, setUserEmail] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -174,6 +176,41 @@ const Home: NextPage = () => {
       setErrorMessage(err.message || "MySQL save fail ho gaya.");
     } finally {
       setConverting(false);
+    }
+  };
+
+  // ImgBB Image Upload Handler
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    setUploadSuccess(false);
+    setErrorMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=7acb2b5955d0a1e35ba91e981a8d1da8`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error?.message || "Image upload fail ho gaya.");
+      }
+
+      const imageUrl = data.data.url;
+      setCustomImg(imageUrl);
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 4000); // Clear message after 4s
+    } catch (err: any) {
+      console.error(err);
+      setErrorMessage(err.message || "ImgBB Image upload me error aaya.");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -331,13 +368,33 @@ const Home: NextPage = () => {
 
               <div className="input-group">
                 <label htmlFor="customImg">Custom Image URL</label>
-                <input
-                  type="url"
-                  id="customImg"
-                  placeholder="https://yourblog.com/wp-content/uploads/custom-photo.jpg"
-                  value={customImg}
-                  onChange={(e) => setCustomImg(e.target.value)}
-                />
+                <div className="image-input-container">
+                  <input
+                    type="url"
+                    id="customImg"
+                    placeholder="https://yourblog.com/wp-content/uploads/custom-photo.jpg"
+                    value={customImg}
+                    onChange={(e) => setCustomImg(e.target.value)}
+                  />
+                  <div className="upload-wrapper">
+                    <input
+                      type="file"
+                      id="imageFile"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      style={{ display: "none" }}
+                    />
+                    <button
+                      type="button"
+                      className="btn-upload"
+                      onClick={() => document.getElementById("imageFile")?.click()}
+                      disabled={uploadingImage}
+                    >
+                      {uploadingImage ? "Uploading... ⏳" : "Upload Image 📤"}
+                    </button>
+                  </div>
+                </div>
+                {uploadSuccess && <span className="upload-success-label">Image uploaded successfully to ImgBB! ✅</span>}
               </div>
             </fieldset>
 
@@ -744,6 +801,49 @@ const Home: NextPage = () => {
         .btn-fetch:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+
+        .image-input-container {
+          display: flex;
+          gap: 12px;
+        }
+
+        .image-input-container input {
+          flex: 1;
+        }
+
+        .upload-wrapper {
+          display: flex;
+        }
+
+        .btn-upload {
+          padding: 0 20px;
+          background: rgba(168, 85, 247, 0.1);
+          border: 1px solid rgba(168, 85, 247, 0.25);
+          color: #c084fc;
+          border-radius: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+        }
+
+        .btn-upload:hover:not(:disabled) {
+          background: rgba(168, 85, 247, 0.18);
+          border-color: rgba(168, 85, 247, 0.45);
+          transform: translateY(-1px);
+        }
+
+        .btn-upload:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .upload-success-label {
+          font-size: 0.8rem;
+          color: #4ade80;
+          font-weight: 600;
+          margin-top: 4px;
         }
 
         .error-banner {
