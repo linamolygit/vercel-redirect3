@@ -1,37 +1,36 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-// Sample Unsplash images for instant template loading
-const SAMPLE_PHOTOS = [
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80",
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-];
+interface ImageAdjustment {
+  zoom: number;
+  x: number;
+  y: number;
+  blur: number;
+}
+
+const DEFAULT_ADJ: ImageAdjustment = { zoom: 1.0, x: 0, y: 0, blur: 0 };
 
 export default function ClickableImage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
-  // Collage generator states
-  const [images, setImages] = useState<string[]>(SAMPLE_PHOTOS);
+  // Images state - empty slots by default
+  const [images, setImages] = useState<(string | null)[]>([null, null, null, null, null]);
   const [layout, setLayout] = useState("5-photos");
-  const [gap, setGap] = useState(4);
+  const [gap, setGap] = useState(3);
   const [showOverlay, setShowOverlay] = useState(true);
   const [overlayText, setOverlayText] = useState("+3");
-  const [overlayOpacity, setOverlayOpacity] = useState(0.35);
-  const [adjustments, setAdjustments] = useState([
-    { zoom: 1.1, x: 0, y: 0 },
-    { zoom: 1.0, x: 0, y: 0 },
-    { zoom: 1.2, x: 0, y: 0 },
-    { zoom: 1.0, x: 0, y: 0 },
-    { zoom: 1.15, x: 0, y: 0 },
+  const [overlayOpacity, setOverlayOpacity] = useState(0.5);
+  const [adjustments, setAdjustments] = useState<ImageAdjustment[]>([
+    { ...DEFAULT_ADJ }, { ...DEFAULT_ADJ }, { ...DEFAULT_ADJ }, { ...DEFAULT_ADJ }, { ...DEFAULT_ADJ },
   ]);
+
+  // Edit modal state
+  const [editingSlot, setEditingSlot] = useState<number | null>(null);
 
   // Form states
   const [wpUrl, setWpUrl] = useState("");
@@ -43,9 +42,15 @@ export default function ClickableImage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const router = useRouter();
+  // Drag state
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
-  // Authentication check
+  const router = useRouter();
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const slotCount = layout === "5-photos" ? 5 : layout === "4-photos" ? 4 : layout === "3-photos" ? 3 : layout === "2-photos" ? 2 : 1;
+
+  // Auth check
   useEffect(() => {
     const verifyUser = async () => {
       try {
@@ -66,8 +71,8 @@ export default function ClickableImage() {
     verifyUser();
   }, []);
 
-  // Handle uploading local file slots
-  const handleLocalUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+  // Handle file upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
@@ -79,8 +84,23 @@ export default function ClickableImage() {
     }
   };
 
-  // Adjust crop sliders handler
-  const handleCropChange = (index: number, key: "zoom" | "x" | "y", val: number) => {
+  // Handle drag and drop
+  const handleDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOver(null);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      setImages((prev) => {
+        const updated = [...prev];
+        updated[index] = url;
+        return updated;
+      });
+    }
+  };
+
+  // Crop change handler
+  const handleCropChange = (index: number, key: keyof ImageAdjustment, val: number) => {
     setAdjustments((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [key]: val };
@@ -88,70 +108,70 @@ export default function ClickableImage() {
     });
   };
 
-  // Preset random overlays picker
-  const handleRandomOverlayText = () => {
-    const randoms = ["+2", "+3", "+4", "+5", "+6", "+8", "+9", "+12", "+15", "+18"];
-    const text = randoms[Math.floor(Math.random() * randoms.length)];
-    setOverlayText(text);
+  // Random overlay text
+  const handleRandomOverlay = () => {
+    const opts = ["+2", "+3", "+4", "+5", "+6", "+7", "+8", "+9", "+10", "+12", "+15", "+18"];
+    setOverlayText(opts[Math.floor(Math.random() * opts.length)]);
     setShowOverlay(true);
   };
 
-  // Draw simulated Cover layout on Canvas
+  // Remove image from slot
+  const removeImage = (index: number) => {
+    setImages((prev) => {
+      const updated = [...prev];
+      updated[index] = null;
+      return updated;
+    });
+    setAdjustments((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...DEFAULT_ADJ };
+      return updated;
+    });
+  };
+
+  // Draw cover image on canvas
   const drawCoverImage = (
     ctx: CanvasRenderingContext2D,
     img: HTMLImageElement,
-    dx: number,
-    dy: number,
-    dw: number,
-    dh: number,
-    zoom: number,
-    shiftX: number,
-    shiftY: number
+    dx: number, dy: number, dw: number, dh: number,
+    zoom: number, shiftX: number, shiftY: number, blur: number
   ) => {
     const iw = img.naturalWidth;
     const ih = img.naturalHeight;
-
-    // Cover math: get minimal scaling factor
     const r = Math.min(iw / dw, ih / dh);
-
-    let sw = dw * r;
-    let sh = dh * r;
-
-    // Apply zoom ratio
-    sw = sw / zoom;
-    sh = sh / zoom;
-
-    // Base coordinates to crop center
+    let sw = dw * r / zoom;
+    let sh = dh * r / zoom;
     let sx = (iw - sw) / 2;
     let sy = (ih - sh) / 2;
-
-    // Offset shift limit calculations
     const maxShiftX = (iw - sw) / 2;
     const maxShiftY = (ih - sh) / 2;
-
     sx -= (shiftX / 100) * maxShiftX;
     sy -= (shiftY / 100) * maxShiftY;
-
-    // Clamp coordinates boundaries
     sx = Math.max(0, Math.min(iw - sw, sx));
     sy = Math.max(0, Math.min(ih - sh, sy));
 
-    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    if (blur > 0) {
+      ctx.save();
+      ctx.filter = `blur(${blur}px)`;
+      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    }
   };
 
-  // Dynamic slot coordinates builder on 1200x630 grid
+  // Get slot coordinates for canvas
   const getSlotCoordinates = (layoutName: string, gapPx: number) => {
     const w = 1200;
     const h = 630;
-    const coords = [];
+    const coords: { x: number; y: number; w: number; h: number }[] = [];
 
     if (layoutName === "5-photos") {
-      const r1h = Math.round((h - gapPx) * 0.6); // Top takes 60% height
+      const r1h = Math.round((h - gapPx) * 0.6);
       const r2h = h - gapPx - r1h;
       const r1w = Math.round((w - gapPx) / 2);
       coords.push({ x: 0, y: 0, w: r1w, h: r1h });
       coords.push({ x: r1w + gapPx, y: 0, w: w - r1w - gapPx, h: r1h });
-
       const r2w = Math.round((w - 2 * gapPx) / 3);
       coords.push({ x: 0, y: r1h + gapPx, w: r2w, h: r2h });
       coords.push({ x: r2w + gapPx, y: r1h + gapPx, w: r2w, h: r2h });
@@ -165,7 +185,7 @@ export default function ClickableImage() {
       coords.push({ x: 0, y: r1h + gapPx, w: r1w, h: r2h });
       coords.push({ x: r1w + gapPx, y: r1h + gapPx, w: w - r1w - gapPx, h: r2h });
     } else if (layoutName === "3-photos") {
-      const lw = Math.round((w - gapPx) * 0.6); // 60% left
+      const lw = Math.round((w - gapPx) * 0.6);
       const rw = w - lw - gapPx;
       const rh = Math.round((h - gapPx) / 2);
       coords.push({ x: 0, y: 0, w: lw, h: h });
@@ -178,11 +198,10 @@ export default function ClickableImage() {
     } else {
       coords.push({ x: 0, y: 0, w: w, h: h });
     }
-
     return coords;
   };
 
-  // Compile final collage canvas asynchronously
+  // Generate canvas for export
   const generateCollageCanvas = async (): Promise<HTMLCanvasElement | null> => {
     const canvas = document.createElement("canvas");
     canvas.width = 1200;
@@ -190,15 +209,21 @@ export default function ClickableImage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    ctx.fillStyle = "#111827";
+    ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(0, 0, 1200, 630);
 
     const coords = getSlotCoordinates(layout, gap);
 
     for (let i = 0; i < coords.length; i++) {
       const coord = coords[i];
-      const imgUrl = images[i] || SAMPLE_PHOTOS[i];
-      const adj = adjustments[i] || { zoom: 1, x: 0, y: 0 };
+      const imgUrl = images[i];
+      const adj = adjustments[i] || DEFAULT_ADJ;
+
+      if (!imgUrl) {
+        ctx.fillStyle = "#2a2a2a";
+        ctx.fillRect(coord.x, coord.y, coord.w, coord.h);
+        continue;
+      }
 
       const img = await new Promise<HTMLImageElement | null>((resolve) => {
         const tempImg = new Image();
@@ -209,21 +234,22 @@ export default function ClickableImage() {
       });
 
       if (img) {
-        drawCoverImage(ctx, img, coord.x, coord.y, coord.w, coord.h, adj.zoom, adj.x, adj.y);
+        drawCoverImage(ctx, img, coord.x, coord.y, coord.w, coord.h, adj.zoom, adj.x, adj.y, adj.blur);
       } else {
-        ctx.fillStyle = "#374151";
+        ctx.fillStyle = "#2a2a2a";
         ctx.fillRect(coord.x, coord.y, coord.w, coord.h);
       }
     }
 
-    // Draw overlay Text
+    // Draw overlay on last slot
     if (showOverlay && overlayText) {
       const lastCoord = coords[coords.length - 1];
       ctx.fillStyle = `rgba(0, 0, 0, ${overlayOpacity})`;
       ctx.fillRect(lastCoord.x, lastCoord.y, lastCoord.w, lastCoord.h);
-
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 84px sans-serif";
+      // Smaller font size to match Facebook style
+      const fontSize = Math.min(lastCoord.w, lastCoord.h) * 0.25;
+      ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(overlayText, lastCoord.x + lastCoord.w / 2, lastCoord.y + lastCoord.h / 2);
@@ -232,25 +258,25 @@ export default function ClickableImage() {
     return canvas;
   };
 
-  // Export collage PNG image download trigger
+  // Download PNG
   const handleDownload = async () => {
     setExporting(true);
     try {
       const canvas = await generateCollageCanvas();
-      if (!canvas) throw new Error("Canvas render context failed");
+      if (!canvas) throw new Error("Canvas render failed");
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
-      link.download = `facebook-collage-${Date.now()}.png`;
+      link.download = `fb-collage-${Date.now()}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err: any) {
-      alert("Failed to render mockup: " + err.message);
+      alert("Export failed: " + err.message);
     } finally {
       setExporting(false);
     }
   };
 
-  // Upload Collage to ImgBB and shorten redirect url
+  // Convert & upload
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wpUrl) {
@@ -263,50 +289,45 @@ export default function ClickableImage() {
 
     try {
       const canvas = await generateCollageCanvas();
-      if (!canvas) throw new Error("Could not draw canvas image context");
+      if (!canvas) throw new Error("Canvas render failed");
 
-      // Convert canvas to blob payload
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92);
       });
-
-      if (!blob) throw new Error("Collage compression export failed");
+      if (!blob) throw new Error("Image compression failed");
 
       const uploadData = new FormData();
       uploadData.append("image", blob, "collage.jpg");
 
-      // Upload to ImgBB
       const uploadRes = await fetch("https://api.imgbb.com/1/upload?key=7acb2b5955d0a1e35ba91e981a8d1da8", {
         method: "POST",
         body: uploadData,
       });
-
-      if (!uploadRes.ok) throw new Error("ImgBB S3 hosting upload failed");
+      if (!uploadRes.ok) throw new Error("Image hosting upload failed");
 
       const imgJson = await uploadRes.json();
       const uploadedImageUrl = imgJson.data.url;
 
-      // Submit to DB creation endpoint
       const response = await fetch("/api/create-redirect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           originalUrl: wpUrl,
-          customTitle: customTitle || "Interactive Photo Collage",
-          customDesc: customDesc || "Click here to view more images on site.",
+          customTitle: customTitle || "Photo Collection",
+          customDesc: customDesc || "Click to view more photos",
           customImage: uploadedImageUrl,
           userEmail: userEmail || null,
         }),
       });
 
-      if (!response.ok) throw new Error("Redirect schema insertion transaction failed");
+      if (!response.ok) throw new Error("Redirect creation failed");
 
       const resJson = await response.json();
       const host = typeof window !== "undefined" ? window.location.host : "yourdomain.com";
       const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
       setResultUrl(`${protocol}//${host}/${resJson.shortId}`);
     } catch (err: any) {
-      setErrorMessage(err.message || "An unexpected transaction fault occurred.");
+      setErrorMessage(err.message || "An error occurred");
     } finally {
       setConverting(false);
     }
@@ -318,31 +339,71 @@ export default function ClickableImage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Preview elements compiler helper
-  const renderImage = (idx: number) => {
-    const imgUrl = images[idx] || SAMPLE_PHOTOS[idx];
-    const adj = adjustments[idx] || { zoom: 1, x: 0, y: 0 };
-    return (
-      <div className="img-slot-inner">
-        <img
-          src={imgUrl}
-          alt={`Preview image slot ${idx + 1}`}
-          style={{
-            transform: `translate(${adj.x}%, ${adj.y}%) scale(${adj.zoom})`,
-          }}
-        />
-      </div>
-    );
-  };
+  // Render the visual preview grid
+  const renderPreviewSlot = (idx: number, isLastSlot: boolean) => {
+    const imgUrl = images[idx];
+    const adj = adjustments[idx] || DEFAULT_ADJ;
+    const hasImage = !!imgUrl;
 
-  const renderOverlayText = () => {
-    if (!showOverlay || !overlayText) return null;
     return (
       <div
-        className="facebook-grid-overlay"
-        style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
+        className={`preview-slot ${dragOver === idx ? "drag-over" : ""}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(idx); }}
+        onDragLeave={() => setDragOver(null)}
+        onDrop={(e) => handleDrop(e, idx)}
+        onClick={() => {
+          if (!hasImage) {
+            fileInputRefs.current[idx]?.click();
+          }
+        }}
       >
-        {overlayText}
+        {hasImage ? (
+          <>
+            <div className="slot-image-wrap">
+              <img
+                src={imgUrl}
+                alt={`Photo ${idx + 1}`}
+                style={{
+                  transform: `translate(${adj.x * 0.5}%, ${adj.y * 0.5}%) scale(${adj.zoom})`,
+                  filter: adj.blur > 0 ? `blur(${adj.blur}px)` : "none",
+                }}
+              />
+            </div>
+            {/* Edit pencil button */}
+            <button
+              className="slot-edit-btn"
+              onClick={(e) => { e.stopPropagation(); setEditingSlot(idx); }}
+              title="Edit image"
+            >
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+            {/* Overlay on last slot */}
+            {isLastSlot && showOverlay && overlayText && (
+              <div
+                className="slot-overlay"
+                style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
+              >
+                <span className="overlay-number">{overlayText}</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="slot-empty">
+            <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            <span>Add Photo</span>
+          </div>
+        )}
+        <input
+          ref={(el) => { fileInputRefs.current[idx] = el; }}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => handleFileUpload(e, idx)}
+        />
       </div>
     );
   };
@@ -350,517 +411,872 @@ export default function ClickableImage() {
   return (
     <div className="wrapper">
       <Head>
-        <title>+ Clickable Image Collage Mockups — LinkPika</title>
-        <meta name="description" content="Generate beautiful standard aspect ratio Facebook photo collages with overlay click numbers." />
+        <title>Clickable Image — Facebook Collage Mockup Generator | LinkPika</title>
+        <meta name="description" content="Create stunning Facebook multi-photo collage mockups with custom overlays. Generate 1200x630 OG images for maximum engagement." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       </Head>
 
       <Header />
 
-      <div className="background-glows">
-        <div className="glow glow-1"></div>
-        <div className="glow glow-2"></div>
-      </div>
+      <div className="ci-page">
+        {/* Page Header */}
+        <div className="ci-header">
+          <h1>
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Facebook Collage Mockup
+          </h1>
+          <p>Create multi-photo collage images that look exactly like Facebook photo posts. Perfect for clickbait CTR optimization.</p>
+        </div>
 
-      <div className="dashboard-layout">
-        {/* Left Side Controls Panel */}
-        <aside className="dashboard-sidebar collage-sidebar">
-          <div className="sidebar-header-title">
-            <h2>Mockup Settings ⚙️</h2>
-            <p>Select grid layouts, gap spacings, and apply overlays.</p>
-          </div>
-
-          <div className="sidebar-divider"></div>
-
-          {/* Grid Layout Dropdown Selection */}
-          <div className="input-group">
-            <label htmlFor="layout">Collage Layout</label>
-            <select id="layout" value={layout} onChange={(e) => setLayout(e.target.value)}>
-              <option value="5-photos">5 Photos Layout (2 Top, 3 Bottom)</option>
-              <option value="4-photos">4 Photos Layout (2x2 Grid)</option>
-              <option value="3-photos">3 Photos Layout (1 Left, 2 Stacked Right)</option>
-              <option value="2-photos">2 Photos Layout (Side-by-side)</option>
-              <option value="1-photo">1 Photo Layout (Full Card)</option>
-            </select>
-          </div>
-
-          {/* Spacing Gaps Slider */}
-          <div className="input-group">
-            <div className="label-with-value">
-              <label>Grid Gap Spacing</label>
-              <span>{gap}px</span>
+        <div className="ci-body">
+          {/* Left: Controls */}
+          <div className="ci-controls">
+            {/* Layout Selection */}
+            <div className="ctrl-section">
+              <div className="ctrl-label">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Layout
+              </div>
+              <select value={layout} onChange={(e) => setLayout(e.target.value)}>
+                <option value="5-photos">5 Photos (2+3)</option>
+                <option value="4-photos">4 Photos (2×2)</option>
+                <option value="3-photos">3 Photos (1+2)</option>
+                <option value="2-photos">2 Photos</option>
+                <option value="1-photo">1 Photo</option>
+              </select>
             </div>
-            <input
-              type="range"
-              min="0"
-              max="12"
-              value={gap}
-              onChange={(e) => setGap(parseInt(e.target.value))}
-            />
-          </div>
 
-          <div className="sidebar-divider"></div>
-
-          {/* Overlay controls */}
-          <div className="sidebar-section-title">Overlay Settings 🔠</div>
-          
-          <div className="checkbox-group">
-            <input
-              type="checkbox"
-              id="showOverlay"
-              checked={showOverlay}
-              onChange={(e) => setShowOverlay(e.target.checked)}
-            />
-            <label htmlFor="showOverlay" style={{ textTransform: "none", letterSpacing: "0px" }}>
-              Enable Collage Number Overlay
-            </label>
-          </div>
-
-          {showOverlay && (
-            <>
-              <div className="input-group">
-                <label htmlFor="overlayText">Overlay Number Label</label>
-                <div className="input-with-action">
-                  <input
-                    type="text"
-                    id="overlayText"
-                    value={overlayText}
-                    onChange={(e) => setOverlayText(e.target.value)}
-                    placeholder="e.g. +3, +5"
-                  />
-                  <button type="button" className="btn-preset" onClick={handleRandomOverlayText}>
-                    Random
-                  </button>
+            {/* Gap */}
+            <div className="ctrl-section">
+              <div className="ctrl-label-row">
+                <div className="ctrl-label">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                  Gap
                 </div>
+                <span className="ctrl-value">{gap}px</span>
               </div>
+              <input type="range" min="0" max="8" value={gap} onChange={(e) => setGap(parseInt(e.target.value))} />
+            </div>
 
-              <div className="input-group">
-                <div className="label-with-value">
-                  <label>Background Opacity</label>
-                  <span>{Math.round(overlayOpacity * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="0.9"
-                  step="0.05"
-                  value={overlayOpacity}
-                  onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))}
-                />
+            {/* Overlay */}
+            <div className="ctrl-section">
+              <div className="ctrl-label">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                </svg>
+                Number Overlay
               </div>
-            </>
-          )}
-
-          <div className="sidebar-divider"></div>
-
-          {/* Photo uploaders & Cropping controls */}
-          <div className="sidebar-section-title">Upload & Crop Layers 📷</div>
-
-          {Array.from({ length: layout === "5-photos" ? 5 : layout === "4-photos" ? 4 : layout === "3-photos" ? 3 : layout === "2-photos" ? 2 : 1 }).map((_, i) => (
-            <details key={i} className="details-crop-item">
-              <summary>
-                <span>Photo Slot {i + 1}</span>
-                <span className="summary-indicator">⚙️</span>
-              </summary>
-              <div className="crop-controls-box">
-                <div className="file-uploader-box">
-                  <label className="btn-upload-file">
-                    Upload Custom Photo
+              <div className="overlay-controls">
+                <label className="toggle-wrap">
+                  <input type="checkbox" checked={showOverlay} onChange={(e) => setShowOverlay(e.target.checked)} />
+                  <span className="toggle-slider"></span>
+                </label>
+                {showOverlay && (
+                  <>
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleLocalUpload(e, i)}
-                      style={{ display: "none" }}
+                      type="text"
+                      className="overlay-input"
+                      value={overlayText}
+                      onChange={(e) => setOverlayText(e.target.value)}
+                      placeholder="+3"
                     />
-                  </label>
-                </div>
-
-                <div className="crop-slider-group">
-                  <div className="crop-slider">
-                    <div className="slider-label">Zoom ({adjustments[i]?.zoom.toFixed(2)}x)</div>
-                    <input
-                      type="range"
-                      min="1.0"
-                      max="3.0"
-                      step="0.05"
-                      value={adjustments[i]?.zoom || 1}
-                      onChange={(e) => handleCropChange(i, "zoom", parseFloat(e.target.value))}
-                    />
-                  </div>
-                  <div className="crop-slider">
-                    <div className="slider-label">Horizontal Shift ({adjustments[i]?.x}%)</div>
-                    <input
-                      type="range"
-                      min="-100"
-                      max="100"
-                      value={adjustments[i]?.x || 0}
-                      onChange={(e) => handleCropChange(i, "x", parseInt(e.target.value))}
-                    />
-                  </div>
-                  <div className="crop-slider">
-                    <div className="slider-label">Vertical Shift ({adjustments[i]?.y}%)</div>
-                    <input
-                      type="range"
-                      min="-100"
-                      max="100"
-                      value={adjustments[i]?.y || 0}
-                      onChange={(e) => handleCropChange(i, "y", parseInt(e.target.value))}
-                    />
-                  </div>
-                </div>
+                    <button type="button" className="btn-random" onClick={handleRandomOverlay} title="Random number">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  </>
+                )}
               </div>
-            </details>
-          ))}
-        </aside>
-
-        {/* Center Main Live Mockup Preview & Form Panel */}
-        <main className="dashboard-main-content">
-          <section className="dashboard-hero">
-            <h1>+ Clickable Image Collage Mockup</h1>
-            <p>
-              Generate high CTR Facebook image post layouts. Real visitors clicking the image will be redirected instantly, while spiders crawl the metadata.
-            </p>
-          </section>
-
-          {/* Layout Preview Canvas */}
-          <div className="preview-container">
-            <label>Dynamic Live Preview (1200x630 Aspect Ratio Mockup) 📱</label>
-            <div className="collage-preview-canvas-wrapper">
-              {layout === "5-photos" && (
-                <div className="collage-grid-layout" style={{ display: "flex", flexDirection: "column", gap: `${gap}px` }}>
-                  <div className="collage-row" style={{ display: "flex", flex: 1.2, gap: `${gap}px` }}>
-                    <div className="slot-wrapper">{renderImage(0)}</div>
-                    <div className="slot-wrapper">{renderImage(1)}</div>
-                  </div>
-                  <div className="collage-row" style={{ display: "flex", flex: 0.8, gap: `${gap}px` }}>
-                    <div className="slot-wrapper">{renderImage(2)}</div>
-                    <div className="slot-wrapper">{renderImage(3)}</div>
-                    <div className="slot-wrapper" style={{ position: "relative" }}>
-                      {renderImage(4)}
-                      {renderOverlayText()}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {layout === "4-photos" && (
-                <div className="collage-grid-layout" style={{ display: "flex", flexDirection: "column", gap: `${gap}px` }}>
-                  <div className="collage-row" style={{ display: "flex", flex: 1, gap: `${gap}px` }}>
-                    <div className="slot-wrapper">{renderImage(0)}</div>
-                    <div className="slot-wrapper">{renderImage(1)}</div>
-                  </div>
-                  <div className="collage-row" style={{ display: "flex", flex: 1, gap: `${gap}px` }}>
-                    <div className="slot-wrapper">{renderImage(2)}</div>
-                    <div className="slot-wrapper" style={{ position: "relative" }}>
-                      {renderImage(3)}
-                      {renderOverlayText()}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {layout === "3-photos" && (
-                <div className="collage-grid-layout" style={{ display: "flex", gap: `${gap}px` }}>
-                  <div className="slot-wrapper" style={{ flex: 1.2 }}>{renderImage(0)}</div>
-                  <div className="collage-column" style={{ display: "flex", flexDirection: "column", flex: 0.8, gap: `${gap}px` }}>
-                    <div className="slot-wrapper" style={{ flex: 1 }}>{renderImage(1)}</div>
-                    <div className="slot-wrapper" style={{ flex: 1, position: "relative" }}>
-                      {renderImage(2)}
-                      {renderOverlayText()}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {layout === "2-photos" && (
-                <div className="collage-grid-layout" style={{ display: "flex", gap: `${gap}px` }}>
-                  <div className="slot-wrapper" style={{ flex: 1 }}>{renderImage(0)}</div>
-                  <div className="slot-wrapper" style={{ flex: 1, position: "relative" }}>
-                    {renderImage(1)}
-                    {renderOverlayText()}
-                  </div>
-                </div>
-              )}
-
-              {layout === "1-photo" && (
-                <div className="collage-grid-layout" style={{ position: "relative" }}>
-                  <div className="slot-wrapper" style={{ width: "100%", height: "100%" }}>{renderImage(0)}</div>
-                  {renderOverlayText()}
+              {showOverlay && (
+                <div className="opacity-row">
+                  <span className="mini-label">Opacity</span>
+                  <input type="range" min="0.2" max="0.8" step="0.05" value={overlayOpacity} onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))} />
+                  <span className="ctrl-value">{Math.round(overlayOpacity * 100)}%</span>
                 </div>
               )}
             </div>
+
+            {/* Image slots list */}
+            <div className="ctrl-section">
+              <div className="ctrl-label">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Photos ({slotCount})
+              </div>
+              <div className="photo-slots-list">
+                {Array.from({ length: slotCount }).map((_, i) => (
+                  <div key={i} className="photo-slot-item">
+                    <div className="slot-thumb">
+                      {images[i] ? (
+                        <img src={images[i]!} alt={`Slot ${i + 1}`} />
+                      ) : (
+                        <div className="thumb-empty">
+                          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <span className="slot-label">Photo {i + 1}</span>
+                    <div className="slot-actions">
+                      <button
+                        className="slot-action-btn"
+                        onClick={() => fileInputRefs.current[i]?.click()}
+                        title="Upload"
+                      >
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                      </button>
+                      {images[i] && (
+                        <>
+                          <button
+                            className="slot-action-btn edit"
+                            onClick={() => setEditingSlot(i)}
+                            title="Edit"
+                          >
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button
+                            className="slot-action-btn delete"
+                            onClick={() => removeImage(i)}
+                            title="Remove"
+                          >
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Form & Save Configuration Card */}
-          <div className="main-work-card">
-            <form onSubmit={handleConvert} className="form-panel">
-              <div className="input-group">
-                <label htmlFor="wpUrl">Target Redirect URL (Affiliate / WordPress Link)</label>
-                <input
-                  type="url"
-                  id="wpUrl"
-                  placeholder="https://yourblog.com/landing-page-offer/"
-                  value={wpUrl}
-                  onChange={(e) => setWpUrl(e.target.value)}
-                  required
-                />
+          {/* Center: Preview + Form */}
+          <div className="ci-main">
+            {/* Collage Preview */}
+            <div className="preview-section">
+              <div className="preview-label">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Live Preview
+                <span className="badge">1200×630</span>
               </div>
 
-              <div className="override-panel">
-                <legend>Social Preview Overrides</legend>
-                <div className="input-group">
-                  <label htmlFor="customTitle">Meta Title</label>
+              <div className="collage-preview">
+                {/* 5-photo layout */}
+                {layout === "5-photos" && (
+                  <div className="grid-5">
+                    <div className="grid-5-top">
+                      {renderPreviewSlot(0, false)}
+                      {renderPreviewSlot(1, false)}
+                    </div>
+                    <div className="grid-5-bottom">
+                      {renderPreviewSlot(2, false)}
+                      {renderPreviewSlot(3, false)}
+                      {renderPreviewSlot(4, true)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4-photo layout */}
+                {layout === "4-photos" && (
+                  <div className="grid-4">
+                    <div className="grid-4-row">
+                      {renderPreviewSlot(0, false)}
+                      {renderPreviewSlot(1, false)}
+                    </div>
+                    <div className="grid-4-row">
+                      {renderPreviewSlot(2, false)}
+                      {renderPreviewSlot(3, true)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3-photo layout */}
+                {layout === "3-photos" && (
+                  <div className="grid-3">
+                    <div className="grid-3-left">
+                      {renderPreviewSlot(0, false)}
+                    </div>
+                    <div className="grid-3-right">
+                      {renderPreviewSlot(1, false)}
+                      {renderPreviewSlot(2, true)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2-photo layout */}
+                {layout === "2-photos" && (
+                  <div className="grid-2">
+                    {renderPreviewSlot(0, false)}
+                    {renderPreviewSlot(1, true)}
+                  </div>
+                )}
+
+                {/* 1-photo layout */}
+                {layout === "1-photo" && (
+                  <div className="grid-1">
+                    {renderPreviewSlot(0, true)}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Export Actions */}
+            <div className="actions-row">
+              <button className="btn-download" onClick={handleDownload} disabled={exporting}>
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                {exporting ? "Exporting..." : "Download PNG"}
+              </button>
+            </div>
+
+            {/* Redirect Form */}
+            <div className="redirect-form-card">
+              <div className="form-header">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Create Redirect Link
+              </div>
+              <form onSubmit={handleConvert}>
+                <div className="form-field">
+                  <label>Destination URL</label>
                   <input
-                    type="text"
-                    id="customTitle"
-                    placeholder="Enter short title for Facebook link card preview..."
-                    value={customTitle}
-                    onChange={(e) => setCustomTitle(e.target.value)}
+                    type="url"
+                    placeholder="https://yourblog.com/landing-page/"
+                    value={wpUrl}
+                    onChange={(e) => setWpUrl(e.target.value)}
+                    required
                   />
                 </div>
-                <div className="input-group">
-                  <label htmlFor="customDesc">Meta Description</label>
-                  <textarea
-                    id="customDesc"
-                    placeholder="Enter short description..."
-                    value={customDesc}
-                    onChange={(e) => setCustomDesc(e.target.value)}
-                    rows={2}
-                  />
+                <div className="form-row-2">
+                  <div className="form-field">
+                    <label>OG Title</label>
+                    <input
+                      type="text"
+                      placeholder="Custom title for preview..."
+                      value={customTitle}
+                      onChange={(e) => setCustomTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>OG Description</label>
+                    <input
+                      type="text"
+                      placeholder="Short description..."
+                      value={customDesc}
+                      onChange={(e) => setCustomDesc(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
+                {errorMessage && (
+                  <div className="error-msg">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    {errorMessage}
+                  </div>
+                )}
 
-              <div className="action-button-row">
-                <button type="button" className="btn-export-download" onClick={handleDownload} disabled={exporting}>
-                  {exporting ? "Generating PNG... ⏳" : "Download collage image (PNG)"}
+                <button type="submit" className="btn-convert" disabled={converting}>
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {converting ? "Processing..." : "Convert"}
                 </button>
-                <button type="submit" className="btn-submit" disabled={converting}>
-                  {converting ? "Processing and Uploading... ⏳" : "Convert & Create Redirect Link"}
-                </button>
-              </div>
-            </form>
+              </form>
 
-            {/* Generated Redirect Result Card */}
-            {resultUrl && (
-              <div className="result-section">
-                <label>Generated Cloaked Short Redirect Link:</label>
-                <div className="result-wrapper">
-                  <div className="result-url">{resultUrl}</div>
-                  <button
-                    type="button"
-                    className={`btn-copy ${copied ? "copied" : ""}`}
-                    onClick={() => copyToClipboard(resultUrl)}
-                  >
-                    {copied ? "Copied! ✅" : "Copy Link"}
-                  </button>
+              {/* Result */}
+              {resultUrl && (
+                <div className="result-box">
+                  <div className="result-label">Generated Link</div>
+                  <div className="result-row">
+                    <span className="result-url">{resultUrl}</span>
+                    <button
+                      className={`btn-copy ${copied ? "copied" : ""}`}
+                      onClick={() => copyToClipboard(resultUrl)}
+                    >
+                      {copied ? (
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                      {copied ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </main>
+        </div>
       </div>
+
+      {/* Edit Modal */}
+      {editingSlot !== null && images[editingSlot] && (
+        <div className="modal-backdrop" onClick={() => setEditingSlot(null)}>
+          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                Edit Photo {editingSlot + 1}
+              </h3>
+              <button className="modal-close" onClick={() => setEditingSlot(null)}>
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="modal-preview">
+              <img
+                src={images[editingSlot]!}
+                alt={`Editing photo ${editingSlot + 1}`}
+                style={{
+                  transform: `translate(${adjustments[editingSlot].x * 0.5}%, ${adjustments[editingSlot].y * 0.5}%) scale(${adjustments[editingSlot].zoom})`,
+                  filter: adjustments[editingSlot].blur > 0 ? `blur(${adjustments[editingSlot].blur}px)` : "none",
+                }}
+              />
+            </div>
+
+            <div className="modal-controls">
+              <div className="modal-ctrl">
+                <div className="modal-ctrl-header">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                  </svg>
+                  <span>Zoom</span>
+                  <span className="ctrl-val">{adjustments[editingSlot].zoom.toFixed(2)}x</span>
+                </div>
+                <input type="range" min="1.0" max="3.0" step="0.05"
+                  value={adjustments[editingSlot].zoom}
+                  onChange={(e) => handleCropChange(editingSlot, "zoom", parseFloat(e.target.value))} />
+              </div>
+
+              <div className="modal-ctrl">
+                <div className="modal-ctrl-header">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  <span>Horizontal</span>
+                  <span className="ctrl-val">{adjustments[editingSlot].x}%</span>
+                </div>
+                <input type="range" min="-100" max="100"
+                  value={adjustments[editingSlot].x}
+                  onChange={(e) => handleCropChange(editingSlot, "x", parseInt(e.target.value))} />
+              </div>
+
+              <div className="modal-ctrl">
+                <div className="modal-ctrl-header">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                  </svg>
+                  <span>Vertical</span>
+                  <span className="ctrl-val">{adjustments[editingSlot].y}%</span>
+                </div>
+                <input type="range" min="-100" max="100"
+                  value={adjustments[editingSlot].y}
+                  onChange={(e) => handleCropChange(editingSlot, "y", parseInt(e.target.value))} />
+              </div>
+
+              <div className="modal-ctrl">
+                <div className="modal-ctrl-header">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span>Blur</span>
+                  <span className="ctrl-val">{adjustments[editingSlot].blur}px</span>
+                </div>
+                <input type="range" min="0" max="20" step="1"
+                  value={adjustments[editingSlot].blur}
+                  onChange={(e) => handleCropChange(editingSlot, "blur", parseInt(e.target.value))} />
+              </div>
+
+              <div className="modal-actions">
+                <button className="btn-replace" onClick={() => { fileInputRefs.current[editingSlot]?.click(); }}>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Replace Photo
+                </button>
+                <button className="btn-reset" onClick={() => { handleCropChange(editingSlot, "zoom", 1); handleCropChange(editingSlot, "x", 0); handleCropChange(editingSlot, "y", 0); handleCropChange(editingSlot, "blur", 0); }}>
+                  Reset
+                </button>
+                <button className="btn-done" onClick={() => setEditingSlot(null)}>Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
 
       <style jsx global>{`
-        .collage-sidebar {
-          max-height: calc(100vh - 70px);
-          overflow-y: auto;
+        .ci-page {
+          min-height: calc(100vh - 140px);
+          padding: 24px 32px 48px;
+          max-width: 1400px;
+          margin: 0 auto;
         }
 
-        .sidebar-header-title h2 {
-          font-size: 1.15rem;
-          font-weight: 700;
-          color: var(--text);
-          margin-bottom: 4px;
+        .ci-header {
+          margin-bottom: 24px;
         }
 
-        .sidebar-header-title p {
-          font-size: 0.8rem;
-          color: var(--text-muted);
-          line-height: 1.3;
-        }
-
-        .sidebar-section-title {
-          font-size: 0.82rem;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: var(--text-muted);
-          margin-bottom: 8px;
-        }
-
-        .label-with-value {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .label-with-value span {
-          font-size: 0.8rem;
-          font-weight: 700;
-          color: #a855f7;
-        }
-
-        .checkbox-group {
+        .ci-header h1 {
           display: flex;
           align-items: center;
           gap: 10px;
-          margin: 10px 0;
-        }
-
-        .checkbox-group input {
-          width: 18px;
-          height: 18px;
-          accent-color: #a855f7;
-          cursor: pointer;
-        }
-
-        .btn-preset {
-          background: rgba(168, 85, 247, 0.1);
-          border: 1px solid rgba(168, 85, 247, 0.25);
-          color: #c084fc;
-          border-radius: 10px;
-          padding: 8px 14px;
-          font-size: 0.85rem;
+          font-size: 1.5rem;
           font-weight: 700;
-          cursor: pointer;
-          transition: all 0.2s ease;
+          color: var(--text);
+          margin: 0 0 6px;
         }
 
-        .btn-preset:hover {
-          background: rgba(168, 85, 247, 0.2);
+        .ci-header p {
+          font-size: 0.88rem;
+          color: var(--text-muted);
+          margin: 0;
+          line-height: 1.4;
         }
 
-        /* Details summary tags for crop list */
-        .details-crop-item {
-          border: 1px solid var(--card-border);
-          border-radius: 12px;
+        .ci-body {
+          display: flex;
+          gap: 24px;
+          align-items: flex-start;
+        }
+
+        /* LEFT CONTROLS */
+        .ci-controls {
+          width: 280px;
+          min-width: 280px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
           background: var(--card-bg);
-          overflow: hidden;
+          border: 1px solid var(--card-border);
+          border-radius: 16px;
+          padding: 16px;
+          position: sticky;
+          top: 80px;
+        }
+
+        .ctrl-section {
+          padding: 12px 0;
+          border-bottom: 1px solid var(--card-border);
+        }
+
+        .ctrl-section:last-child {
+          border-bottom: none;
+        }
+
+        .ctrl-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: var(--text-muted);
           margin-bottom: 8px;
         }
 
-        .details-crop-item summary {
-          padding: 12px 16px;
-          font-size: 0.85rem;
-          font-weight: 700;
-          color: var(--text);
-          cursor: pointer;
-          user-select: none;
+        .ctrl-label-row {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          list-style: none;
+          justify-content: space-between;
+          margin-bottom: 8px;
         }
 
-        .details-crop-item summary::-webkit-details-marker {
-          display: none;
+        .ctrl-value {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #a855f7;
+          min-width: 35px;
+          text-align: right;
         }
 
-        .details-crop-item[open] summary {
-          border-bottom: 1px solid var(--card-border);
-          background: rgba(168, 85, 247, 0.05);
-        }
-
-        .crop-controls-box {
-          padding: 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 15px;
-        }
-
-        .file-uploader-box {
-          text-align: center;
-        }
-
-        .btn-upload-file {
-          display: block;
+        .ci-controls select {
           width: 100%;
           background: var(--input-bg);
-          border: 1px dashed var(--input-border);
+          border: 1px solid var(--input-border);
           border-radius: 8px;
-          padding: 10px;
-          color: var(--text-muted);
-          font-size: 0.8rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .btn-upload-file:hover {
-          border-color: #a855f7;
+          padding: 8px 10px;
+          font-size: 0.82rem;
+          font-weight: 500;
           color: var(--text);
+          cursor: pointer;
+          outline: none;
+          font-family: inherit;
         }
 
-        .crop-slider-group {
+        .ci-controls select:focus {
+          border-color: #a855f7;
+        }
+
+        .ci-controls input[type="range"] {
+          width: 100%;
+          accent-color: #a855f7;
+          height: 4px;
+        }
+
+        /* Overlay controls */
+        .overlay-controls {
           display: flex;
-          flex-direction: column;
-          gap: 12px;
+          align-items: center;
+          gap: 8px;
         }
 
-        .crop-slider {
+        .overlay-input {
+          width: 52px;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          border-radius: 6px;
+          padding: 5px 8px;
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: var(--text);
+          text-align: center;
+          outline: none;
+          font-family: inherit;
+        }
+
+        .overlay-input:focus {
+          border-color: #a855f7;
+        }
+
+        .btn-random {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 30px;
+          height: 30px;
+          background: rgba(168, 85, 247, 0.1);
+          border: 1px solid rgba(168, 85, 247, 0.2);
+          border-radius: 6px;
+          color: #a855f7;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-random:hover {
+          background: rgba(168, 85, 247, 0.2);
+        }
+
+        .opacity-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .mini-label {
+          font-size: 0.72rem;
+          color: var(--text-muted);
+          font-weight: 600;
+          min-width: 42px;
+        }
+
+        .opacity-row input[type="range"] {
+          flex: 1;
+        }
+
+        /* Toggle switch */
+        .toggle-wrap {
+          position: relative;
+          display: inline-block;
+          width: 36px;
+          height: 20px;
+          flex-shrink: 0;
+        }
+
+        .toggle-wrap input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .toggle-slider {
+          position: absolute;
+          cursor: pointer;
+          inset: 0;
+          background: rgba(255,255,255,0.1);
+          border-radius: 20px;
+          transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+          content: "";
+          position: absolute;
+          height: 16px;
+          width: 16px;
+          left: 2px;
+          bottom: 2px;
+          background: #fff;
+          border-radius: 50%;
+          transition: 0.3s;
+        }
+
+        .toggle-wrap input:checked + .toggle-slider {
+          background: #a855f7;
+        }
+
+        .toggle-wrap input:checked + .toggle-slider::before {
+          transform: translateX(16px);
+        }
+
+        :root.light-theme .toggle-slider {
+          background: #d1d5db;
+        }
+
+        /* Photo slots list in sidebar */
+        .photo-slots-list {
           display: flex;
           flex-direction: column;
           gap: 4px;
         }
 
-        .slider-label {
-          font-size: 0.75rem;
-          color: var(--text-muted);
-          font-weight: 600;
+        .photo-slot-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 8px;
+          border-radius: 8px;
+          transition: background 0.15s;
         }
 
-        .crop-slider input[type="range"] {
-          width: 100%;
-          accent-color: #a855f7;
+        .photo-slot-item:hover {
+          background: rgba(168, 85, 247, 0.05);
         }
 
-        /* 1200x630 aspect ratio Grid Preview Container */
-        .collage-preview-canvas-wrapper {
-          width: 100%;
-          max-width: 720px;
-          aspect-ratio: 1200 / 630;
-          background: #111827;
-          border-radius: 16px;
+        .slot-thumb {
+          width: 36px;
+          height: 36px;
+          border-radius: 6px;
           overflow: hidden;
-          position: relative;
-          box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+          flex-shrink: 0;
           border: 1px solid var(--card-border);
         }
 
-        .collage-grid-layout {
+        .slot-thumb img {
           width: 100%;
           height: 100%;
+          object-fit: cover;
         }
 
-        .collage-row {
+        .thumb-empty {
           width: 100%;
-        }
-
-        .collage-column {
           height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--input-bg);
+          color: var(--text-muted);
         }
 
-        .slot-wrapper {
+        .slot-label {
           flex: 1;
-          height: 100%;
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: var(--text);
+        }
+
+        .slot-actions {
+          display: flex;
+          gap: 4px;
+        }
+
+        .slot-action-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border: 1px solid var(--card-border);
+          background: transparent;
+          border-radius: 6px;
+          color: var(--text-muted);
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .slot-action-btn:hover {
+          background: rgba(168, 85, 247, 0.1);
+          color: #a855f7;
+          border-color: rgba(168, 85, 247, 0.3);
+        }
+
+        .slot-action-btn.delete:hover {
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+          border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        /* MAIN CONTENT */
+        .ci-main {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .preview-section {
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 16px;
+          padding: 16px;
+        }
+
+        .preview-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: var(--text-muted);
+          margin-bottom: 12px;
+        }
+
+        .badge {
+          background: rgba(168, 85, 247, 0.15);
+          color: #a855f7;
+          font-size: 0.65rem;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 20px;
+          letter-spacing: 0;
+        }
+
+        /* COLLAGE PREVIEW - matches Facebook exactly */
+        .collage-preview {
+          width: 100%;
+          aspect-ratio: 1200 / 630;
+          border-radius: 8px;
           overflow: hidden;
+          background: #1a1a1a;
           position: relative;
         }
 
-        .img-slot-inner {
+        /* Grid Layouts */
+        .grid-5 {
+          display: flex;
+          flex-direction: column;
           width: 100%;
           height: 100%;
-          position: relative;
-          overflow: hidden;
+          gap: ${gap}px;
         }
 
-        .img-slot-inner img {
+        .grid-5-top {
+          display: flex;
+          flex: 1.2;
+          gap: ${gap}px;
+        }
+
+        .grid-5-bottom {
+          display: flex;
+          flex: 0.8;
+          gap: ${gap}px;
+        }
+
+        .grid-4 {
+          display: flex;
+          flex-direction: column;
+          width: 100%;
+          height: 100%;
+          gap: ${gap}px;
+        }
+
+        .grid-4-row {
+          display: flex;
+          flex: 1;
+          gap: ${gap}px;
+        }
+
+        .grid-3 {
+          display: flex;
+          width: 100%;
+          height: 100%;
+          gap: ${gap}px;
+        }
+
+        .grid-3-left {
+          flex: 1.2;
+          display: flex;
+        }
+
+        .grid-3-right {
+          flex: 0.8;
+          display: flex;
+          flex-direction: column;
+          gap: ${gap}px;
+        }
+
+        .grid-2 {
+          display: flex;
+          width: 100%;
+          height: 100%;
+          gap: ${gap}px;
+        }
+
+        .grid-1 {
+          display: flex;
+          width: 100%;
+          height: 100%;
+        }
+
+        /* Preview Slot */
+        .preview-slot {
+          flex: 1;
+          position: relative;
+          overflow: hidden;
+          cursor: pointer;
+          transition: outline 0.15s;
+        }
+
+        .preview-slot.drag-over {
+          outline: 2px solid #a855f7;
+          outline-offset: -2px;
+        }
+
+        .slot-image-wrap {
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .slot-image-wrap img {
           position: absolute;
           top: 0;
           left: 0;
@@ -870,58 +1286,481 @@ export default function ClickableImage() {
           transform-origin: center;
         }
 
-        /* Facebook Collage Number Overlay styling */
-        .facebook-grid-overlay {
+        .slot-empty {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          background: rgba(255,255,255,0.03);
+          color: var(--text-muted);
+          transition: background 0.2s;
+        }
+
+        .slot-empty span {
+          font-size: 0.72rem;
+          font-weight: 600;
+        }
+
+        .preview-slot:hover .slot-empty {
+          background: rgba(168, 85, 247, 0.08);
+          color: #a855f7;
+        }
+
+        /* Pencil edit button on slot */
+        .slot-edit-btn {
           position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
+          top: 8px;
+          right: 8px;
+          width: 28px;
+          height: 28px;
+          background: rgba(0,0,0,0.6);
+          backdrop-filter: blur(4px);
+          border: none;
+          border-radius: 6px;
+          color: #fff;
+          cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #ffffff;
-          font-size: clamp(2rem, 5vw, 4.5rem);
-          font-weight: 800;
-          font-family: sans-serif;
-          pointer-events: none;
-          z-index: 4;
+          opacity: 0;
+          transition: opacity 0.2s;
+          z-index: 5;
         }
 
-        /* Action Buttons Row styling */
-        .action-button-row {
+        .preview-slot:hover .slot-edit-btn {
+          opacity: 1;
+        }
+
+        .slot-edit-btn:hover {
+          background: rgba(168, 85, 247, 0.8);
+        }
+
+        /* Overlay on last slot */
+        .slot-overlay {
+          position: absolute;
+          inset: 0;
           display: flex;
-          gap: 15px;
-          margin-top: 10px;
+          align-items: center;
+          justify-content: center;
+          z-index: 3;
+          pointer-events: none;
         }
 
-        .btn-export-download {
-          flex: 0.8;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+        .overlay-number {
+          color: #ffffff;
+          font-weight: 700;
+          font-size: clamp(1.2rem, 3.5vw, 2.8rem);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+          text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
+
+        /* Actions Row */
+        .actions-row {
+          display: flex;
+          gap: 10px;
+        }
+
+        .btn-download {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          flex: 1;
+          padding: 12px 20px;
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 10px;
           color: var(--text);
-          border-radius: 12px;
-          padding: 16px;
-          font-size: 0.95rem;
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: inherit;
+        }
+
+        .btn-download:hover {
+          border-color: rgba(168, 85, 247, 0.4);
+          background: rgba(168, 85, 247, 0.05);
+        }
+
+        .btn-download:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        /* Redirect Form Card */
+        .redirect-form-card {
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 16px;
+          padding: 20px;
+        }
+
+        .form-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: var(--text);
+          margin-bottom: 16px;
+        }
+
+        .form-field {
+          margin-bottom: 12px;
+        }
+
+        .form-field label {
+          display: block;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--text-muted);
+          margin-bottom: 4px;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+
+        .form-field input,
+        .form-field textarea {
+          width: 100%;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          border-radius: 8px;
+          padding: 10px 12px;
+          font-size: 0.85rem;
+          color: var(--text);
+          outline: none;
+          font-family: inherit;
+          transition: border-color 0.2s;
+        }
+
+        .form-field input:focus,
+        .form-field textarea:focus {
+          border-color: #a855f7;
+        }
+
+        .form-row-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        .error-msg {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(239, 68, 68, 0.08);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          border-radius: 8px;
+          padding: 10px 14px;
+          font-size: 0.82rem;
+          color: #ef4444;
+          margin-bottom: 12px;
+        }
+
+        .btn-convert {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 100%;
+          padding: 14px;
+          background: var(--accent);
+          border: none;
+          border-radius: 10px;
+          color: #fff;
+          font-size: 0.92rem;
           font-weight: 700;
           cursor: pointer;
-          transition: all 0.25s ease;
+          font-family: inherit;
+          transition: opacity 0.2s;
         }
 
-        :root.light-theme .btn-export-download {
-          background: #e5e7eb;
-          border-color: #cbd5e1;
+        .btn-convert:hover {
+          opacity: 0.9;
         }
 
-        .btn-export-download:hover {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: rgba(255, 255, 255, 0.15);
+        .btn-convert:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
-        @media (max-width: 768px) {
-          .action-button-row {
+        /* Result box */
+        .result-box {
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid var(--card-border);
+        }
+
+        .result-label {
+          font-size: 0.72rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #22c55e;
+          margin-bottom: 8px;
+        }
+
+        .result-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          border-radius: 8px;
+          padding: 8px 12px;
+        }
+
+        .result-url {
+          flex: 1;
+          font-size: 0.85rem;
+          font-weight: 500;
+          color: #a855f7;
+          word-break: break-all;
+        }
+
+        .btn-copy {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 12px;
+          background: rgba(168, 85, 247, 0.1);
+          border: 1px solid rgba(168, 85, 247, 0.2);
+          border-radius: 6px;
+          color: #a855f7;
+          font-size: 0.78rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: inherit;
+          white-space: nowrap;
+        }
+
+        .btn-copy:hover {
+          background: rgba(168, 85, 247, 0.2);
+        }
+
+        .btn-copy.copied {
+          background: rgba(34, 197, 94, 0.1);
+          border-color: rgba(34, 197, 94, 0.2);
+          color: #22c55e;
+        }
+
+        /* EDIT MODAL */
+        .modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 20px;
+        }
+
+        .edit-modal {
+          background: var(--bg);
+          border: 1px solid var(--card-border);
+          border-radius: 20px;
+          width: 100%;
+          max-width: 520px;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--card-border);
+        }
+
+        .modal-header h3 {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 1rem;
+          font-weight: 700;
+          color: var(--text);
+          margin: 0;
+        }
+
+        .modal-close {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          background: transparent;
+          border: 1px solid var(--card-border);
+          border-radius: 8px;
+          color: var(--text-muted);
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .modal-close:hover {
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+          border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .modal-preview {
+          aspect-ratio: 16/10;
+          overflow: hidden;
+          position: relative;
+          margin: 16px;
+          border-radius: 12px;
+          background: #1a1a1a;
+        }
+
+        .modal-preview img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transform-origin: center;
+        }
+
+        .modal-controls {
+          padding: 0 20px 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .modal-ctrl {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .modal-ctrl-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.78rem;
+          font-weight: 600;
+          color: var(--text-muted);
+        }
+
+        .ctrl-val {
+          margin-left: auto;
+          font-weight: 700;
+          color: #a855f7;
+          font-size: 0.75rem;
+        }
+
+        .modal-ctrl input[type="range"] {
+          width: 100%;
+          accent-color: #a855f7;
+        }
+
+        .modal-actions {
+          display: flex;
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .btn-replace {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          border-radius: 8px;
+          color: var(--text);
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.2s;
+        }
+
+        .btn-replace:hover {
+          border-color: #a855f7;
+        }
+
+        .btn-reset {
+          padding: 8px 14px;
+          background: transparent;
+          border: 1px solid var(--card-border);
+          border-radius: 8px;
+          color: var(--text-muted);
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.2s;
+        }
+
+        .btn-reset:hover {
+          border-color: var(--text-muted);
+        }
+
+        .btn-done {
+          margin-left: auto;
+          padding: 8px 20px;
+          background: var(--accent);
+          border: none;
+          border-radius: 8px;
+          color: #fff;
+          font-size: 0.8rem;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+          transition: opacity 0.2s;
+        }
+
+        .btn-done:hover {
+          opacity: 0.9;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+          .ci-body {
             flex-direction: column;
-            gap: 10px;
+          }
+
+          .ci-controls {
+            width: 100%;
+            min-width: 0;
+            position: static;
+          }
+
+          .ci-page {
+            padding: 16px;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .ci-header h1 {
+            font-size: 1.2rem;
+          }
+
+          .form-row-2 {
+            grid-template-columns: 1fr;
+          }
+
+          .edit-modal {
+            max-width: 100%;
+            border-radius: 16px;
+          }
+
+          .modal-actions {
+            flex-wrap: wrap;
+          }
+
+          .overlay-number {
+            font-size: 1.2rem !important;
           }
         }
       `}</style>
