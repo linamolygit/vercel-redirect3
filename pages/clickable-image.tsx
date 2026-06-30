@@ -940,39 +940,45 @@ export default function ClickableImage() {
       </div>
 
       {/* Edit Modal */}
-      {editingSlot !== null && images[editingSlot] && (
-        <div className="modal-backdrop" onClick={() => setEditingSlot(null)}>
-          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                Edit Photo {editingSlot + 1}
-              </h3>
-              <button className="modal-close" onClick={() => setEditingSlot(null)}>
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+      {editingSlot !== null && images[editingSlot] && (() => {
+        const coords = getSlotCoordinates(layout, gap);
+        const slot = coords[editingSlot];
+        const currentSlotAspect = slot ? slot.w / slot.h : 1;
 
-            {isCropping ? (
-              <>
-                <div className="modal-preview">
-                  <Cropper
-                    ref={cropperRef}
-                    src={images[editingSlot]!}
-                    style={{ height: 400, width: "100%", background: "#1a1a1a" }}
-                    zoomTo={1}
-                    viewMode={1}
-                    background={false}
-                    responsive={true}
-                    autoCropArea={1}
-                    checkOrientation={false}
-                    guides={true}
-                  />
-                </div>
+        return (
+          <div className="modal-backdrop" onClick={() => setEditingSlot(null)}>
+            <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Edit Photo {editingSlot + 1}
+                </h3>
+                <button className="modal-close" onClick={() => setEditingSlot(null)}>
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {isCropping ? (
+                <>
+                  <div className="modal-preview">
+                    <Cropper
+                      ref={cropperRef}
+                      src={images[editingSlot]!}
+                      style={{ height: 400, width: "100%", background: "#1a1a1a" }}
+                      zoomTo={1}
+                      viewMode={1}
+                      aspectRatio={currentSlotAspect}
+                      background={false}
+                      responsive={true}
+                      autoCropArea={1}
+                      checkOrientation={false}
+                      guides={true}
+                    />
+                  </div>
                 <div className="modal-controls">
                   <div className="modal-actions">
                     <button className="btn-crop" onClick={() => {
@@ -1107,7 +1113,8 @@ export default function ClickableImage() {
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       <Footer />
 
