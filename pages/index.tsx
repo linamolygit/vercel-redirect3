@@ -389,13 +389,34 @@ const Home: NextPage = () => {
                       {link.custom_title || link.original_url}
                     </div>
                     <div className="link-card-url" title={fullShortLink}>{fullShortLink}</div>
-                    <button
-                      type="button"
-                      className={`btn-sidebar-copy ${isCopied ? "copied" : ""}`}
-                      onClick={() => copyToClipboard(fullShortLink, link.id)}
-                    >
-                      {isCopied ? "Copied! ✅" : "Copy Link"}
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                      <button
+                        type="button"
+                        className={`btn-sidebar-copy ${isCopied ? "copied" : ""}`}
+                        onClick={() => copyToClipboard(fullShortLink, link.id)}
+                      >
+                        {isCopied ? (
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Copied
+                          </span>
+                        ) : "Copy"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-sidebar-analytics"
+                        onClick={() => router.push(`/analytics/${link.short_id}`)}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                          Stats
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 );
               })
@@ -406,7 +427,12 @@ const Home: NextPage = () => {
         {/* Center Main Work Area */}
         <main className="dashboard-main-content">
           <section className="dashboard-hero">
-            <h1>WP Link Cloaker ⚡</h1>
+            <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              WP Link Cloaker
+              <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#a855f7" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </h1>
             <p>Paste target link, customize preview details, upload custom featured image, and deploy instant server-side redirects.</p>
           </section>
 
@@ -933,6 +959,25 @@ const Home: NextPage = () => {
           background: rgba(34, 197, 94, 0.1);
           border-color: rgba(34, 197, 94, 0.3);
           color: #4ade80;
+        }
+
+        .btn-sidebar-analytics {
+          width: 100%;
+          background: rgba(99, 102, 241, 0.08);
+          border: 1px solid rgba(99, 102, 241, 0.15);
+          color: #818cf8;
+          padding: 7px;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          text-align: center;
+        }
+
+        .btn-sidebar-analytics:hover {
+          background: rgba(99, 102, 241, 0.15);
+          border-color: rgba(99, 102, 241, 0.35);
         }
 
         /* Center Main Work Panel Area */
