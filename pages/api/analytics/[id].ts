@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { query } from "../../../lib/db";
+import { query, initDb } from "../../../lib/db";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
@@ -15,6 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    await initDb();
     const decoded: any = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId;
     const { id } = req.query; // this is the short_id

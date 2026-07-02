@@ -311,7 +311,7 @@ export default function Profile() {
         }
 
         .container {
-          max-width: 1000px;
+          max-width: 1200px;
           margin: 60px auto;
           padding: 0 25px;
           display: flex;
