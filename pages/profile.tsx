@@ -88,7 +88,7 @@ export default function Profile() {
     return (
       <div className="loader-screen">
         <div className="spinner"></div>
-        <p>Loading Profile... ⏳</p>
+        <p>Loading Profile...</p>
         <style jsx>{`
           .loader-screen {
             background: var(--bg);
@@ -165,7 +165,12 @@ export default function Profile() {
         {/* Redirects Datatable */}
         <div className="card links-card">
           <div className="links-header">
-            <h2>Your Redirect Links 🔗</h2>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              Your Redirect Links
+            </h2>
             <div className="search-bar-wrapper">
               <svg className="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -180,7 +185,7 @@ export default function Profile() {
           </div>
 
           {loadingLinks ? (
-            <p className="loading-text">Loading redirect list... ⏳</p>
+            <p className="loading-text">Loading redirect list...</p>
           ) : filteredLinks.length === 0 ? (
             <div className="no-records">
               <p>No redirects found. Convert your first link on the homepage!</p>
@@ -226,14 +231,26 @@ export default function Profile() {
                               className={`btn-table-copy ${copiedId === link.id ? "copied" : ""}`}
                               onClick={() => copyToClipboard(fullShortLink, link.id)}
                             >
-                              {copiedId === link.id ? "Copied! ✅" : "Copy Link"}
+                              {copiedId === link.id ? (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  Copied!
+                                </span>
+                              ) : "Copy Link"}
                             </button>
                             <button
                               type="button"
                               className="btn-table-analytics"
                               onClick={() => router.push(`/analytics/${link.short_id}`)}
                             >
-                              Analytics 📊
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                Analytics
+                              </span>
                             </button>
                           </div>
                         </td>

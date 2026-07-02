@@ -200,7 +200,19 @@ const AnalyticsDashboard: React.FC = () => {
                   <ul className="stats-list">
                     {data.topCountries.map((c: any, i: number) => (
                       <li key={i}>
-                        <span className="stat-label">{c.country === "Unknown" ? "🌐 Unknown" : `📍 ${c.country}`}</span>
+                        <span className="stat-label">
+                          {c.country === "Unknown" ? (
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                            </svg>
+                          ) : (
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          )}
+                          {c.country}
+                        </span>
                         <span className="stat-value">{c.count} clicks</span>
                       </li>
                     ))}
@@ -218,7 +230,12 @@ const AnalyticsDashboard: React.FC = () => {
                   <ul className="stats-list">
                     {data.referrers.map((r: any, i: number) => (
                       <li key={i}>
-                        <span className="stat-label">🔗 {r.referrer}</span>
+                        <span className="stat-label">
+                          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                          {r.referrer}
+                        </span>
                         <span className="stat-value">{r.count} clicks</span>
                       </li>
                     ))}
