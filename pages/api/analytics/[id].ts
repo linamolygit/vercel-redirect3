@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await initDb();
     const decoded: any = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.userId;
+    const userId = decoded.id || decoded.userId; // support both formats
     const { id } = req.query; // this is the short_id
 
     // Find the redirect by short_id

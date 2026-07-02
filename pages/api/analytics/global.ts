@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await initDb();
     const decoded: any = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.userId;
+    const userId = decoded.id || decoded.userId; // JWT stores 'id' not 'userId'
 
     // Get all link IDs owned by this user
     const userLinksRes = await query("SELECT id, short_id FROM redirects WHERE user_id = ?", [userId]) as any[];
