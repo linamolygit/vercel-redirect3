@@ -12,28 +12,20 @@ async function test() {
   console.log('Connected!');
   
   try {
-    // Check tables
-    const [tables] = await conn.query("SHOW TABLES");
-    console.log('Tables:', JSON.stringify(tables));
-    
-    // Check if analytics table exists
-    const [analyticsCheck] = await conn.query("SHOW TABLES LIKE 'analytics'");
-    console.log('analytics table exists:', analyticsCheck.length > 0);
-    
-    if (analyticsCheck.length > 0) {
-      const [cols] = await conn.query("DESCRIBE analytics");
-      console.log('Analytics columns:', JSON.stringify(cols.map(c => c.Field)));
-      
-      const [count] = await conn.query("SELECT COUNT(*) as total FROM analytics");
-      console.log('Analytics row count:', count[0].total);
-    }
-    
-    // Check redirects
-    const [redirects] = await conn.query("SELECT id, short_id, user_id FROM redirects LIMIT 5");
-    console.log('Sample redirects:', JSON.stringify(redirects));
+    // Check redirect_id=29
+    const [r29] = await conn.query("SELECT id, short_id, user_id FROM redirects WHERE id = 29");
+    console.log('redirect_id=29:', JSON.stringify(r29));
+
+    // All redirects count
+    const [cnt] = await conn.query("SELECT COUNT(*) as total FROM redirects");
+    console.log('Total redirects:', cnt[0].total);
+
+    // Get ALL redirects with id >= 25
+    const [recent] = await conn.query("SELECT id, short_id, user_id FROM redirects WHERE id >= 25");
+    console.log('Redirects >= 25:', JSON.stringify(recent));
     
   } catch(e) {
-    console.error('Error:', e.message, e.code);
+    console.error('Error:', e.message);
   }
   
   await conn.end();

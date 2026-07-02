@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { query, initDb } from "../../../lib/db";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const JWT_SECRET = process.env.JWT_SECRET || "rishav_super_secret_jwt_key_999";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
