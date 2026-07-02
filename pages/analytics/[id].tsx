@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import Header from "../../components/Header";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend
@@ -22,15 +23,19 @@ const AnalyticsDashboard: React.FC = () => {
     const fetchAnalytics = async () => {
       try {
         const res = await fetch(`/api/analytics/${id}`);
-        if (res.status === 401 || res.status === 403) {
+        if (res.status === 401) {
           router.push("/login");
           return;
         }
-        if (!res.ok) throw new Error("Failed to load analytics");
         const json = await res.json();
+        if (!res.ok) {
+          setError(json.message || "Failed to load analytics");
+          setLoading(false);
+          return;
+        }
         setData(json);
       } catch (err: any) {
-        setError(err.message);
+        setError(err.message || "Failed to load analytics");
       } finally {
         setLoading(false);
       }
@@ -41,19 +46,47 @@ const AnalyticsDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="loader-container">
-        <div className="spinner"></div>
-        <p>Loading Analytics...</p>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
+        <Header />
+        <div className="loader-container">
+          <div className="spinner"></div>
+          <p>Loading Analytics...</p>
+        </div>
+        <style jsx global>{`
+          body { background: var(--bg); }
+          .loader-container { display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:70vh; gap:16px; }
+          .spinner { width:40px; height:40px; border:4px solid rgba(168,85,247,0.2); border-left-color:#a855f7; border-radius:50%; animation:spin 1s linear infinite; }
+          @keyframes spin { 100% { transform:rotate(360deg); } }
+        `}</style>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="error-container">
-        <h1>Error</h1>
-        <p>{error}</p>
-        <Link href="/profile"><a className="btn-back">Go Back</a></Link>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
+        <Header />
+        <div className="error-container">
+          <div className="error-icon">
+            <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="#ef4444" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <h1>Analytics Error</h1>
+          <p>{error}</p>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <Link href="/profile"><a className="btn-back-solid">← Back to Dashboard</a></Link>
+            <button className="btn-retry" onClick={() => window.location.reload()}>Retry</button>
+          </div>
+        </div>
+        <style jsx global>{`
+          body { background: var(--bg); }
+          .error-container { display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:70vh; gap:16px; text-align:center; padding:20px; }
+          .error-container h1 { font-size:2rem; color:var(--text); margin:0; }
+          .error-container p { color:var(--text-muted, #9ca3af); font-size:1.1rem; max-width:400px; margin:0; }
+          .btn-back-solid { background:linear-gradient(135deg,#6366f1,#a855f7); color:#fff; padding:10px 22px; border-radius:10px; text-decoration:none; font-weight:700; font-size:0.95rem; }
+          .btn-retry { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text); padding:10px 22px; border-radius:10px; font-weight:700; font-size:0.95rem; cursor:pointer; }
+        `}</style>
       </div>
     );
   }
@@ -63,7 +96,9 @@ const AnalyticsDashboard: React.FC = () => {
       <Head>
         <title>Analytics - {id} | WP Link Converter</title>
       </Head>
-      <div className="dashboard-layout">
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Outfit', sans-serif" }}>
+        <Header />
+        <div className="dashboard-layout">
         <header className="dashboard-header">
           <Link href="/profile">
             <a className="btn-back">
@@ -477,6 +512,7 @@ const AnalyticsDashboard: React.FC = () => {
 
         .error-container h1 { color: #ef4444; }
       `}</style>
+      </div>
     </>
   );
 };

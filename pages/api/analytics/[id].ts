@@ -20,17 +20,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = decoded.userId;
     const { id } = req.query; // this is the short_id
 
-    // Verify ownership
-    const redirectRes = await query("SELECT id FROM redirects WHERE short_id = ? AND user_id = ?", [id, userId]) as any[];
+    // Find the redirect by short_id
+    // Allow access if: (a) user owns the link (user_id matches), OR (b) link has no owner (user_id IS NULL — legacy links)
+    const redirectRes = await query(
+      "SELECT id, user_id FROM redirects WHERE short_id = ?",
+      [id]
+    ) as any[];
+
     if (redirectRes.length === 0) {
-      return res.status(403).json({ message: "Forbidden or Not Found" });
+      return res.status(404).json({ message: "Link not found" });
     }
 
-    const redirectId = redirectRes[0].id;
+    const link = redirectRes[0];
+
+    // Only allow if the link belongs to this user, OR if link has no owner (legacy)
+    if (link.user_id !== null && link.user_id !== userId) {
+      return res.status(403).json({ message: "You don't have permission to view this link's analytics" });
+    }
+
+    const redirectId = link.id;
 
     // Fetch Analytics Data
     // 1. Total visits
-    const totalVisitsRes = await query("SELECT COUNT(*) as total FROM analytics WHERE redirect_id = ?", [redirectId]) as any[];
+    const totalVisitsRes = await query(
+      "SELECT COUNT(*) as total FROM analytics WHERE redirect_id = ?",
+      [redirectId]
+    ) as any[];
     const totalVisits = totalVisitsRes[0].total;
 
     // 2. Visits over time (by date)
@@ -80,13 +95,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ORDER BY count DESC
     `, [redirectId]);
 
+    // 7. Recent visits (last 10)
+    const recentVisits = await query(`
+      SELECT country, platform, device_type, referrer, created_at
+      FROM analytics
+      WHERE redirect_id = ?
+      ORDER BY created_at DESC
+      LIMIT 10
+    `, [redirectId]);
+
     res.status(200).json({
       totalVisits,
       visitsByDate,
       topCountries,
       platforms,
       referrers,
-      devices
+      devices,
+      recentVisits,
+      shortId: id,
     });
 
   } catch (error) {
