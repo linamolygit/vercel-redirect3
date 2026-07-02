@@ -57,6 +57,24 @@ export async function initDb() {
     );
   `;
 
+  const createAnalyticsTableQuery = `
+    CREATE TABLE IF NOT EXISTS analytics (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      redirect_id INT NOT NULL,
+      ip_address VARCHAR(45) NULL,
+      user_agent TEXT NULL,
+      referrer TEXT NULL,
+      country VARCHAR(50) NULL,
+      city VARCHAR(100) NULL,
+      device_type VARCHAR(50) NULL,
+      browser VARCHAR(50) NULL,
+      os VARCHAR(50) NULL,
+      platform VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (redirect_id) REFERENCES redirects(id) ON DELETE CASCADE
+    );
+  `;
+
   try {
     // 1. Create users table first
     await query(createUsersTableQuery);
@@ -72,7 +90,10 @@ export async function initDb() {
     // 2. Create redirects table (depends on users table)
     await query(createRedirectsTableQuery);
     
-    console.log("Database tables ('users', 'redirects') initialized successfully.");
+    // 3. Create analytics table (depends on redirects table)
+    await query(createAnalyticsTableQuery);
+
+    console.log("Database tables ('users', 'redirects', 'analytics') initialized successfully.");
   } catch (error: any) {
     console.error("Failed to initialize database tables:", error.message);
   }

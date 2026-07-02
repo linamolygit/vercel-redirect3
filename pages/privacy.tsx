@@ -59,7 +59,7 @@ export default function Privacy() {
         .wrapper {
           min-height: 100vh;
           background: var(--bg);
-          color: #f3f4f6;
+          color: var(--text);
           font-family: 'Outfit', sans-serif;
           position: relative;
           overflow-x: hidden;

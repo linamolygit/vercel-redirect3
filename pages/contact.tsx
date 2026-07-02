@@ -155,7 +155,7 @@ export default function Contact() {
         .wrapper {
           min-height: 100vh;
           background: var(--bg);
-          color: #f3f4f6;
+          color: var(--text);
           font-family: 'Outfit', sans-serif;
           position: relative;
           overflow-x: hidden;
@@ -286,7 +286,7 @@ export default function Contact() {
           background: rgba(255, 255, 255, 0.02);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 12px;
-          color: #f3f4f6;
+          color: var(--text);
           font-size: 0.95rem;
           font-family: inherit;
           outline: none;
@@ -365,7 +365,7 @@ export default function Contact() {
         .faq-section h2 {
           font-size: 1.6rem;
           font-weight: 800;
-          color: #f3f4f6;
+          color: var(--text);
           margin-bottom: 25px;
           text-align: center;
         }
@@ -404,7 +404,7 @@ export default function Contact() {
           align-items: center;
           font-weight: 600;
           font-size: 0.95rem;
-          color: #f3f4f6;
+          color: var(--text);
         }
 
         .chevron-icon {

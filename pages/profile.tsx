@@ -220,13 +220,22 @@ export default function Profile() {
                         </td>
                         <td>{new Date(link.created_at).toLocaleDateString()}</td>
                         <td>
-                          <button
-                            type="button"
-                            className={`btn-table-copy ${copiedId === link.id ? "copied" : ""}`}
-                            onClick={() => copyToClipboard(fullShortLink, link.id)}
-                          >
-                            {copiedId === link.id ? "Copied! ✅" : "Copy Link"}
-                          </button>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              type="button"
+                              className={`btn-table-copy ${copiedId === link.id ? "copied" : ""}`}
+                              onClick={() => copyToClipboard(fullShortLink, link.id)}
+                            >
+                              {copiedId === link.id ? "Copied! ✅" : "Copy Link"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-table-analytics"
+                              onClick={() => router.push(`/analytics/${link.short_id}`)}
+                            >
+                              Analytics 📊
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -244,7 +253,7 @@ export default function Profile() {
         .wrapper {
           min-height: 100vh;
           background: var(--bg);
-          color: #f3f4f6;
+          color: var(--text);
           font-family: 'Outfit', sans-serif;
           position: relative;
           overflow-x: hidden;
@@ -355,7 +364,7 @@ export default function Profile() {
         .avatar-info h2 {
           font-size: 1.4rem;
           font-weight: 700;
-          color: #fff;
+          color: var(--text);
         }
 
         .badge-user {
@@ -389,7 +398,7 @@ export default function Profile() {
         .stat-num {
           font-size: 2rem;
           font-weight: 800;
-          color: #fff;
+          color: var(--text);
         }
 
         .stat-label {
@@ -409,7 +418,7 @@ export default function Profile() {
         .links-header h2 {
           font-size: 1.3rem;
           font-weight: 700;
-          color: #fff;
+          color: var(--text);
         }
 
         .search-bar-wrapper {
@@ -434,7 +443,7 @@ export default function Profile() {
           background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 12px;
-          color: #fff;
+          color: var(--text);
           outline: none;
           font-size: 0.9rem;
           transition: all 0.3s ease;
@@ -530,6 +539,22 @@ export default function Profile() {
           background: rgba(34, 197, 94, 0.15);
           border-color: rgba(34, 197, 94, 0.3);
           color: #4ade80;
+        }
+
+        .btn-table-analytics {
+          background: rgba(99, 102, 241, 0.1);
+          border: 1px solid rgba(99, 102, 241, 0.25);
+          color: #818cf8;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .btn-table-analytics:hover {
+          background: rgba(99, 102, 241, 0.2);
+          border-color: rgba(99, 102, 241, 0.4);
         }
 
         @media (max-width: 768px) {

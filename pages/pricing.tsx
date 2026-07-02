@@ -171,7 +171,7 @@ export default function Pricing() {
         .wrapper {
           min-height: 100vh;
           background: var(--bg);
-          color: #f3f4f6;
+          color: var(--text);
           font-family: 'Outfit', sans-serif;
           position: relative;
           overflow-x: hidden;
@@ -306,13 +306,13 @@ export default function Pricing() {
         .currency {
           font-size: 1.8rem;
           font-weight: 700;
-          color: #f3f4f6;
+          color: var(--text);
         }
 
         .amount {
           font-size: 3.5rem;
           font-weight: 800;
-          color: #f3f4f6;
+          color: var(--text);
         }
 
         .period {
@@ -391,7 +391,7 @@ export default function Pricing() {
           margin-top: auto;
           background: rgba(255, 255, 255, 0.04);
           border: 1px solid rgba(255, 255, 255, 0.08);
-          color: #f3f4f6;
+          color: var(--text);
           border-radius: 12px;
           font-weight: 700;
           cursor: pointer;

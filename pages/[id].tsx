@@ -41,7 +41,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 
     // Query database for the short redirect ID
     const results = (await query(
-      "SELECT original_url, custom_title, custom_desc, custom_image FROM redirects WHERE short_id = ?",
+      "SELECT id, original_url, custom_title, custom_desc, custom_image FROM redirects WHERE short_id = ?",
       [id]
     )) as any[];
 
@@ -53,6 +53,45 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 
     const redirectData = results[0];
     const destination = redirectData.original_url;
+
+    // Track Analytics
+    const ipAddress = (ctx.req.headers["x-forwarded-for"] || ctx.req.socket.remoteAddress || "").toString().split(",")[0].trim();
+    const country = (ctx.req.headers["x-vercel-ip-country"] || ctx.req.headers["cf-ipcountry"] || "Unknown").toString();
+    const city = (ctx.req.headers["x-vercel-ip-city"] || ctx.req.headers["cf-ipcity"] || "Unknown").toString();
+
+    // Parse User-Agent
+    const UAParser = require("ua-parser-js");
+    const parser = new UAParser(userAgent);
+    const parsedUA = parser.getResult();
+    const deviceType = parsedUA.device.type || "Desktop";
+    const browser = parsedUA.browser.name || "Unknown";
+    const os = parsedUA.os.name || "Unknown";
+
+    // Detect Social Platforms from Referer & UA
+    let platform = "Direct";
+    if (isFacebookReferer(referer) || !!fbclid || userAgent.toLowerCase().includes("facebook")) {
+      platform = "Facebook";
+    } else if (referer.includes("t.co") || referer.includes("twitter")) {
+      platform = "Twitter";
+    } else if (referer.includes("instagram")) {
+      platform = "Instagram";
+    } else if (referer.includes("linkedin")) {
+      platform = "LinkedIn";
+    } else if (referer.includes("google")) {
+      platform = "Google";
+    } else if (referer) {
+      try {
+        platform = new URL(referer).hostname.replace("www.", "");
+      } catch (e) {
+        platform = referer;
+      }
+    }
+
+    // Insert asynchronously (fire and forget)
+    query(
+      "INSERT INTO analytics (redirect_id, ip_address, user_agent, referrer, country, city, device_type, browser, os, platform) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [redirectData.id, ipAddress, userAgent, referer, country, city, deviceType, browser, os, platform]
+    ).catch(e => console.error("Analytics insert error:", e));
 
     const crawlerDetected = isCrawler(userAgent) || isFacebookReferer(referer) || !!fbclid;
 
