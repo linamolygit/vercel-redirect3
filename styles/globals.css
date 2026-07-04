@@ -240,7 +240,8 @@ body.dark-mode .theme-switch .slider {
 .sun-icon {
     width: 14px; height: 14px;
     color: #f97316;
-    z-index: 3; position: relative; transition: 0.3s; pointer-events: none;
+    z-index: 3; position: absolute; transition: 0.3s; pointer-events: none;
+    left: 8px; top: 8px;
 }
 .moon-icon {
     width: 14px; height: 14px;
