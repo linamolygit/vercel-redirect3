@@ -102,11 +102,19 @@ const Post: React.FC<PostProps> = (props) => {
         <meta property="og:site_name" content={host.split(".")[0]} />
         <meta property="article:published_time" content={post.dateGmt} />
         <meta property="article:modified_time" content={post.modifiedGmt} />
+        
+        {/* High Quality Image Meta Tags for Facebook & Twitter */}
         <meta property="og:image" content={post.featuredImage.node.sourceUrl} />
-        <meta
-          property="og:image:alt"
-          content={post.featuredImage.node.altText || post.title}
-        />
+        <meta property="og:image:secure_url" content={post.featuredImage.node.sourceUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={post.featuredImage.node.altText || post.title} />
+        
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={post.title} />
+        <meta name="twitter:description" content={removeTags(post.excerpt)} />
+        <meta name="twitter:image" content={post.featuredImage.node.sourceUrl} />
+        
         <title>{post.title}</title>
       </Head>
       <div className="post-container">

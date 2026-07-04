@@ -169,7 +169,14 @@ const RedirectPage: React.FC<RedirectProps> = ({
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
-        {imageUrl && <meta property="og:image" content={imageUrl} />}
+        {imageUrl && (
+          <>
+            <meta property="og:image" content={imageUrl} />
+            <meta property="og:image:secure_url" content={imageUrl} />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+          </>
+        )}
         <meta property="og:locale" content="en_US" />
         <meta property="og:site_name" content={siteName} />
 
