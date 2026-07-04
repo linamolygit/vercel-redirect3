@@ -538,9 +538,9 @@ export default function ClickableImage() {
           <p>Create multi-photo collage images that look exactly like Facebook photo posts. Perfect for clickbait CTR optimization.</p>
         </div>
 
-        <div className="ci-body">
+        <div className="studio-layout">
           {/* Left: Controls */}
-          <div className="ci-controls">
+          <div className="sidebar glass-panel">
             {/* Layout Selection */}
             <div className="ctrl-section">
               <div className="ctrl-label">
@@ -674,7 +674,7 @@ export default function ClickableImage() {
           </div>
 
           {/* Center: Preview + Form */}
-          <div className="ci-main">
+          <div className="workspace">
             {/* Collage Preview */}
             <div className="preview-section">
               <div className="preview-label">
@@ -902,7 +902,7 @@ export default function ClickableImage() {
                   </div>
                 )}
 
-                <button type="submit" className="btn-convert" disabled={converting}>
+                <button type="submit" className="btn-primary" style={{width:"100%", padding:"16px", fontSize:"16px"}} disabled={converting}>
                   <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
@@ -1136,7 +1136,7 @@ export default function ClickableImage() {
           gap: 10px;
           font-size: 1.5rem;
           font-weight: 700;
-          color: var(--text);
+          color: var(--text-main);
           margin: 0 0 6px;
         }
 
@@ -1160,8 +1160,8 @@ export default function ClickableImage() {
           display: flex;
           flex-direction: column;
           gap: 2px;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
           border-radius: 16px;
           padding: 16px;
           position: sticky;
@@ -1170,7 +1170,7 @@ export default function ClickableImage() {
 
         .ctrl-section {
           padding: 12px 0;
-          border-bottom: 1px solid var(--card-border);
+          border-bottom: 1px solid var(--glass-border);
         }
 
         .ctrl-section:last-child {
@@ -1207,12 +1207,12 @@ export default function ClickableImage() {
         .ci-controls select {
           width: 100%;
           background: var(--input-bg);
-          border: 1px solid var(--input-border);
+          border: 1px solid var(--glass-border);
           border-radius: 8px;
           padding: 8px 10px;
           font-size: 0.82rem;
           font-weight: 500;
-          color: var(--text);
+          color: var(--text-main);
           cursor: pointer;
           outline: none;
           font-family: inherit;
@@ -1238,12 +1238,12 @@ export default function ClickableImage() {
         .overlay-input {
           width: 52px;
           background: var(--input-bg);
-          border: 1px solid var(--input-border);
+          border: 1px solid var(--glass-border);
           border-radius: 6px;
           padding: 5px 8px;
           font-size: 0.82rem;
           font-weight: 700;
-          color: var(--text);
+          color: var(--text-main);
           text-align: center;
           outline: none;
           font-family: inherit;
@@ -1363,7 +1363,7 @@ export default function ClickableImage() {
           border-radius: 6px;
           overflow: hidden;
           flex-shrink: 0;
-          border: 1px solid var(--card-border);
+          border: 1px solid var(--glass-border);
         }
 
         .slot-thumb img {
@@ -1386,7 +1386,7 @@ export default function ClickableImage() {
           flex: 1;
           font-size: 0.8rem;
           font-weight: 500;
-          color: var(--text);
+          color: var(--text-main);
         }
 
         .slot-actions {
@@ -1400,7 +1400,7 @@ export default function ClickableImage() {
           justify-content: center;
           width: 28px;
           height: 28px;
-          border: 1px solid var(--card-border);
+          border: 1px solid var(--glass-border);
           background: transparent;
           border-radius: 6px;
           color: var(--text-muted);
@@ -1430,8 +1430,8 @@ export default function ClickableImage() {
         }
 
         .preview-section {
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
           border-radius: 16px;
           padding: 16px;
         }
@@ -1650,10 +1650,10 @@ export default function ClickableImage() {
           gap: 8px;
           flex: 1;
           padding: 12px 20px;
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
           border-radius: 10px;
-          color: var(--text);
+          color: var(--text-main);
           font-size: 0.85rem;
           font-weight: 600;
           cursor: pointer;
@@ -1673,8 +1673,8 @@ export default function ClickableImage() {
 
         /* Redirect Form Card */
         .redirect-form-card {
-          background: var(--card-bg);
-          border: 1px solid var(--card-border);
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
           border-radius: 16px;
           padding: 20px;
         }
@@ -1685,7 +1685,7 @@ export default function ClickableImage() {
           gap: 8px;
           font-size: 0.88rem;
           font-weight: 700;
-          color: var(--text);
+          color: var(--text-main);
           margin-bottom: 16px;
         }
 
@@ -1707,11 +1707,11 @@ export default function ClickableImage() {
         .form-field textarea {
           width: 100%;
           background: var(--input-bg);
-          border: 1px solid var(--input-border);
+          border: 1px solid var(--glass-border);
           border-radius: 8px;
           padding: 10px 12px;
           font-size: 0.85rem;
-          color: var(--text);
+          color: var(--text-main);
           outline: none;
           font-family: inherit;
           transition: border-color 0.2s;
@@ -1772,7 +1772,7 @@ export default function ClickableImage() {
         .result-box {
           margin-top: 16px;
           padding-top: 16px;
-          border-top: 1px solid var(--card-border);
+          border-top: 1px solid var(--glass-border);
         }
 
         .result-label {
@@ -1789,7 +1789,7 @@ export default function ClickableImage() {
           align-items: center;
           gap: 8px;
           background: var(--input-bg);
-          border: 1px solid var(--input-border);
+          border: 1px solid var(--glass-border);
           border-radius: 8px;
           padding: 8px 12px;
         }
@@ -1844,7 +1844,7 @@ export default function ClickableImage() {
 
         .edit-modal {
           background: var(--bg);
-          border: 1px solid var(--card-border);
+          border: 1px solid var(--glass-border);
           border-radius: 20px;
           width: 100%;
           max-width: 520px;
@@ -1858,7 +1858,7 @@ export default function ClickableImage() {
           align-items: center;
           justify-content: space-between;
           padding: 16px 20px;
-          border-bottom: 1px solid var(--card-border);
+          border-bottom: 1px solid var(--glass-border);
         }
 
         .modal-header h3 {
@@ -1867,7 +1867,7 @@ export default function ClickableImage() {
           gap: 8px;
           font-size: 1rem;
           font-weight: 700;
-          color: var(--text);
+          color: var(--text-main);
           margin: 0;
         }
 
@@ -1878,7 +1878,7 @@ export default function ClickableImage() {
           width: 32px;
           height: 32px;
           background: transparent;
-          border: 1px solid var(--card-border);
+          border: 1px solid var(--glass-border);
           border-radius: 8px;
           color: var(--text-muted);
           cursor: pointer;
@@ -1955,9 +1955,9 @@ export default function ClickableImage() {
           gap: 6px;
           padding: 8px 14px;
           background: var(--input-bg);
-          border: 1px solid var(--input-border);
+          border: 1px solid var(--glass-border);
           border-radius: 8px;
-          color: var(--text);
+          color: var(--text-main);
           font-size: 0.8rem;
           font-weight: 600;
           cursor: pointer;
@@ -1972,7 +1972,7 @@ export default function ClickableImage() {
         .btn-reset {
           padding: 8px 14px;
           background: transparent;
-          border: 1px solid var(--card-border);
+          border: 1px solid var(--glass-border);
           border-radius: 8px;
           color: var(--text-muted);
           font-size: 0.8rem;
@@ -2108,7 +2108,7 @@ export default function ClickableImage() {
           align-items: center;
           gap: 8px;
           background: var(--input-bg);
-          border: 1px solid var(--input-border);
+          border: 1px solid var(--glass-border);
           border-radius: 8px;
           padding: 8px 12px;
         }
@@ -2180,7 +2180,7 @@ export default function ClickableImage() {
 
         /* OG Override Panel */
         .og-override-panel {
-          border: 1px solid var(--card-border);
+          border: 1px solid var(--glass-border);
           border-radius: 12px;
           padding: 16px;
           margin: 16px 0;
@@ -2190,7 +2190,7 @@ export default function ClickableImage() {
         .og-override-panel legend {
           font-size: 0.85rem;
           font-weight: 700;
-          color: var(--text);
+          color: var(--text-main);
           padding: 0 8px;
         }
 
@@ -2204,11 +2204,11 @@ export default function ClickableImage() {
         .og-override-panel textarea {
           width: 100%;
           background: var(--input-bg);
-          border: 1px solid var(--input-border);
+          border: 1px solid var(--glass-border);
           border-radius: 8px;
           padding: 10px 12px;
           font-size: 0.85rem;
-          color: var(--text);
+          color: var(--text-main);
           outline: none;
           font-family: inherit;
           transition: border-color 0.2s;
@@ -2225,7 +2225,7 @@ export default function ClickableImage() {
 
         /* Dropzone Styles */
         .dropzone {
-          border: 2px dashed var(--card-border);
+          border: 2px dashed var(--glass-border);
           border-radius: 12px;
           background: rgba(168, 85, 247, 0.02);
           cursor: pointer;

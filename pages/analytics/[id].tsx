@@ -114,7 +114,7 @@ const AnalyticsDashboard: React.FC = () => {
   };
 
   const StatCard = ({ title, value, icon, color }: any) => (
-    <div className={`stat-card stat-${color}`}>
+    <div className="glass-panel" style={{ padding: "24px", display: "flex", alignItems: "center", gap: "16px", flex: 1, minWidth: "220px", borderTop: `4px solid var(--${color} == "purple" ? "primary" : "border")` }}>
       <div className="stat-icon">{icon}</div>
       <div>
         <p className="stat-label">{title}</p>
@@ -141,12 +141,12 @@ const AnalyticsDashboard: React.FC = () => {
 
       <Header />
 
-      <div className="dashboard-layout">
+      <div className="studio-layout" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "20px" }}>
         {/* Page Header */}
         <div className="page-header">
           <div className="page-header-left">
             <Link href="/profile">
-              <a className="btn-back">
+              <a className="btn-secondary" style={{ padding: "10px 16px" }}>
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
@@ -176,7 +176,7 @@ const AnalyticsDashboard: React.FC = () => {
                 className="search-input"
               />
             </div>
-            <button type="submit" className="btn-search">Check Analytics</button>
+            <button type="submit" className="btn-primary">Check Analytics</button>
           </form>
         </div>
 
@@ -251,7 +251,7 @@ const AnalyticsDashboard: React.FC = () => {
             </div>
 
             {/* Clicks Over Time Chart */}
-            <div className="chart-card full">
+            <div className="glass-panel" style={{ padding: "24px", width: "100%" }}>
               <h3 className="chart-title">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -276,7 +276,7 @@ const AnalyticsDashboard: React.FC = () => {
             {/* Two-col charts */}
             <div className="charts-row">
               {/* Top Countries */}
-              <div className="chart-card">
+              <div className="glass-panel" style={{ padding: "24px", flex: 1, minWidth: "300px" }}>
                 <h3 className="chart-title">
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -308,7 +308,7 @@ const AnalyticsDashboard: React.FC = () => {
               </div>
 
               {/* Platforms Pie */}
-              <div className="chart-card">
+              <div className="glass-panel" style={{ padding: "24px", flex: 1, minWidth: "300px" }}>
                 <h3 className="chart-title">
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -351,7 +351,7 @@ const AnalyticsDashboard: React.FC = () => {
             {/* Referrers & Devices */}
             <div className="charts-row">
               {/* Referrers */}
-              <div className="chart-card">
+              <div className="glass-panel" style={{ padding: "24px", flex: 1, minWidth: "300px" }}>
                 <h3 className="chart-title">
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -384,7 +384,7 @@ const AnalyticsDashboard: React.FC = () => {
               </div>
 
               {/* Devices */}
-              <div className="chart-card">
+              <div className="glass-panel" style={{ padding: "24px", flex: 1, minWidth: "300px" }}>
                 <h3 className="chart-title">
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -413,7 +413,7 @@ const AnalyticsDashboard: React.FC = () => {
 
             {/* Recent Visits Table */}
             {data?.recentVisits?.length > 0 && (
-              <div className="chart-card full">
+              <div className="glass-panel" style={{ padding: "24px", width: "100%" }}>
                 <h3 className="chart-title">
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -467,12 +467,12 @@ const AnalyticsDashboard: React.FC = () => {
       </div>
 
       <style jsx global>{`
-        body { background: var(--bg); color: var(--text); margin: 0; }
+        body { background: var(--bg-main); color: var(--text-main); margin: 0; }
         
         .page-wrapper {
           min-height: 100vh;
-          background: var(--bg);
-          color: var(--text);
+          background: var(--bg-main);
+          color: var(--text-main);
           font-family: 'Outfit', sans-serif;
         }
 
@@ -508,7 +508,7 @@ const AnalyticsDashboard: React.FC = () => {
           background: var(--card-bg, rgba(255,255,255,0.05));
           border: 1px solid var(--card-border, rgba(255,255,255,0.1));
           border-radius: 10px;
-          color: var(--text-muted, #9ca3af);
+          color: var(--text-muted);
           font-weight: 600;
           text-decoration: none;
           font-size: 0.875rem;
@@ -517,7 +517,7 @@ const AnalyticsDashboard: React.FC = () => {
         }
 
         .btn-back:hover {
-          color: var(--text);
+          color: var(--text-main);
           border-color: rgba(168,85,247,0.4);
         }
 
@@ -525,7 +525,7 @@ const AnalyticsDashboard: React.FC = () => {
           font-size: 1.8rem;
           font-weight: 800;
           margin: 0;
-          color: var(--text);
+          color: var(--text-main);
           display: flex;
           align-items: center;
           gap: 10px;
@@ -543,7 +543,7 @@ const AnalyticsDashboard: React.FC = () => {
 
         .page-subtitle {
           margin: 4px 0 0;
-          color: var(--text-muted, #9ca3af);
+          color: var(--text-muted);
           font-size: 0.9rem;
         }
 
@@ -571,7 +571,7 @@ const AnalyticsDashboard: React.FC = () => {
         .search-input {
           background: var(--card-bg, rgba(255,255,255,0.05));
           border: 1px solid var(--card-border, rgba(255,255,255,0.1));
-          color: var(--text);
+          color: var(--text-main);
           border-radius: 10px;
           padding: 10px 16px 10px 40px;
           font-size: 0.9rem;
@@ -613,16 +613,16 @@ const AnalyticsDashboard: React.FC = () => {
           border: 1px solid rgba(168,85,247,0.15);
           border-radius: 12px;
           font-size: 0.85rem;
-          color: var(--text-muted, #9ca3af);
+          color: var(--text-muted);
           line-height: 1.5;
         }
 
-        .arch-banner strong { color: var(--text); }
+        .arch-banner strong { color: var(--text-main); }
 
         /* Stats Grid */
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 16px;
         }
 
@@ -653,7 +653,7 @@ const AnalyticsDashboard: React.FC = () => {
 
         .stat-label {
           font-size: 0.8rem;
-          color: var(--text-muted, #9ca3af);
+          color: var(--text-muted);
           margin: 0 0 4px;
           font-weight: 500;
         }
@@ -661,7 +661,7 @@ const AnalyticsDashboard: React.FC = () => {
         .stat-value {
           font-size: 2rem;
           font-weight: 800;
-          color: var(--text);
+          color: var(--text-main);
           margin: 0;
           line-height: 1;
         }
@@ -678,7 +678,7 @@ const AnalyticsDashboard: React.FC = () => {
 
         .charts-row {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
           gap: 20px;
         }
 
@@ -688,7 +688,7 @@ const AnalyticsDashboard: React.FC = () => {
           gap: 8px;
           font-size: 1rem;
           font-weight: 700;
-          color: var(--text);
+          color: var(--text-main);
           margin: 0 0 20px;
         }
 
@@ -707,7 +707,7 @@ const AnalyticsDashboard: React.FC = () => {
           display: flex;
           align-items: center;
           gap: 8px;
-          color: var(--text);
+          color: var(--text-main);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -735,7 +735,7 @@ const AnalyticsDashboard: React.FC = () => {
         .list-item-count {
           font-size: 0.8rem;
           font-weight: 700;
-          color: var(--text-muted, #9ca3af);
+          color: var(--text-muted);
           text-align: right;
         }
 
@@ -752,8 +752,8 @@ const AnalyticsDashboard: React.FC = () => {
           background: rgba(255,255,255,0.03);
         }
 
-        .platform-name { flex: 1; color: var(--text); }
-        .platform-count { color: var(--text-muted, #9ca3af); font-weight: 700; font-size: 0.8rem; }
+        .platform-name { flex: 1; color: var(--text-main); }
+        .platform-count { color: var(--text-muted); font-weight: 700; font-size: 0.8rem; }
 
         /* Referrers */
         .referrer-list { display: flex; flex-direction: column; gap: 8px; }
@@ -770,7 +770,7 @@ const AnalyticsDashboard: React.FC = () => {
         }
 
         .referrer-left { display: flex; align-items: center; gap: 8px; overflow: hidden; }
-        .referrer-name { font-size: 0.8rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .referrer-name { font-size: 0.8rem; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .referrer-count { font-size: 0.8rem; font-weight: 700; color: #a855f7; white-space: nowrap; }
 
         /* Table */
@@ -785,7 +785,7 @@ const AnalyticsDashboard: React.FC = () => {
         .data-table th {
           padding: 10px 14px;
           text-align: left;
-          color: var(--text-muted, #9ca3af);
+          color: var(--text-muted);
           font-weight: 600;
           font-size: 0.78rem;
           text-transform: uppercase;
@@ -795,7 +795,7 @@ const AnalyticsDashboard: React.FC = () => {
 
         .data-table td {
           padding: 10px 14px;
-          color: var(--text);
+          color: var(--text-main);
           border-bottom: 1px solid rgba(255,255,255,0.04);
         }
 
@@ -833,7 +833,7 @@ const AnalyticsDashboard: React.FC = () => {
           text-align: center;
         }
 
-        .error-box h3 { font-size: 1.4rem; color: var(--text); margin: 0; }
+        .error-box h3 { font-size: 1.4rem; color: var(--text-main); margin: 0; }
         .error-box p { color: #9ca3af; margin: 0; max-width: 380px; }
 
         .btn-retry {

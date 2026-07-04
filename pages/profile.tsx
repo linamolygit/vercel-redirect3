@@ -86,40 +86,14 @@ export default function Profile() {
 
   if (loadingAuth) {
     return (
-      <div className="loader-screen">
-        <div className="spinner"></div>
-        <p>Loading Profile...</p>
-        <style jsx>{`
-          .loader-screen {
-            background: var(--bg);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #9ca3af;
-            font-family: sans-serif;
-            gap: 15px;
-          }
-          .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.05);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #a855f7;
-            animation: spin 1s linear infinite;
-          }
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', color: 'var(--text-main)' }}>
+        Loading Profile...
       </div>
     );
   }
 
   return (
-    <div className="wrapper">
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Head>
         <title>User Profile — LinkPika</title>
         <meta name="description" content="View and manage all your generated short links" />
@@ -127,54 +101,46 @@ export default function Profile() {
 
       <Header />
 
-      <div className="background-glows">
-        <div className="glow glow-1"></div>
-        <div className="glow glow-2"></div>
-      </div>
-
-      <main className="container">
-        <header className="profile-header">
-          <h1>My Profile Dashboard</h1>
-          <p className="subtitle">Manage your account details and generated social redirects.</p>
+      <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px', display: 'flex', flexDirection: 'column', gap: '30px', flex: 1, width: '100%' }}>
+        <header style={{ textAlign: 'center' }}>
+          <h1 style={{ fontSize: '36px', fontWeight: '800', margin: '0 0 10px 0', background: 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            My Profile Dashboard
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '16px' }}>Manage your account details and generated social redirects.</p>
         </header>
 
         {/* User Card */}
-        <div className="card info-card">
-          <div className="avatar-sec">
-            <div className="avatar-large">
+        <div className="glass-panel" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '30px', padding: '30px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 'bold' }}>
               {userName ? userName.substring(0, 2).toUpperCase() : "U"}
             </div>
-            <div className="avatar-info">
-              <h2>{userName || userEmail}</h2>
-              {userUsername && <span className="profile-handle" style={{ color: "#a855f7", fontSize: "0.85rem", display: "block", marginTop: "2px" }}>@{userUsername}</span>}
-              <span className="badge-user">PRO Member</span>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '24px', color: 'var(--text-main)' }}>{userName || userEmail}</h2>
+              {userUsername && <span style={{ color: 'var(--primary)', fontSize: '14px', display: 'block', marginTop: '4px' }}>@{userUsername}</span>}
+              <span style={{ display: 'inline-block', fontSize: '12px', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', padding: '4px 12px', borderRadius: '12px', marginTop: '8px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                PRO Member
+              </span>
             </div>
           </div>
-          <div className="stats-grid">
-            <div className="stat-box">
-              <span className="stat-num">{links.length}</span>
-              <span className="stat-label">Total Redirects Created</span>
+          
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '20px', borderRadius: '16px', minWidth: '160px', textAlign: 'center' }}>
+              <span style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--text-main)', display: 'block' }}>{links.length}</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Total Redirects Created</span>
             </div>
-            <div className="stat-box">
-              <span className="stat-num">Active</span>
-              <span className="stat-label">System Status</span>
+            <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '20px', borderRadius: '16px', minWidth: '160px', textAlign: 'center' }}>
+              <span style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--success)', display: 'block' }}>Active</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>System Status</span>
             </div>
           </div>
         </div>
 
         {/* Redirects Datatable */}
-        <div className="card links-card">
-          <div className="links-header">
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              Your Redirect Links
-            </h2>
-            <div className="search-bar-wrapper">
-              <svg className="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+        <div className="glass-panel" style={{ padding: '30px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '20px', marginBottom: '30px' }}>
+            <h2 className="section-title" style={{ margin: 0 }}>Your Redirect Links</h2>
+            <div className="control-row" style={{ minWidth: '300px' }}>
               <input
                 type="text"
                 placeholder="Search links by title or URL..."
@@ -185,21 +151,21 @@ export default function Profile() {
           </div>
 
           {loadingLinks ? (
-            <p className="loading-text">Loading redirect list...</p>
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading redirect list...</p>
           ) : filteredLinks.length === 0 ? (
-            <div className="no-records">
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
               <p>No redirects found. Convert your first link on the homepage!</p>
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="links-table">
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr>
-                    <th>Short ID</th>
-                    <th>Original URL</th>
-                    <th>Custom Title</th>
-                    <th>Created</th>
-                    <th>Actions</th>
+                    <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontSize: '13px', textTransform: 'uppercase' }}>Short ID</th>
+                    <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontSize: '13px', textTransform: 'uppercase' }}>Original URL</th>
+                    <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontSize: '13px', textTransform: 'uppercase' }}>Custom Title</th>
+                    <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontSize: '13px', textTransform: 'uppercase' }}>Created</th>
+                    <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontSize: '13px', textTransform: 'uppercase' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -210,47 +176,38 @@ export default function Profile() {
 
                     return (
                       <tr key={link.id}>
-                        <td>
-                          <span className="id-tag">{link.short_id}</span>
+                        <td style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+                          <span style={{ background: 'rgba(168, 85, 247, 0.1)', color: 'var(--primary)', padding: '4px 8px', borderRadius: '6px', fontFamily: 'monospace', fontWeight: 'bold' }}>{link.short_id}</span>
                         </td>
-                        <td>
-                          <div className="truncate" title={link.original_url}>
+                        <td style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+                          <div style={{ maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-main)', fontSize: '14px' }} title={link.original_url}>
                             {link.original_url}
                           </div>
                         </td>
-                        <td>
-                          <div className="truncate" title={link.custom_title || "N/A"}>
-                            {link.custom_title || <span className="dim">No custom title</span>}
+                        <td style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+                          <div style={{ maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-main)', fontSize: '14px' }} title={link.custom_title || "N/A"}>
+                            {link.custom_title || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No custom title</span>}
                           </div>
                         </td>
-                        <td>{new Date(link.created_at).toLocaleDateString()}</td>
-                        <td>
+                        <td style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontSize: '14px' }}>
+                          {new Date(link.created_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
                           <div style={{ display: "flex", gap: "8px" }}>
                             <button
                               type="button"
-                              className={`btn-table-copy ${copiedId === link.id ? "copied" : ""}`}
+                              className="btn-secondary"
                               onClick={() => copyToClipboard(fullShortLink, link.id)}
                             >
-                              {copiedId === link.id ? (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  Copied!
-                                </span>
-                              ) : "Copy Link"}
+                              {copiedId === link.id ? "Copied!" : "Copy Link"}
                             </button>
                             <button
                               type="button"
-                              className="btn-table-analytics"
+                              className="btn-secondary"
+                              style={{ color: 'var(--primary)', borderColor: 'rgba(168, 85, 247, 0.3)' }}
                               onClick={() => router.push(`/analytics/${link.short_id}`)}
                             >
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                                Analytics
-                              </span>
+                              Analytics
                             </button>
                           </div>
                         </td>
@@ -265,340 +222,6 @@ export default function Profile() {
       </main>
 
       <Footer />
-
-      <style jsx>{`
-        .wrapper {
-          min-height: 100vh;
-          background: var(--bg);
-          color: var(--text);
-          font-family: 'Outfit', sans-serif;
-          position: relative;
-          overflow-x: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .background-glows {
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          top: 0;
-          left: 0;
-          overflow: hidden;
-          z-index: 1;
-          pointer-events: none;
-        }
-
-        .glow {
-          position: absolute;
-          width: 600px;
-          height: 600px;
-          border-radius: 50%;
-          filter: blur(140px);
-          opacity: 0.15;
-        }
-
-        .glow-1 {
-          top: -10%;
-          left: -10%;
-          background: #6366f1;
-        }
-
-        .glow-2 {
-          bottom: 20%;
-          right: -10%;
-          background: #a855f7;
-        }
-
-        .container {
-          max-width: 1200px;
-          margin: 60px auto;
-          padding: 0 25px;
-          display: flex;
-          flex-direction: column;
-          gap: 35px;
-          position: relative;
-          z-index: 2;
-          flex: 1;
-        }
-
-        .profile-header {
-          text-align: center;
-        }
-
-        .profile-header h1 {
-          font-size: 2.8rem;
-          font-weight: 800;
-          background: linear-gradient(135deg, #fff 0%, #a855f7 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          margin-bottom: 12px;
-          letter-spacing: -1px;
-        }
-
-        .subtitle {
-          font-size: 1.1rem;
-          color: #9ca3af;
-        }
-
-        .card {
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
-          border-radius: 24px;
-          padding: 40px;
-          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
-        }
-
-        .info-card {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 30px;
-        }
-
-        .avatar-sec {
-          display: flex;
-          align-items: center;
-          gap: 20px;
-        }
-
-        .avatar-large {
-          width: 70px;
-          height: 70px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-          color: #fff;
-          font-weight: 800;
-          font-size: 1.8rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
-        }
-
-        .avatar-info h2 {
-          font-size: 1.4rem;
-          font-weight: 700;
-          color: var(--text);
-        }
-
-        .badge-user {
-          display: inline-block;
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: #c084fc;
-          background: rgba(168, 85, 247, 0.15);
-          border: 1px solid rgba(168, 85, 247, 0.3);
-          padding: 4px 10px;
-          border-radius: 99px;
-          margin-top: 6px;
-        }
-
-        .stats-grid {
-          display: flex;
-          gap: 25px;
-        }
-
-        .stat-box {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          padding: 15px 25px;
-          border-radius: 16px;
-          min-width: 150px;
-        }
-
-        .stat-num {
-          font-size: 2rem;
-          font-weight: 800;
-          color: var(--text);
-        }
-
-        .stat-label {
-          font-size: 0.8rem;
-          color: #9ca3af;
-          margin-top: 4px;
-        }
-
-        .links-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 25px;
-          gap: 20px;
-        }
-
-        .links-header h2 {
-          font-size: 1.3rem;
-          font-weight: 700;
-          color: var(--text);
-        }
-
-        .search-bar-wrapper {
-          position: relative;
-          max-width: 320px;
-          width: 100%;
-        }
-
-        .search-icon {
-          position: absolute;
-          left: 14px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 18px;
-          height: 18px;
-          color: #9ca3af;
-        }
-
-        .search-bar-wrapper input {
-          width: 100%;
-          padding: 12px 18px 12px 42px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-          color: var(--text);
-          outline: none;
-          font-size: 0.9rem;
-          transition: all 0.3s ease;
-        }
-
-        .search-bar-wrapper input:focus {
-          border-color: #a855f7;
-          box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
-        }
-
-        .loading-text {
-          color: #9ca3af;
-          text-align: center;
-          padding: 20px;
-        }
-
-        .no-records {
-          text-align: center;
-          padding: 40px;
-          color: #9ca3af;
-        }
-
-        /* Responsive Table */
-        .table-responsive {
-          width: 100%;
-          overflow-x: auto;
-        }
-
-        .links-table {
-          width: 100%;
-          border-collapse: collapse;
-          text-align: left;
-        }
-
-        .links-table th,
-        .links-table td {
-          padding: 16px 20px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .links-table th {
-          font-size: 0.8rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: #9ca3af;
-        }
-
-        .links-table td {
-          font-size: 0.9rem;
-          color: #d1d5db;
-        }
-
-        .id-tag {
-          font-family: monospace;
-          background: rgba(168, 85, 247, 0.1);
-          border: 1px solid rgba(168, 85, 247, 0.2);
-          color: #c084fc;
-          padding: 4px 8px;
-          border-radius: 6px;
-          font-weight: 600;
-        }
-
-        .truncate {
-          max-width: 250px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .dim {
-          color: #6b7280;
-          font-style: italic;
-        }
-
-        .btn-table-copy {
-          background: rgba(168, 85, 247, 0.1);
-          border: 1px solid rgba(168, 85, 247, 0.25);
-          color: #c084fc;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .btn-table-copy:hover {
-          background: rgba(168, 85, 247, 0.2);
-          border-color: rgba(168, 85, 247, 0.4);
-        }
-
-        .btn-table-copy.copied {
-          background: rgba(34, 197, 94, 0.15);
-          border-color: rgba(34, 197, 94, 0.3);
-          color: #4ade80;
-        }
-
-        .btn-table-analytics {
-          background: rgba(99, 102, 241, 0.1);
-          border: 1px solid rgba(99, 102, 241, 0.25);
-          color: #818cf8;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .btn-table-analytics:hover {
-          background: rgba(99, 102, 241, 0.2);
-          border-color: rgba(99, 102, 241, 0.4);
-        }
-
-        @media (max-width: 768px) {
-          .info-card {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 20px;
-          }
-          .stats-grid {
-            width: 100%;
-            justify-content: space-between;
-          }
-          .links-header {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-          .search-bar-wrapper {
-            max-width: 100%;
-          }
-          .profile-header h1 {
-            font-size: 2.1rem;
-          }
-          .card {
-            padding: 25px 20px;
-          }
-        }
-      `}</style>
     </div>
   );
 }

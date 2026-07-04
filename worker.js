@@ -567,7 +567,7 @@ function buildHomepageHtml(originUrl, defaultWpBaseUrl) {
       padding: 14px 18px;
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
+      border-radius: 10px; 
       color: var(--text);
       font-size: 0.95rem;
       font-family: inherit;
