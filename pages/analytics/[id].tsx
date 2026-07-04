@@ -141,7 +141,7 @@ const AnalyticsDashboard: React.FC = () => {
 
       <Header />
 
-      <div className="studio-layout" style={{ display: "flex", flexDirection: "column", flex: 1, padding: "20px" }}>
+      <div className="analytics-container">
         {/* Page Header */}
         <div className="page-header">
           <div className="page-header-left">
@@ -482,6 +482,17 @@ const AnalyticsDashboard: React.FC = () => {
           padding: 30px 24px 60px;
           display: flex;
           flex-direction: column;
+          gap: 24px;
+        }
+
+        .analytics-container {
+          max-width: 1240px;
+          margin: 0 auto;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          padding: 30px 20px;
           gap: 24px;
         }
 

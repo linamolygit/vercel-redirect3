@@ -18,6 +18,7 @@ interface SavedLink {
 
 const Home: NextPage = () => {
   const [wpUrl, setWpUrl] = useState("");
+  const [isCustomUrl, setIsCustomUrl] = useState(false);
   const [wpPostPath, setWpPostPath] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [customDesc, setCustomDesc] = useState("");
@@ -327,19 +328,30 @@ const Home: NextPage = () => {
             <form onSubmit={handleConvert} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               
               <div className="control-row">
-                <label>WordPress Post URL</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ margin: 0 }}>{isCustomUrl ? "Custom Destination URL" : "WordPress Post URL"}</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Custom URL</span>
+                    <label className="switch">
+                      <input type="checkbox" checked={isCustomUrl} onChange={(e) => setIsCustomUrl(e.target.checked)} />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <input
                     type="url"
-                    placeholder="https://yourblog.com/my-awesome-post/"
+                    placeholder={isCustomUrl ? "https://anywebsite.com/destination" : "https://yourblog.com/my-awesome-post/"}
                     value={wpUrl}
                     onChange={(e) => setWpUrl(e.target.value)}
                     required
                     style={{ flex: 1 }}
                   />
-                  <button type="button" className="btn-secondary" onClick={handleFetchMetadata} disabled={fetchingMeta}>
-                    {fetchingMeta ? "Fetching..." : "Auto Fetch Details"}
-                  </button>
+                  {!isCustomUrl && (
+                    <button type="button" className="btn-secondary" onClick={handleFetchMetadata} disabled={fetchingMeta}>
+                      {fetchingMeta ? "Fetching..." : "Auto Fetch Details"}
+                    </button>
+                  )}
                 </div>
               </div>
 
