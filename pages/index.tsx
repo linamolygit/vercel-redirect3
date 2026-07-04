@@ -42,6 +42,10 @@ const Home: NextPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [editingLink, setEditingLink] = useState<SavedLink | null>(null);
+  
+  const [customAlias, setCustomAlias] = useState("");
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -130,6 +134,7 @@ const Home: NextPage = () => {
           customTitle: customTitle,
           customDesc: customDesc,
           customImage: customImg,
+          customShortId: customAlias,
         }),
       });
 
@@ -411,20 +416,48 @@ const Home: NextPage = () => {
                         borderRadius: '16px', 
                         padding: '30px', 
                         textAlign: 'center', 
-                        cursor: 'pointer',
-                        background: isDragging ? 'var(--btn-hover)' : 'var(--input-bg)'
+                        background: isDragging ? 'var(--btn-hover)' : 'var(--input-bg)',
+                        position: 'relative'
                       }}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      onClick={() => document.getElementById("imageFile")?.click()}
                     >
-                      <input type="file" id="imageFile" accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
+                      <input type="file" ref={fileInputRef} accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
+                      
                       {customImg ? (
-                        <img src={customImg} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
+                        <div>
+                          <img src={customImg} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '16px' }} />
+                          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                            <button type="button" className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
+                              Change Image
+                            </button>
+                            <button 
+                              type="button" 
+                              className="btn-secondary" 
+                              style={{ color: '#ef4444' }} 
+                              onClick={() => {
+                                setCustomImg("");
+                                if (fileInputRef.current) fileInputRef.current.value = "";
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
                       ) : (
-                        <div style={{ color: 'var(--text-muted)' }}>
+                        <div 
+                          style={{ color: 'var(--text-muted)', cursor: 'pointer' }}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
                           {uploadingImage ? "Uploading..." : "Click to select or drag & drop an image"}
+                          {!uploadingImage && (
+                            <div style={{ marginTop: '12px' }}>
+                              <button type="button" className="btn-secondary" style={{ pointerEvents: 'none' }}>
+                                Upload Image
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -434,11 +467,29 @@ const Home: NextPage = () => {
                         type="url"
                         placeholder="Or enter image URL manually..."
                         value={customImg}
-                        onChange={(e) => setCustomImg(e.target.value)}
+                        onChange={(e) => {
+                          setCustomImg(e.target.value);
+                          if (!e.target.value && fileInputRef.current) fileInputRef.current.value = "";
+                        }}
                         style={{ width: '100%' }}
                       />
                     </div>
                     {uploadSuccess && <span style={{ color: 'var(--success)', fontSize: '13px', marginTop: '5px' }}>Image uploaded successfully! <svg style={{display:'inline', width:'18px', height:'18px', verticalAlign:'middle', marginRight:'4px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg></span>}
+                  </div>
+
+                  <div className="control-row" style={{ marginTop: '8px' }}>
+                    <label>Custom Alias (Short ID)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--input-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: '0 12px' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>linkpika.com/</span>
+                      <input
+                        type="text"
+                        placeholder="my-custom-link"
+                        value={customAlias}
+                        onChange={(e) => setCustomAlias(e.target.value)}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', outline: 'none', padding: '12px 0 12px 4px', width: '100%', fontSize: '14px' }}
+                      />
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>Optional. Leave blank to generate a random short ID.</p>
                   </div>
                 </div>
               </div>

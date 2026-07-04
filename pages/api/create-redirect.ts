@@ -50,18 +50,41 @@ export default async function handler(
     customTitle,
     customDesc,
     customImage,
+    customShortId,
   } = req.body;
 
   if (!originalUrl) {
     return res.status(400).json({ error: "Missing original redirect URL" });
   }
 
+  let finalShortId = "";
+
   try {
     // Ensure DB is initialized
     await initDb();
 
-    // Generate unique short ID
-    const shortId = await generateUniqueShortId();
+    if (customShortId) {
+      // Validate custom alias format
+      const isValidShortId = /^[a-zA-Z0-9-]+$/.test(customShortId);
+      if (!isValidShortId) {
+        return res.status(400).json({ error: "Custom alias can only contain letters, numbers, and hyphens." });
+      }
+
+      // Check if it already exists
+      const existing = (await query(
+        "SELECT id FROM redirects WHERE short_id = ?",
+        [customShortId]
+      )) as any[];
+
+      if (existing && existing.length > 0) {
+        return res.status(400).json({ error: "This custom alias is already taken. Please choose another one." });
+      }
+      
+      finalShortId = customShortId;
+    } else {
+      // Generate unique short ID
+      finalShortId = await generateUniqueShortId();
+    }
 
     // Insert redirect entry into MySQL linked to the user's ID
     const insertQuery = `
@@ -69,7 +92,7 @@ export default async function handler(
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     await query(insertQuery, [
-      shortId,
+      finalShortId,
       originalUrl,
       wpPostPath || null,
       customTitle || null,
@@ -81,11 +104,11 @@ export default async function handler(
     // Construct the short link
     const host = req.headers.host || "localhost:3000";
     const protocol = req.headers["x-forwarded-proto"] || "http";
-    const shortLink = `${protocol}://${host}/${shortId}`;
+    const shortLink = `${protocol}://${host}/${finalShortId}`;
 
     return res.status(200).json({
       success: true,
-      shortId,
+      shortId: finalShortId,
       shortLink,
     });
   } catch (error: any) {
