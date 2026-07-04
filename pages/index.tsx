@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import EditLinkModal from "../components/EditLinkModal";
 
 interface SavedLink {
   id: number;
@@ -40,6 +41,7 @@ const Home: NextPage = () => {
   const [userUsername, setUserUsername] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [editingLink, setEditingLink] = useState<SavedLink | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -298,10 +300,13 @@ const Home: NextPage = () => {
                     </div>
                     
                     <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                      <button className="btn-secondary" style={{ flex: 1, padding: '6px' }} onClick={() => copyToClipboard(fullShortLink, link.id)}>
+                      <button className="btn-secondary" style={{ flex: 1, padding: '6px', fontSize: '11px' }} onClick={() => copyToClipboard(fullShortLink, link.id)}>
                         {isCopied ? "Copied" : "Copy"}
                       </button>
-                      <button className="btn-secondary" style={{ flex: 1, padding: '6px', color: 'var(--primary)' }} onClick={() => router.push(`/analytics/${link.short_id}`)}>
+                      <button className="btn-secondary" style={{ flex: 1, padding: '6px', fontSize: '11px' }} onClick={() => setEditingLink(link)}>
+                        Edit
+                      </button>
+                      <button className="btn-secondary" style={{ flex: 1, padding: '6px', color: 'var(--primary)', fontSize: '11px' }} onClick={() => router.push(`/analytics/${link.short_id}`)}>
                         Stats
                       </button>
                     </div>
@@ -478,6 +483,21 @@ const Home: NextPage = () => {
         </main>
       </div>
       <Footer />
+      
+      <EditLinkModal 
+        isOpen={!!editingLink} 
+        link={editingLink} 
+        onClose={() => setEditingLink(null)} 
+        onSuccess={(updatedLink) => {
+          // Update in local state
+          const newHistory = history.map(l => l.id === updatedLink.id ? updatedLink : l);
+          setHistory(newHistory);
+          // Update localStorage for guests
+          if (!userEmail) {
+            localStorage.setItem("guest_links", JSON.stringify(newHistory));
+          }
+        }} 
+      />
     </div>
   );
 };

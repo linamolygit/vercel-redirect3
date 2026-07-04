@@ -3,6 +3,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import EditLinkModal from "../components/EditLinkModal";
 
 interface SavedLink {
   id: number;
@@ -24,6 +25,7 @@ export default function Profile() {
   const [loadingLinks, setLoadingLinks] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [editingLink, setEditingLink] = useState<SavedLink | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -204,6 +206,13 @@ export default function Profile() {
                             <button
                               type="button"
                               className="btn-secondary"
+                              onClick={() => setEditingLink(link)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-secondary"
                               style={{ color: 'var(--primary)', borderColor: 'rgba(168, 85, 247, 0.3)' }}
                               onClick={() => router.push(`/analytics/${link.short_id}`)}
                             >
@@ -222,6 +231,17 @@ export default function Profile() {
       </main>
 
       <Footer />
+
+      <EditLinkModal 
+        isOpen={!!editingLink} 
+        link={editingLink} 
+        onClose={() => setEditingLink(null)} 
+        onSuccess={(updatedLink) => {
+          // Update in local state
+          const newLinks = links.map(l => l.id === updatedLink.id ? updatedLink : l);
+          setLinks(newLinks);
+        }} 
+      />
     </div>
   );
 }
