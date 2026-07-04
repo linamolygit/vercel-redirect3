@@ -72,8 +72,8 @@ const ResetPassword: NextPage = () => {
             <p className="description">Enter your new password to restore account access.</p>
           </header>
 
-          {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
-          {successMessage && <div className="success-banner">✅ {successMessage}</div>}
+          {errorMessage && <div className="error-banner"><svg style={{display:'inline', width:'18px', height:'18px', verticalAlign:'middle', marginRight:'4px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg> {errorMessage}</div>}
+          {successMessage && <div className="success-banner"><svg style={{display:'inline', width:'18px', height:'18px', verticalAlign:'middle', marginRight:'4px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> {successMessage}</div>}
 
           <form onSubmit={handleSubmit} className="form-panel">
             <div className="control-row">
@@ -101,7 +101,7 @@ const ResetPassword: NextPage = () => {
             </div>
 
             <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%', marginTop: '10px' }}>
-              {loading ? "Updating Password... ⏳" : "Update Password"}
+              {loading ? "Updating Password..." : "Update Password"}
             </button>
           </form>
 

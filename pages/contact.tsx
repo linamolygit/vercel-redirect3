@@ -68,8 +68,8 @@ export default function Contact() {
         <div className="contact-grid">
           {/* Form */}
           <div className="card form-card">
-            <h2>Send a Message ✉️</h2>
-            {success && <div className="success-banner">Message sent successfully! We have received your query. ✅</div>}
+            <h2>Send a Message </h2>
+            {success && <div className="success-banner">Message sent successfully! We have received your query. <svg style={{display:'inline', width:'18px', height:'18px', verticalAlign:'middle', marginRight:'4px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg></div>}
             
             <form onSubmit={handleSubmit} className="form-panel">
               <div className="input-group">

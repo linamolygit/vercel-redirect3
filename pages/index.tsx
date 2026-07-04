@@ -244,7 +244,7 @@ const Home: NextPage = () => {
       <Header />
 
       {/* Studio Layout */}
-      <div className="studio-layout">
+      <div className="studio-layout-2col">
         
         {/* Left Sidebar */}
         <aside className="sidebar glass-panel" style={{ margin: '20px' }}>
@@ -263,7 +263,7 @@ const Home: NextPage = () => {
             </div>
           </div>
 
-          <div className="section-title">Redirect Links 🔗</div>
+          <div className="section-title">Redirect Links <svg style={{display:'inline', width:'18px', height:'18px', verticalAlign:'middle', marginRight:'4px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg></div>
           <div className="control-row" style={{ marginBottom: '20px' }}>
             <input
               type="text"
@@ -345,7 +345,7 @@ const Home: NextPage = () => {
 
               {errorMessage && (
                 <div style={{ background: 'rgba(255, 59, 48, 0.1)', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '12px', borderRadius: '8px', fontSize: '14px' }}>
-                  ⚠️ {errorMessage}
+                  <svg style={{display:'inline', width:'18px', height:'18px', verticalAlign:'middle', marginRight:'4px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg> {errorMessage}
                 </div>
               )}
 
@@ -409,13 +409,13 @@ const Home: NextPage = () => {
                         style={{ width: '100%' }}
                       />
                     </div>
-                    {uploadSuccess && <span style={{ color: 'var(--success)', fontSize: '13px', marginTop: '5px' }}>Image uploaded successfully! ✅</span>}
+                    {uploadSuccess && <span style={{ color: 'var(--success)', fontSize: '13px', marginTop: '5px' }}>Image uploaded successfully! <svg style={{display:'inline', width:'18px', height:'18px', verticalAlign:'middle', marginRight:'4px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg></span>}
                   </div>
                 </div>
               </div>
 
               <button type="submit" className="btn-primary" disabled={converting} style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
-                {converting ? "Generating Link... ⏳" : "Generate Short Link"}
+                {converting ? "Generating Link..." : "Generate Short Link"}
               </button>
             </form>
 
@@ -439,7 +439,7 @@ const Home: NextPage = () => {
                     <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px' }}>LP</div>
                     <div>
                       <div style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--text-main)' }}>LinkPika Share Page</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Just now · 🌍</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Just now · <svg style={{display:'inline', width:'14px', height:'14px', verticalAlign:'middle', marginLeft:'4px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg></div>
                     </div>
                   </div>
                   <div style={{ padding: '0 12px 10px', fontSize: '14px', color: 'var(--text-main)' }}>Check this out!</div>

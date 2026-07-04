@@ -71,8 +71,8 @@ export default function Footer() {
       <style jsx>{`
         .footer {
           width: 100%;
-          background: #04010a;
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          background: var(--bg-main);
+          border-top: 1px solid var(--glass-border);
           padding: 60px 0 30px;
           margin-top: 50px;
         }
@@ -96,13 +96,13 @@ export default function Footer() {
           display: flex;
           align-items: center;
           gap: 10px;
-          color: #f3f4f6;
+          color: var(--text-main);
         }
 
         .logo-icon {
           width: 24px;
           height: 24px;
-          color: #a855f7;
+          color: var(--primary);
         }
 
         .logo-text {
@@ -113,7 +113,7 @@ export default function Footer() {
 
         .brand-tagline {
           font-size: 0.9rem;
-          color: #9ca3af;
+          color: var(--text-muted);
           line-height: 1.6;
           max-width: 320px;
         }
@@ -127,7 +127,7 @@ export default function Footer() {
         .footer-column h4 {
           font-size: 0.95rem;
           font-weight: 700;
-          color: #f3f4f6;
+          color: var(--text-main);
           text-transform: uppercase;
           letter-spacing: 1px;
         }
@@ -143,20 +143,20 @@ export default function Footer() {
 
         .footer-links li a {
           font-size: 0.9rem;
-          color: #9ca3af;
+          color: var(--text-muted);
           text-decoration: none;
           transition: color 0.2s ease;
         }
 
         .footer-links li a:hover {
-          color: #c084fc;
+          color: var(--primary);
         }
 
         .footer-bottom {
           max-width: 1200px;
           margin: 40px auto 0;
           padding: 25px 25px 0;
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          border-top: 1px solid var(--glass-border);
           display: flex;
           justify-content: center;
           align-items: center;
@@ -164,7 +164,7 @@ export default function Footer() {
 
         .footer-bottom p {
           font-size: 0.85rem;
-          color: #6b7280;
+          color: var(--text-muted);
           text-align: center;
         }
 
