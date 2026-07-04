@@ -199,24 +199,41 @@ export default function Profile() {
                             <button
                               type="button"
                               className="btn-secondary"
+                              title="Copy Link"
+                              style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}
                               onClick={() => copyToClipboard(fullShortLink, link.id)}
                             >
-                              {copiedId === link.id ? "Copied!" : "Copy Link"}
+                              {copiedId === link.id ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.56 2.25h-3.12a2.25 2.25 0 0 0-2.106 1.638m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184m-7.332 0h7.332M12 10.5h.008v.008H12V10.5Zm0 3h.008v.008H12v-.008Zm0 3h.008v.008H12v-.008Zm4.5-6h.008v.008h-.008V10.5Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
+                                </svg>
+                              )}
                             </button>
                             <button
                               type="button"
                               className="btn-secondary"
+                              title="Edit Link"
+                              style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}
                               onClick={() => setEditingLink(link)}
                             >
-                              Edit
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                              </svg>
                             </button>
                             <button
                               type="button"
                               className="btn-secondary"
-                              style={{ color: 'var(--primary)', borderColor: 'rgba(168, 85, 247, 0.3)' }}
+                              title="Analytics"
+                              style={{ color: 'var(--primary)', borderColor: 'rgba(168, 85, 247, 0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}
                               onClick={() => router.push(`/analytics/${link.short_id}`)}
                             >
-                              Analytics
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                              </svg>
                             </button>
                           </div>
                         </td>
