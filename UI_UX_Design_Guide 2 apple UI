@@ -1,0 +1,1282 @@
+# 🎨 ThumbCraft Studio — UI/UX Design Guide ### "Apple Glass Edition" Design System>Is guide ko follow karke tum bilkul same look & feel ka koi bhi tool bana sakte ho. --- ## 1. 🎭 Design Philosophy **Theme Name:** Apple Glass / Glassmorphism SaaS **Inspiration:** macOS Ventura+iOS 17 design language **Mood:** Premium,
+Clean,
+Professional,
+Frosted **Core Principles:** - Glassmorphism everywhere — panels,
+inputs,
+modals sab frosted glass - Dark/Light mode dono support — auto time-based detection - Micro-animations — every interaction has a response - Apple-inspired spacing,
+radii,
+and typography - 3-column studio layout (Left Controls | Center Preview | Right Settings) --- ## 2. 🎨 Color System (CSS Variables) ### Light Mode — "Apple Frost"
+
+```css:root {
+    /* Backgrounds */
+    --bg-main: #f5f5f7;
+    /* Page background — Apple's grey */
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    /* Glass panel background */
+    --glass-border: rgba(255, 255, 255, 0.6);
+    /* Glass panel border */
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    /* Glass panel shadow */
+    --input-bg: rgba(255, 255, 255, 0.8);
+    /* Input fields background */
+    --btn-hover: rgba(0, 0, 0, 0.05);
+    /* Hover state for transparent buttons */
+    --track-bg: #e5e5ea;
+    /* Slider track color */
+
+    /* Text */
+    --text-main: #1d1d1f;
+    /* Primary text — Apple's near-black */
+    --text-muted: #86868b;
+    /* Secondary text — Apple's grey */
+
+    /* Brand Colors */
+    --primary: #0071e3;
+    /* Apple Blue — main CTA color */
+    --primary-hover: #0077ed;
+    /* Hover state of primary */
+    --primary-text: #ffffff;
+    /* Text on primary buttons */
+    --accent: #ff2d55;
+    /* Apple Pink/Red — special elements */
+    --success: #34c759;
+    /* Apple Green — toggle ON state */
+    --danger: #ff3b30;
+    /* Apple Red — destructive actions */
+
+    /* Radii */
+    --radius-sm: 12px;
+    /* Inputs, small buttons, tags */
+    --radius-md: 18px;
+    /* Primary CTA buttons */
+    --radius-lg: 24px;
+    /* Glass panels, modals */
+
+    /* Blur */
+    --blur: blur(24px);
+    /* Standard backdrop blur */
+
+    /* Font */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+``` ### Dark Mode — "Apple Dark Glass"
+
+```css body.dark-mode {
+    --bg-main: #000000;
+    /* Pure black — Apple dark bg */
+    --text-main: #f5f5f7;
+    --text-muted: #98989d;
+    --glass-bg: rgba(28, 28, 30, 0.65);
+    /* Dark frosted glass */
+    --glass-border: rgba(84, 84, 88, 0.4);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --input-bg: rgba(0, 0, 0, 0.4);
+    --btn-hover: rgba(255, 255, 255, 0.1);
+    --track-bg: #3a3a3c;
+    --primary: #0a84ff;
+    /* Brighter blue for dark mode */
+    --primary-hover: #0071e3;
+}
+
+``` --- ## 3. 📐 Spacing Scale ``` 4px — Micro gaps (icon + text spacing) 8px — Control row internal gaps 10px — Grid gaps,
+small margins 12px — Section title margin-bottom 16px — Control row margin-bottom 20px — Panel padding (mobile/compact) 24px — Panel padding (desktop standard) 30px — Header padding,
+large modal padding ``` --- ## 4. 🔤 Typography Scale ```css
+/* Font Stack — Apple System Font */
+font-family: -apple-system,
+BlinkMacSystemFont,
+"Segoe UI",
+Roboto,
+Helvetica,
+Arial,
+sans-serif;
+
+/* Logo / App Name */
+font-size: 22px;
+font-weight: 800;
+letter-spacing: -0.5px;
+
+/* Headings h1/h2/h3 */
+font-weight: 700;
+letter-spacing: -0.5px;
+
+/* Section Titles (ALL CAPS label) */
+font-size: 13px;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+color: var(--text-muted);
+font-weight: 700;
+
+/* Control Labels */
+font-size: 13px;
+font-weight: 600;
+
+/* Body / Input text */
+font-size: 14px;
+font-weight: 400;
+
+/* Value Badges */
+font-size: 12px;
+font-weight: 600;
+
+/* Primary Button */
+font-size: 15px;
+font-weight: 600;
+
+/* Secondary Button */
+font-size: 14px;
+font-weight: 600;
+``` --- ## 5. ✨ Animations & Transitions — Complete Reference Yeh section **most important** hai — iss design ka "premium feel" entirely animations se aata hai. --- ### 5.1 Easing Curve Library ```css
+/* ─── CURVE 1: Standard Spring (sabse zyada use hoti hai) ─── */
+/* Use: Buttons, panels, zoom, any general transition */
+transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+/*          ↑dur  ↑ease: fast start, overshoots slightly, settles smooth */
+
+
+/* ─── CURVE 2: Bouncy Spring (iOS Toggle feel) ─── */
+/* Use: Toggle thumb slide, popup appear, icon pop */
+transition: 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+/*           ↑dur  ↑ease: goes BEYOND target then snaps back — "bouncy" */
+
+
+/* ─── CURVE 3: Elastic Toast (notification slide-in) ─── */
+/* Use: Toast notifications, confetti elements, success popups */
+transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+/*                    ↑dur  ↑ease: starts slow, big overshoot, snaps */
+
+
+/* ─── CURVE 4: Smooth Theme Change ─── */
+/* Use: Dark/Light mode switch — colors change slowly & pleasantly */
+transition: background-color 0.4s ease,
+color 0.4s ease;
+
+
+/* ─── CURVE 5: Quick Micro (very fast) ─── */
+/* Use: Slider thumb scale, close button, small interactions */
+transition: transform 0.2s;
+
+
+/* ─── CURVE 6: Slow Smooth (large layout changes) ─── */
+/* Use: Aspect ratio change, mockup wrapper resize */
+transition: aspect-ratio 0.4s ease,
+border-radius 0.4s ease;
+``` --- ### 5.2 Hover Micro-Interactions ```css
+
+/* ── Float Up — Primary Buttons ── */
+.btn-primary:hover {
+    transform: translateY(-2px);
+    /* Lifts 2px */
+    box-shadow: 0 6px 20px rgba(0, 113, 227, 0.4);
+    /* Shadow deepens */
+}
+
+/* ── Float Up Light — Secondary Buttons ── */
+.btn-secondary:hover {
+    transform: translateY(-1px);
+    /* Subtle 1px lift */
+    border-color: var(--primary);
+    /* Border glows blue */
+}
+
+/* ── Scale Up — FAB, Icon Buttons ── */
+#floatingBtn:hover {
+    transform: scale(1.1);
+}
+
+/* ── Scale Up Medium — Close button, social preset icons ── */
+.modal-close:hover {
+    transform: scale(1.1);
+}
+
+.social-presets button.active {
+    transform: scale(1.1);
+}
+
+/* ── Scale Up Small — Slider Thumb ── */
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 0 10px var(--primary);
+    /* ↑ Adds primary color glow on thumb hover */
+}
+
+/* ── Color Shift — Primary Button bg ── */
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+/* ── Border Glow — Input Focus ── */
+input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+    /* Soft blue ring */
+}
+
+/* ── FAB Color Fill on Hover ── */
+#floatingBtn:hover {
+    background: var(--primary);
+    /* Fills solid blue */
+    color: #fff;
+    border-color: var(--primary);
+}
+
+/* ── History Item Load Overlay ── */
+.history-item::after {
+    content: 'Load';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #fff;
+}
+
+.history-item:hover::after {
+    opacity: 1;
+}
+
+/* Fade-in on hover */
+
+/* ── Drag Zone Dashed Border Highlight ── */
+.drag-zone:hover {
+    border-color: var(--primary);
+}
+
+.upload-section.dragover {
+    border-color: var(--primary);
+    background: rgba(0, 113, 227, 0.05);
+}
+
+``` --- ### 5.3 @keyframes Animations ```css
+/* ── 1. Spin — Loading Spinner ── */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loader-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* ── 2. Tick Pop — Icon Button Active State ── */
+/* When user clicks upload button & file is selected — icon pops in */
+@keyframes tick-pop {
+    0% {
+        transform: scale(0) rotate(-45deg);
+    }
+
+    /* Starts small + rotated */
+    70% {
+        transform: scale(1.3) rotate(10deg);
+    }
+
+    /* Overshoots */
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    /* Settles */
+}
+
+.icon-btn.ticked .x-icon {
+    animation: tick-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ── 3. Zoom Wrapper — Mockup scale on load ── */
+/* No @keyframe needed — just CSS transform with spring easing */
+.mockup-wrapper {
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* JS: mockupWrapper.style.transform = `scale(${zoomLevel})`; */
+
+/* ── 4. Filter Transition — Image filters (blur, brightness) ── */
+.video-mockup img.main-img {
+    transition: filter 0.3s;
+    /* Smooth filter change on slider drag */
+}
+
+/* ── 5. Aspect Ratio Morph — Mockup shape change ── */
+.video-mockup {
+    transition: aspect-ratio 0.4s ease, border-radius 0.4s ease;
+}
+
+/* ── 6. Confetti (on export success — uses canvas-confetti library) ── */
+/* JS: confetti({ particleCount: 100, spread: 70, origin: {x:0, y:0.6} }); */
+/* confetti({ particleCount: 100, spread: 70, origin: {x:1, y:0.6} }); */
+``` --- ### 5.4 Toast Slide-In Animation ```css
+
+/* Hidden state (default) */
+.toast {
+    transform: translateX(-50%) translateY(150px);
+    /* Below viewport */
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Visible state */
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    /* Slides up */
+}
+
+``` ```javascript function showToast(msg) {
+    const toast=document.getElementById('toastMsg');
+    toast.innerText=msg;
+    toast.classList.add('show');
+    setTimeout(()=> toast.classList.remove('show'), 2500);
+    /* Auto hide */
+}
+
+``` --- ### 5.5 Complete Animation Timing Reference | Element | Duration | Easing | Effect | |---|---|---|---| | Button hover | 0.3s | `cubic-bezier(0.25, 1, 0.5, 1)` | Float+shadow | | Toggle thumb | 0.4s | `cubic-bezier(0.68, -0.55, 0.265, 1.55)` | Bouncy slide | | Toast slide | 0.4s | `cubic-bezier(0.175, 0.885, 0.32, 1.275)` | Spring up | | Tick pop icon | 0.5s | `cubic-bezier(0.175, 0.885, 0.32, 1.275)` | Scale+rotate | | Slider thumb | 0.2s | `ease` | Scale on hover | | Theme switch | 0.4s | `ease` | Color morph | | Modal open | instant | — | `display:flex` | | Filter change | 0.3s | `ease` | Smooth filter | | Aspect ratio | 0.4s | `ease` | Shape morph | | Zoom wrapper | 0.4s | `cubic-bezier(0.25, 1, 0.5, 1)` | Scale | | History hover | 0.3s | `ease` | Fade overlay | --- ## 6. 🌟 Visual Effects — Complete Reference ### 6.1 Glassmorphism (Core Effect) ```css
+
+/* Standard Glass Panel */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.65);
+    /* Semi-transparent white */
+    backdrop-filter: blur(24px);
+    /* Frosted glass blur */
+    -webkit-backdrop-filter: blur(24px);
+    /* Safari support — MUST add */
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    /* Subtle white border */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    /* Soft depth shadow */
+}
+
+/* Dark Mode Glass */
+body.dark-mode .glass-panel {
+    background: rgba(28, 28, 30, 0.65);
+    /* Semi-transparent dark */
+    border: 1px solid rgba(84, 84, 88, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Heavy Blur (Modal backdrop) */
+.modal-overlay {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(15px);
+    /* Heavier than panel */
+    -webkit-backdrop-filter: blur(15px);
+}
+
+/* Sticky Header Glass */
+header {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(24px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 1px 10px rgba(0, 0, 0, 0.05);
+    /* Very subtle */
+}
+
+```>**Key Rule:** `backdrop-filter` tabhi kaam karta hai jab element ke **neeche koi background** ho.>Always add `-webkit-backdrop-filter` for Safari ! --- ### 6.2 Box Shadow Layers ```css
+/* ── Level 1: Subtle (inputs, secondary btns) ── */
+box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+
+/* ── Level 2: Card Depth (glass panels) ── */
+box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+/* Light mode */
+box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+/* Dark mode */
+
+/* ── Level 3: Button Shadow (primary CTA) ── */
+box-shadow: 0 4px 14px rgba(0, 113, 227, 0.3);
+/* Rest state */
+box-shadow: 0 6px 20px rgba(0, 113, 227, 0.4);
+/* Hover state */
+
+/* ── Level 4: Modal Depth ── */
+box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+
+/* ── Level 5: Mockup Preview (dramatic) ── */
+box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+
+/* ── Level 6: Social Preset Active ── */
+box-shadow: 0 10px 20px rgba(0, 113, 227, 0.2);
+
+/* ── Primary Color Glow (slider thumb hover) ── */
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2),
+0 0 10px var(--primary);
+/*           ↑ depth shadow                ↑ colored glow ring */
+
+/* ── Focus Ring (input fields) ── */
+box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+/*           0 spread, pure ring, 4px size, 15% opacity */
+``` --- ### 6.3 Color Grade / Tint Overlay Effect ```css
+
+/* Used for cinematic color grading on the mockup image */
+.color-grade-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    /* ← KEY: blends color with image naturally */
+    opacity: 0;
+    /* 0 = no tint, 0-1 = intensity */
+    transition: 0.3s;
+}
+
+/* JS: set background-color rgba and opacity dynamically */
+``` --- ### 6.4 Film Grain / Noise Texture ```css
+
+/* SVG-based noise texture as background-image */
+.noise-overlay {
+    position: absolute;
+    inset: 0;
+    background-image: url('data:image/svg+xml,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>');
+    mix-blend-mode: overlay;
+    opacity: 0;
+    /* 0.6 when enabled */
+    z-index: 3;
+    pointer-events: none;
+    transition: 0.3s;
+}
+
+``` --- ### 6.5 Bottom Gradient Vignette ```css
+
+/* CSS ::after creates a dark gradient at bottom — adds cinematic depth */
+.video-mockup::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 40%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+    z-index: 4;
+    pointer-events: none;
+}
+
+``` --- ### 6.6 Blur Image Effect (CSS filter) ```css
+
+/* Applied directly to the <img> element via JS */
+img.main-img {
+    filter: blur(Xpx) brightness(Y%);
+    transition: filter 0.3s;
+    /* Smooth real-time update on slider drag */
+}
+
+/* Filter Presets */
+/* Normal:    no filter */
+/* Warm:      filter: sepia(40%) saturate(140%) hue-rotate(-10deg) */
+/* Cool:      filter: saturate(120%) hue-rotate(10deg) brightness(110%) */
+/* Dramatic:  filter: contrast(130%) brightness(90%) saturate(120%) */
+/* Vintage:   filter: sepia(50%) contrast(110%) brightness(90%) */
+/* B&W:       filter: grayscale(100%) contrast(120%) */
+``` --- ### 6.7 Glassmorphism Input Fields ```css input[type=text],
+select,
+textarea {
+    background: rgba(255, 255, 255, 0.8);
+    /* Semi-transparent */
+    backdrop-filter: blur(24px);
+    /* Frosted */
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    /* White border */
+    border-radius: 12px;
+}
+
+/* Focus glow — primary blue ring */
+input:focus {
+    border-color: #0071e3;
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+    outline: none;
+}
+
+``` --- ### 6.8 iOS Slider Track Fill Effect ```css
+
+/* The gradient fills from left (primary color) to right (track color) */
+/* X% is dynamic — updated live via JS on every 'input' event */
+input[type="range"] {
+    background: linear-gradient(to right,
+            var(--primary) 45%,
+            /* Filled portion — blue */
+            var(--track-bg) 45%
+            /* Empty portion — grey */
+        );
+}
+
+``` ```javascript function updateSliderProgress(slider) {
+    const min=parseFloat(slider.min) || 0;
+    const max=parseFloat(slider.max) || 100;
+    const pct=((slider.value - min) / (max - min)) * 100;
+
+    slider.style.background=`linear-gradient(to right, var(--primary) $ {
+            pct
+        }
+
+        %, var(--track-bg) $ {
+            pct
+        }
+
+        %)`;
+}
+
+document.querySelectorAll('input[type="range"]').forEach(s=> {
+        updateSliderProgress(s);
+        s.addEventListener('input', ()=> updateSliderProgress(s));
+    });
+``` --- ### 6.9 Rounded Color Picker (Native input) ```css
+
+/* Circular color picker — looks like a colored dot */
+.color-picker-round {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    overflow: hidden;
+    background: transparent;
+}
+
+/* Remove default chrome wrapper */
+.color-picker-round::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-picker-round::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+}
+
+``` --- ### 6.10 Workspace Toolbar (Zoom Controls) ```css
+
+/* Floating pill-shaped toolbar above center workspace */
+.workspace-toolbar {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    /* Center horizontally */
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+    /* Apply glass-panel class for frosted look */
+    padding: 6px 12px;
+    border-radius: 20px;
+    /* Pill shape */
+}
+
+``` --- ## 7. 🔘 Toggle Switch — Complete Guide (3 Variants) --- ### Variant 1: Standard Feature Toggle (On/Off control)>Used for: "Show Views",
+"Show Duration",
+"Film Grain",
+etc. ```html <label class="theme-switch"><input type="checkbox" id="myFeatureToggle"><span class="slider"></span></label>``` ```css
+
+/* Container */
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+/* Hide native checkbox */
+.theme-switch input {
+    display: none;
+}
+
+/* Track (the pill background) */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e9e9ea;
+    /* Grey = OFF */
+    transition: .4s;
+    /* Track color change */
+    border-radius: 34px;
+    /* Full pill shape */
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Thumb (the white circle that slides) */
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    /* BOUNCY! */
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+}
+
+/* ON State — Track turns green */
+input:checked+.slider {
+    background-color: var(--success);
+    /* #34c759 — Apple Green */
+}
+
+/* ON State — Thumb slides right */
+input:checked+.slider:before {
+    transform: translateX(22px);
+    border-color: transparent;
+}
+
+/* Dark Mode — Track style */
+body.dark-mode .slider {
+    background-color: #39393d;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+``` **JavaScript usage:** ```javascript document.getElementById('myFeatureToggle').addEventListener('change', (e)=> {
+        const isOn=e.target.checked;
+        // Do something when toggled
+        document.getElementById('someElement').style.display=isOn ? 'block' : 'none';
+    });
+``` --- ### Variant 2: Inline Label Toggle (used in control rows)>Used for: "Film Grain"+label in same row ```html <div class="control-row"><label>Film Grain / Noise <label class="theme-switch"><input type="checkbox" id="noiseToggle"><span class="slider"></span></label></label></div>```>CSS same as Variant 1. The `control-row label` uses `justify-content: space-between` so toggle auto aligns to the right. ```css
+
+/* Already in control-row: */
+.control-row label {
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    /* ← label left, toggle right */
+    align-items: center;
+}
+
+``` --- ### Variant 3: Dark/Light Mode Toggle (Sun ☀️ / Moon 🌙 Version)>Used in Header — Special variant with icons inside the track ```html <label class="theme-switch main-theme-toggle" title="Toggle Theme"><input type="checkbox" id="themeToggle"><span class="slider">< !-- Sun icon (visible in light mode) --><svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round"
+d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707
+ M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707 M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+ </svg>< !-- Moon icon (visible in dark mode) --><svg class="moon-icon" xmlns="http://www.w3.org/2000/svg"
+fill="currentColor" viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21
+ a9.003 9.003 0 008.354-5.646z"/>
+ </svg></span></label>``` ```css
+
+/* Bigger size for header toggle */
+.theme-switch.main-theme-toggle {
+    width: 56px;
+    height: 30px;
+}
+
+.theme-switch.main-theme-toggle .slider:before {
+    height: 24px;
+    width: 24px;
+}
+
+/* Dark mode toggle — Dark track (NOT green) */
+#themeToggle:checked+.slider {
+    background-color: #39393d;
+    /* Dark grey track */
+}
+
+/* Thumb slides further + becomes dark */
+#themeToggle:checked+.slider:before {
+    transform: translateX(25px);
+    background-color: #1c1c1e;
+    /* Dark thumb */
+    border: 1px solid #545458;
+}
+
+/* Sun icon — orange, visible by default */
+.sun-icon {
+    width: 14px;
+    height: 14px;
+    color: #f97316;
+    /* Orange sun */
+    z-index: 3;
+    position: relative;
+    transition: 0.3s;
+    pointer-events: none;
+}
+
+/* Moon icon — blue, hidden by default */
+.moon-icon {
+    width: 14px;
+    height: 14px;
+    color: #60a5fa;
+    /* Blue moon */
+    z-index: 3;
+    position: relative;
+    transition: 0.3s;
+    opacity: 0;
+    /* Hidden */
+    pointer-events: none;
+}
+
+/* When checked: hide sun, show moon */
+input:checked+.slider .sun-icon {
+    opacity: 0;
+}
+
+input:checked+.slider .moon-icon {
+    opacity: 1;
+}
+
+``` **JavaScript:** ```javascript const themeToggle=document.getElementById('themeToggle');
+
+// Auto theme based on time (with IP timezone detection)
+async function setAutoTheme() {
+    try {
+        const res=await fetch('http://ip-api.com/json/?fields=timezone');
+        const data=await res.json();
+
+        const userTime=new Date(new Date().toLocaleString('en-US', {
+                timeZone: data.timezone
+            }));
+    const hour=userTime.getHours();
+    const isDark=hour < 6 || hour>=18; // Dark: 6PM to 6AM
+    document.body.classList.toggle('dark-mode', isDark);
+    themeToggle.checked=isDark;
+}
+
+catch(e) {
+    // Fallback: system preference
+    const prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.body.classList.toggle('dark-mode', prefersDark);
+    themeToggle.checked=prefersDark;
+}
+}
+
+// Manual toggle click
+themeToggle.addEventListener('change', e=> {
+        document.body.classList.toggle('dark-mode', e.target.checked);
+        // Must refresh slider tracks (they use var() which changes)
+        document.querySelectorAll('input[type="range"]').forEach(updateSliderProgress);
+    });
+
+``` --- ### Toggle — Visual State Summary | State | Track Color | Thumb Color | Thumb Position | Icon | |---|---|---|---|---| | Feature OFF (light) | `#e9e9ea` grey | white | left (3px) | — | | Feature ON (light) | `#34c759` green | white | right (+22px) | — | | Feature OFF (dark) | `#39393d` dark | white | left | — | | Feature ON (dark) | `#34c759` green | white | right (+22px) | — | | Theme Light mode | `#e9e9ea` grey | white | left | ☀️ sun visible | | Theme Dark mode | `#39393d` dark | `#1c1c1e` dark | right (+25px) | 🌙 moon visible | --- ## 8. 🧱 Core Components ### 8.1 Glass Panel ```css .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow);
+    padding: 24px;
+}
+
+``` ### 8.2 Primary Button ```css .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    padding: 14px 24px;
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 14px rgba(0, 113, 227, 0.3);
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 113, 227, 0.4);
+}
+
+``` ### 8.3 Secondary Button ```css .btn-secondary {
+    background: var(--glass-bg);
+    color: var(--text-main);
+    border: 1px solid var(--glass-border);
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.btn-secondary:hover {
+    background: var(--btn-hover);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+``` ### 8.4 Section Title ```css .section-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+``` ### 8.5 Control Row ```css .control-row {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.control-row label {
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.control-row label span.val {
+    background: var(--btn-hover);
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+``` ### 8.6 Modal (Glassmorphism) ```css .modal-overlay {
+    display: none;
+    /* flex when visible */
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 30px;
+    width: 100%;
+    max-width: 550px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 28px;
+    font-weight: 300;
+    transition: 0.2s;
+}
+
+.modal-close:hover {
+    color: var(--danger);
+    transform: scale(1.1);
+}
+
+``` ### 8.7 Toast Notification ```css .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(150px);
+    /* hidden */
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--glass-border);
+    padding: 14px 28px;
+    border-radius: 30px;
+    box-shadow: var(--glass-shadow);
+    color: var(--text-main);
+    font-weight: 600;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 9999;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+``` ### 8.8 Icon Button with Tick State ```css .icon-btn {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 50px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.icon-btn:hover {
+    background: var(--btn-hover);
+    border-color: var(--primary);
+}
+
+.icon-btn.ticked {
+    background: var(--danger);
+    border-color: var(--danger);
+}
+
+.icon-btn.ticked svg {
+    stroke: #fff;
+}
+
+.icon-btn .x-icon {
+    display: none;
+}
+
+.icon-btn.ticked .original-icon {
+    display: none;
+}
+
+.icon-btn.ticked .x-icon {
+    display: block;
+    animation: tick-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes tick-pop {
+    0% {
+        transform: scale(0) rotate(-45deg);
+    }
+
+    70% {
+        transform: scale(1.3) rotate(10deg);
+    }
+
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+``` ### 8.9 Loader Spinner ```css .loader-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: none;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+``` ### 8.10 FAB (Floating Action Button) ```css #floatingBtn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 90;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.3s;
+}
+
+#floatingBtn:hover {
+    transform: scale(1.1);
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+``` ### 8.11 `<kbd>` Keyboard Badge ```css kbd {
+    background: var(--input-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.1);
+    color: var(--text-main);
+    display: inline-block;
+}
+
+``` --- ## 9. 📐 Layout System ```css
+
+/* 3-Column Studio Grid */
+.studio-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr 340px;
+    gap: 20px;
+    padding: 20px;
+    flex-grow: 1;
+    align-items: start;
+}
+
+/* Sticky Glass Header */
+header {
+    height: 70px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: 0 1px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Scrollable Sidebar */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: calc(100vh - 110px);
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 10px;
+}
+
+/* Center Workspace */
+.workspace {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    height: calc(100vh - 110px);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .studio-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        height: auto;
+    }
+
+    .workspace {
+        height: 50vh;
+        min-height: 400px;
+    }
+}
+
+@media (max-width: 600px) {
+    header {
+        padding: 0 15px;
+    }
+
+    .logo span {
+        display: none;
+    }
+}
+
+``` --- ## 10. ⌨️ Keyboard Shortcuts Pattern ```javascript document.addEventListener('keydown', (e)=> {
+        const tag=e.target.tagName.toLowerCase();
+
+        if (tag==='input' || tag==='textarea' || tag==='select') {
+            if(e.key==='Escape') {
+                e.target.blur(); closeAllModals();
+            }
+
+            return;
+        }
+
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        switch(e.key.toLowerCase()) {
+            case 'g':
+            /* Generate */
+            document.getElementById('exportBtn').click(); break;
+            case 'f':
+            /* File picker */
+            document.getElementById('fileInput').click(); break;
+            case 'c':
+            /* Crop */
+            document.getElementById('cropBtn').click(); break;
+            case 't':
+            /* Toggle theme */
+            document.getElementById('themeToggle').click(); break;
+            case 'escape': closeAllModals(); break;
+            case '?': document.getElementById('shortcutsModal').style.display='flex'; break;
+        }
+    });
+
+function closeAllModals() {
+    document.querySelectorAll('.modal-overlay').forEach(m=> m.style.display='none');
+}
+
+``` --- ## 11. 🏗️ Complete HTML Boilerplate ```html < !DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Your Tool Name - Apple Glass Edition</title><style>
+/* ── PASTE ALL CSS FROM THIS GUIDE HERE ── */
+</style></head><body><header><div class="logo"><svg>< !-- your icon --></svg><span>Tool Name</span></div><div class="header-actions"><label class="theme-switch main-theme-toggle"><input type="checkbox" id="themeToggle"><span class="slider"><svg class="sun-icon">< !-- sun SVG --></svg><svg class="moon-icon">< !-- moon SVG --></svg></span></label><button class="btn-primary" id="mainBtn">Export <div class="loader-spinner"></div></button></div></header><main class="studio-layout"><aside class="sidebar glass-panel"><div class="section-title">Upload</div>< !-- controls --></aside><section class="workspace"><div id="previewArea">< !-- canvas/image preview --></div></section><aside class="sidebar glass-panel"><div class="section-title">Export</div><button class="btn-primary" style="width:100%;">Generate</button></aside></main><div class="toast" id="toastMsg">Done !</div><button id="floatingBtn">< !-- icon --></button><div class="modal-overlay" id="myModal"><div class="modal-content"><button class="modal-close" onclick="this.closest('.modal-overlay').style.display='none'">&times;
+
+</button><h2>Modal</h2><div class="modal-actions"><button class="btn-secondary">Cancel</button><button class="btn-primary">Apply</button></div></div></div><script>window.onload=()=> {
+    setAutoTheme();
+
+    document.querySelectorAll('input[type="range"]').forEach(s=> {
+            updateSliderProgress(s);
+            s.addEventListener('input', ()=> updateSliderProgress(s));
+        });
+
+    window.addEventListener('click', e=> {
+            if(e.target.classList.contains('modal-overlay')) e.target.style.display='none';
+        });
+}
+
+;
+
+function updateSliderProgress(s) {
+    const pct=((s.value - s.min) / (s.max - s.min)) * 100;
+
+    s.style.background=`linear-gradient(to right, var(--primary) $ {
+            pct
+        }
+
+        %, var(--track-bg) $ {
+            pct
+        }
+
+        %)`;
+}
+
+function showToast(msg) {
+    const t=document.getElementById('toastMsg');
+    t.innerText=msg;
+    t.classList.add('show');
+    setTimeout(()=> t.classList.remove('show'), 2500);
+}
+
+async function setAutoTheme() {
+    try {
+        const r=await fetch('http://ip-api.com/json/?fields=timezone');
+        const d=await r.json();
+
+        const h=new Date(new Date().toLocaleString('en-US', {
+                timeZone:d.timezone
+            })).getHours();
+    const dark=h < 6 || h>=18;
+    document.body.classList.toggle('dark-mode', dark);
+    document.getElementById('themeToggle').checked=dark;
+}
+
+catch {
+    document.body.classList.toggle('dark-mode', window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+}
+
+document.getElementById('themeToggle').addEventListener('change', e=> {
+        document.body.classList.toggle('dark-mode', e.target.checked);
+        document.querySelectorAll('input[type="range"]').forEach(updateSliderProgress);
+    });
+
+</script></body></html>``` --- ## 12. 📋 Design Token Cheatsheet | Token | Light | Dark | Use | |---|---|---|---| | `--bg-main` | `#f5f5f7` | `#000000` | Page bg | | `--text-main` | `#1d1d1f` | `#f5f5f7` | All text | | `--text-muted` | `#86868b` | `#98989d` | Labels | | `--glass-bg` | `rgba(255, 255, 255, 0.65)` | `rgba(28, 28, 30, 0.65)` | Cards | | `--glass-border` | `rgba(255, 255, 255, 0.6)` | `rgba(84, 84, 88, 0.4)` | Borders | | `--input-bg` | `rgba(255, 255, 255, 0.8)` | `rgba(0, 0, 0, 0.4)` | Inputs | | `--btn-hover` | `rgba(0, 0, 0, 0.05)` | `rgba(255, 255, 255, 0.1)` | Hover bg | | `--primary` | `#0071e3` | `#0a84ff` | CTA | | `--success` | `#34c759` | `#34c759` | Toggle ON | | `--danger` | `#ff3b30` | `#ff3b30` | Delete | | `--accent` | `#ff2d55` | `#ff2d55` | Special | | `--radius-sm` | `12px` | — | Inputs | | `--radius-md` | `18px` | — | Buttons | | `--radius-lg` | `24px` | — | Panels | | `--blur` | `blur(24px)` | — | Glass | ## 13. 🔥 Special Feature Patterns ### Preset Grid (3-column filter buttons) ```css .filter-presets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.preset-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.preset-btn:hover,
+.preset-btn.active {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(0, 113, 227, 0.05);
+}
+
+``` ### Drag & Drop Upload ```css .drag-zone {
+    border: 2px dashed var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.drag-zone:hover {
+    border-color: var(--primary);
+}
+
+.section.dragover {
+    border-color: var(--primary);
+    background: rgba(0, 113, 227, 0.05);
+}
+
+``` ### History Grid (2-col thumbnails) ```css .history-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.history-item {
+    aspect-ratio: 16/9;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    position: relative;
+}
+
+.history-item::after {
+    content: 'Load';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    opacity: 0;
+    transition: 0.3s;
+}
+
+.history-item:hover::after {
+    opacity: 1;
+}
+
+``` ### Blue Highlight Info Box ```css
+
+/* For Export/special sections */
+.info-box {
+    padding: 15px;
+    background: rgba(0, 113, 227, 0.05);
+    border: 1px solid rgba(0, 113, 227, 0.2);
+    border-radius: var(--radius-sm);
+}
+
+```

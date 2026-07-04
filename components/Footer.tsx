@@ -71,7 +71,9 @@ export default function Footer() {
       <style jsx>{`
         .footer {
           width: 100%;
-          background: var(--bg-main);
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
           border-top: 1px solid var(--glass-border);
           padding: 60px 0 30px;
           margin-top: 50px;
