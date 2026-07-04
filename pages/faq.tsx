@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
@@ -54,7 +55,7 @@ export default function FAQ() {
         <header className="page-header">
           <h1>Help Center & FAQs</h1>
           <p className="subtitle">
-            Find quick answers to common questions about LinkPika's link cloaking and image tools.
+            Find quick answers to common questions about LinkPika&apos;s link cloaking and image tools.
           </p>
         </header>
 
@@ -76,7 +77,9 @@ export default function FAQ() {
         
         <div className="contact-prompt">
           <p>Still need help?</p>
-          <a href="/contact" className="btn-secondary">Contact Support</a>
+          <Link href="/contact">
+            <a className="btn-secondary">Contact Support</a>
+          </Link>
         </div>
       </main>
 

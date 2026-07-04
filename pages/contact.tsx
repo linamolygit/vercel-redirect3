@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
@@ -67,7 +68,9 @@ export default function Contact() {
               </div>
               <h3>Help & FAQs</h3>
               <p>Looking for quick answers? Check out our detailed FAQ section.</p>
-              <a href="/faq" className="faq-link">Visit Help Center →</a>
+              <Link href="/faq">
+                <a className="faq-link">Visit Help Center →</a>
+              </Link>
             </div>
           </div>
 
