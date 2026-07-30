@@ -65,6 +65,7 @@ export default function ClickableImage() {
 
   // Images state - empty slots by default
   const [images, setImages] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [originalImages, setOriginalImages] = useState<(string | null)[]>([null, null, null, null, null]);
   const [layout, setLayout] = useState("5-photos");
   const [gap, setGap] = useState(3);
   const [showOverlay, setShowOverlay] = useState(true);
@@ -373,11 +374,16 @@ export default function ClickableImage() {
     }
   };
 
-  // Handle file upload — No auto-zoom or auto-crop on add
+  // Handle file upload — Auto-popup & AI face crop on add
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
+      setOriginalImages((prev) => {
+        const updated = [...prev];
+        updated[index] = url;
+        return updated;
+      });
       setImages((prev) => {
         const updated = [...prev];
         updated[index] = url;
@@ -388,16 +394,25 @@ export default function ClickableImage() {
         updated[index] = { ...DEFAULT_ADJ };
         return updated;
       });
+      // Immediately open edit modal for this slot
+      setEditingSlot(index);
+      // Auto face-detect after state update
+      setTimeout(() => autoFocusFace(index, url), 100);
     }
   };
 
-  // Handle drag and drop — No auto-zoom or auto-crop on drop
+  // Handle drag and drop — Auto-popup & AI face crop on drop
   const handleDrop = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     setDragOver(null);
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("image/")) {
       const url = URL.createObjectURL(file);
+      setOriginalImages((prev) => {
+        const updated = [...prev];
+        updated[index] = url;
+        return updated;
+      });
       setImages((prev) => {
         const updated = [...prev];
         updated[index] = url;
@@ -408,6 +423,10 @@ export default function ClickableImage() {
         updated[index] = { ...DEFAULT_ADJ };
         return updated;
       });
+      // Immediately open edit modal for this slot
+      setEditingSlot(index);
+      // Auto face-detect after state update
+      setTimeout(() => autoFocusFace(index, url), 100);
     }
   };
 
@@ -1430,9 +1449,19 @@ export default function ClickableImage() {
                     type="button"
                     className="btn-secondary btn-tool-icon"
                     title="Revert to Original"
-                    onClick={() => cropperRef.current?.cropper?.reset()}
+                    onClick={() => {
+                      const orig = originalImages[editingSlot] || images[editingSlot];
+                      if (orig && cropperRef.current?.cropper) {
+                        cropperRef.current.cropper.replace(orig);
+                        cropperRef.current.cropper.reset();
+                        setCropBlur(0);
+                        const newImages = [...images];
+                        newImages[editingSlot] = orig;
+                        setImages(newImages);
+                      }
+                    }}
                   >
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                       <path d="M3 3v5h5" />
                     </svg>
@@ -1470,7 +1499,7 @@ export default function ClickableImage() {
               >
                 <Cropper
                   ref={cropperRef}
-                  src={images[editingSlot]!}
+                  src={originalImages[editingSlot] || images[editingSlot]!}
                   style={{ width: "100%", height: "100%", background: "#000" }}
                   zoomTo={1}
                   viewMode={1}
@@ -1662,12 +1691,12 @@ export default function ClickableImage() {
         }
 
         .ci-controls select:focus {
-          border-color: #a855f7;
+          border-color: var(--primary);
         }
 
         .ci-controls input[type="range"] {
           width: 100%;
-          accent-color: #a855f7;
+          accent-color: var(--primary);
           height: 4px;
         }
 
@@ -1693,7 +1722,7 @@ export default function ClickableImage() {
         }
 
         .overlay-input:focus {
-          border-color: #a855f7;
+          border-color: var(--primary);
         }
 
         .btn-random {
@@ -1702,16 +1731,16 @@ export default function ClickableImage() {
           justify-content: center;
           width: 30px;
           height: 30px;
-          background: rgba(168, 85, 247, 0.1);
-          border: 1px solid rgba(168, 85, 247, 0.2);
+          background: rgba(0, 113, 227, 0.12);
+          border: 1px solid rgba(0, 113, 227, 0.25);
           border-radius: 6px;
-          color: #a855f7;
+          color: var(--primary);
           cursor: pointer;
           transition: all 0.2s;
         }
 
         .btn-random:hover {
-          background: rgba(168, 85, 247, 0.2);
+          background: rgba(0, 113, 227, 0.22);
         }
 
         .opacity-row {
@@ -1769,7 +1798,7 @@ export default function ClickableImage() {
         }
 
         .toggle-wrap input:checked + .toggle-slider {
-          background: #a855f7;
+          background: var(--primary);
         }
 
         .toggle-wrap input:checked + .toggle-slider::before {
@@ -2237,11 +2266,64 @@ export default function ClickableImage() {
           padding: 8px 12px;
         }
 
+        .btn-fetch {
+          padding: 8px 16px;
+          background: rgba(52, 199, 89, 0.14);
+          border: 1px solid rgba(52, 199, 89, 0.35);
+          border-radius: 8px;
+          color: #34c759;
+          font-size: 0.82rem;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+          white-space: nowrap;
+          transition: all 0.2s;
+        }
+
+        .btn-fetch:hover:not(:disabled) {
+          background: rgba(52, 199, 89, 0.24);
+          border-color: #34c759;
+          transform: translateY(-1px);
+        }
+
+        .btn-fetch:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .dropzone {
+          border: 2px dashed var(--glass-border);
+          border-radius: 12px;
+          padding: 20px;
+          text-align: center;
+          background: var(--input-bg);
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .dropzone:hover,
+        .dropzone.dragging {
+          border-color: var(--primary);
+          background: rgba(0, 113, 227, 0.15);
+        }
+
+        .dropzone-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: rgba(0, 113, 227, 0.25);
+          color: var(--primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 10px;
+        }
+
         .result-url {
           flex: 1;
           font-size: 0.85rem;
           font-weight: 500;
-          color: #a855f7;
+          color: var(--primary);
           word-break: break-all;
         }
 
@@ -2250,10 +2332,10 @@ export default function ClickableImage() {
           align-items: center;
           gap: 4px;
           padding: 6px 12px;
-          background: rgba(168, 85, 247, 0.1);
-          border: 1px solid rgba(168, 85, 247, 0.2);
+          background: rgba(0, 113, 227, 0.12);
+          border: 1px solid rgba(0, 113, 227, 0.25);
           border-radius: 6px;
-          color: #a855f7;
+          color: var(--primary);
           font-size: 0.78rem;
           font-weight: 600;
           cursor: pointer;
