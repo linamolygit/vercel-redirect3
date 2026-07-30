@@ -1884,9 +1884,9 @@ export default function ClickableImage() {
         }
 
         .slot-action-btn:hover {
-          background: rgba(168, 85, 247, 0.1);
-          color: #a855f7;
-          border-color: rgba(168, 85, 247, 0.3);
+          background: rgba(0, 113, 227, 0.12);
+          color: var(--primary);
+          border-color: rgba(0, 113, 227, 0.3);
         }
 
         .slot-action-btn.delete:hover {
@@ -1924,8 +1924,8 @@ export default function ClickableImage() {
         }
 
         .badge {
-          background: rgba(168, 85, 247, 0.15);
-          color: #a855f7;
+          background: rgba(0, 113, 227, 0.12);
+          color: var(--primary);
           font-size: 0.65rem;
           font-weight: 700;
           padding: 2px 8px;
@@ -2020,7 +2020,7 @@ export default function ClickableImage() {
         }
 
         .preview-slot.drag-over {
-          outline: 2px solid #a855f7;
+          outline: 2px solid var(--primary);
           outline-offset: -2px;
         }
 
