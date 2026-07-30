@@ -4,8 +4,8 @@ import { useRouter } from "next/router";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Cropper from "react-cropper";
-// face-api.js is loaded dynamically (browser-only)
-let faceapi: any = null;
+// MediaPipe FaceDetector — loaded dynamically (browser-only)
+let mediapipeDetector: any = null;
 
 interface ImageAdjustment {
   zoom: number;
@@ -96,18 +96,35 @@ export default function ClickableImage() {
     verifyUser();
   }, []);
 
-  // Load face-api.js TinyFaceDetector model (browser-only, once on mount)
+  // Load Google MediaPipe FaceDetector model (browser-only, once on mount)
   useEffect(() => {
     let cancelled = false;
     const loadModel = async () => {
       try {
-        // Dynamic import so it never runs on the server
-        const fa = await import("face-api.js");
-        faceapi = fa;
-        await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+        // Dynamic import — never runs on the server (Next.js SSR safe)
+        const { FaceDetector, FilesetResolver } = await import("@mediapipe/tasks-vision");
+
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+        );
+
+        const detector = await FaceDetector.createFromOptions(vision, {
+          baseOptions: {
+            // Google's short-range model — optimised for selfie/portrait images
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/face_detector/short_range/float16/1/short_range.task",
+            delegate: "GPU",
+          },
+          runningMode: "IMAGE", // static images, not video
+          minDetectionConfidence: 0.4,
+          minSuppressionThreshold: 0.3,
+        });
+
+        mediapipeDetector = detector;
         if (!cancelled) setFaceApiLoaded(true);
+        console.info("[MediaPipe] FaceDetector ready");
       } catch (err) {
-        console.warn("face-api.js model load failed:", err);
+        console.warn("[MediaPipe] Model load failed:", err);
       }
     };
     loadModel();
@@ -122,14 +139,16 @@ export default function ClickableImage() {
 
   /**
    * Auto-detect the most prominent face in the image at `index`
-   * and set X/Y adjustments to centre that face in the slot.
+   * using Google MediaPipe FaceDetector and set X/Y/zoom adjustments
+   * so the face is perfectly centred in the slot.
    */
   const autoFocusFace = async (index: number, imgUrl?: string) => {
     const url = imgUrl ?? images[index];
-    if (!url || !faceApiLoaded || !faceapi) return;
+    if (!url || !faceApiLoaded || !mediapipeDetector) return;
 
     setDetectingFace(index);
     try {
+      // Load the image into an HTMLImageElement so MediaPipe can process it
       const img = await new Promise<HTMLImageElement | null>((resolve) => {
         const el = new Image();
         el.crossOrigin = "anonymous";
@@ -139,36 +158,42 @@ export default function ClickableImage() {
       });
       if (!img) { setDetectingFace(null); return; }
 
-      const detections = await faceapi.detectAllFaces(
-        img,
-        new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 })
-      );
+      // Run MediaPipe detection on the image element
+      const result = mediapipeDetector.detect(img);
+      const detections = result?.detections ?? [];
 
-      if (!detections || detections.length === 0) {
+      if (detections.length === 0) {
         showFaceToast("No face found — showing full image", "info");
         setDetectingFace(null);
         return;
       }
 
-      // Pick the largest detected face (most prominent person)
-      const biggest = detections.reduce((best: any, d: any) =>
-        d.box.width * d.box.height > best.box.width * best.box.height ? d : best
-      );
+      // Pick the largest bounding box (most prominent / closest face)
+      const biggest = detections.reduce((best: any, d: any) => {
+        const bW = d.boundingBox.width;
+        const bH = d.boundingBox.height;
+        const bestW = best.boundingBox.width;
+        const bestH = best.boundingBox.height;
+        return bW * bH > bestW * bestH ? d : best;
+      });
 
-      const box = biggest.box; // { x, y, width, height } in image-space
-      const faceCX = box.x + box.width / 2;
-      const faceCY = box.y + box.height / 2;
+      // MediaPipe returns normalised coords (0-1) — convert to pixel space
+      const box = biggest.boundingBox;
+      const faceCX = (box.originX + box.width / 2) * img.naturalWidth;
+      const faceCY = (box.originY + box.height / 2) * img.naturalHeight;
       const imgCX = img.naturalWidth / 2;
       const imgCY = img.naturalHeight / 2;
 
-      // Convert to the -100 … +100 range used by adjustments.x / adjustments.y
-      // Positive adjX → shift image right → face that was right-of-centre comes into view
+      // Map to -100…+100 shift range used by adjustments.x / adjustments.y
       const adjX = Math.round(((faceCX - imgCX) / imgCX) * 100);
       const adjY = Math.round(((faceCY - imgCY) / imgCY) * 100);
 
-      // Mild zoom-in to exclude too much headroom
-      const faceRatio = Math.max(box.width / img.naturalWidth, box.height / img.naturalHeight);
-      const zoom = Math.min(Math.max(1 / (faceRatio * 2.5), 1.0), 2.5);
+      // Smart zoom: show face with comfortable framing (not too tight, not too loose)
+      const faceW = box.width * img.naturalWidth;
+      const faceH = box.height * img.naturalHeight;
+      const faceRatio = Math.max(faceW / img.naturalWidth, faceH / img.naturalHeight);
+      // Target: face takes ~40% of slot — zoom in more for small faces, less for large
+      const zoom = Math.min(Math.max((faceRatio < 0.25 ? 1 / (faceRatio * 2.2) : 1.2), 1.0), 2.8);
 
       setAdjustments((prev) => {
         const updated = [...prev];
@@ -176,9 +201,14 @@ export default function ClickableImage() {
         return updated;
       });
 
-      showFaceToast(`✨ ${detections.length > 1 ? detections.length + " faces" : "Face"} detected — auto-centred!`, "success");
+      const faceScore = biggest.categories?.[0]?.score;
+      const scoreText = faceScore ? ` (${Math.round(faceScore * 100)}% confidence)` : "";
+      showFaceToast(
+        `✨ ${detections.length > 1 ? detections.length + " faces" : "Face"} detected${scoreText} — auto-centred!`,
+        "success"
+      );
     } catch (err) {
-      console.warn("Face detection error:", err);
+      console.warn("[MediaPipe] Detection error:", err);
       showFaceToast("Detection error — try manual adjust", "info");
     } finally {
       setDetectingFace(null);

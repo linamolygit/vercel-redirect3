@@ -4,13 +4,17 @@ const nextConfig = {
   swcMinify: true,
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // face-api.js references Node.js `fs` in its env module, which
-      // is never reached in browser code. Stub it out to silence the warning.
+      // Stub Node.js `fs` for browser builds (was needed by face-api.js, kept as safe default)
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
       };
     }
+    // Suppress MediaPipe's internal dynamic-require warning (harmless — WASM loaded from CDN at runtime)
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      /Critical dependency: the request of a dependency is an expression/,
+    ];
     return config;
   },
 }
