@@ -43,6 +43,13 @@ const Home: NextPage = () => {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [editingLink, setEditingLink] = useState<SavedLink | null>(null);
   
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "info" | "error" } | null>(null);
+
+  const showToast = (msg: string, type: "success" | "info" | "error" = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+  
   const [customAlias, setCustomAlias] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -92,7 +99,7 @@ const Home: NextPage = () => {
 
   const handleFetchMetadata = async () => {
     if (!wpUrl) {
-      setErrorMessage("Please enter a WordPress Post URL first.");
+      showToast("Please enter a WordPress Post URL first.", "error");
       return;
     }
     setFetchingMeta(true);
@@ -117,7 +124,7 @@ const Home: NextPage = () => {
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wpUrl) {
-      setErrorMessage("Please enter a WordPress Post URL.");
+      showToast("Please enter a WordPress Post URL first.", "error");
       return;
     }
 
@@ -251,10 +258,8 @@ const Home: NextPage = () => {
 
       <Header />
 
-      {/* Studio Layout */}
       <div className="studio-layout-2col">
         
-        {/* Left Sidebar */}
         <aside className="sidebar glass-panel" style={{ margin: '20px' }}>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
@@ -334,7 +339,6 @@ const Home: NextPage = () => {
           </div>
         </aside>
 
-        {/* Main Workspace */}
         <main className="workspace">
           
           <div style={{ marginBottom: '30px' }}>
@@ -502,7 +506,6 @@ const Home: NextPage = () => {
             {resultUrl && (
               <div style={{ marginTop: '30px', animation: 'fadeIn 0.4s ease' }}>
                 
-                {/* Result Link */}
                 <div style={{ background: 'rgba(52, 199, 89, 0.1)', border: '1px solid rgba(52, 199, 89, 0.3)', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
                   <label style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px', display: 'block' }}>Success! Your Cloaked Link is Ready:</label>
                   <div style={{ display: 'flex', gap: '10px' }}>
@@ -513,7 +516,6 @@ const Home: NextPage = () => {
                   </div>
                 </div>
 
-                {/* Facebook Preview Box */}
                 <div style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden', maxWidth: '500px', background: 'var(--card-bg)' }}>
                   <div style={{ padding: '12px', display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px' }}>LP</div>
@@ -545,6 +547,27 @@ const Home: NextPage = () => {
           </div>
         </main>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`site-toast site-toast-${toast.type}`}>
+          {toast.type === "success" ? (
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : toast.type === "error" ? (
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
+          {toast.msg}
+        </div>
+      )}
+
       <Footer />
       
       <EditLinkModal 
@@ -552,7 +575,6 @@ const Home: NextPage = () => {
         link={editingLink} 
         onClose={() => setEditingLink(null)} 
         onSuccess={(updatedLink) => {
-          // Update in local state
           const newHistory = history.map(l => l.id === updatedLink.id ? updatedLink : l);
           setHistory(newHistory);
           // Update localStorage for guests

@@ -111,7 +111,7 @@ export default function ClickableImage() {
   // Face detection state
   const [faceApiLoaded, setFaceApiLoaded] = useState(false);
   const [detectingFace, setDetectingFace] = useState<number | null>(null);
-  const [faceToast, setFaceToast] = useState<{ msg: string; type: "success" | "info" } | null>(null);
+  const [faceToast, setFaceToast] = useState<{ msg: string; type: "success" | "info" | "error" } | null>(null);
 
   // Keyboard Shortcuts Modal State
   const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
@@ -216,9 +216,9 @@ export default function ClickableImage() {
   };
 
   // Show & auto-dismiss the face toast
-  const showFaceToast = (msg: string, type: "success" | "info" = "success") => {
+  const showFaceToast = (msg: string, type: "success" | "info" | "error" = "success") => {
     setFaceToast({ msg, type });
-    setTimeout(() => setFaceToast(null), 3000);
+    setTimeout(() => setFaceToast(null), 3500);
   };
 
   /**
@@ -743,7 +743,7 @@ export default function ClickableImage() {
   // Fetch metadata from WordPress URL
   const handleFetchMetadata = async () => {
     if (!wpUrl) {
-      setErrorMessage("Please enter a WordPress URL first.");
+      showFaceToast("Please enter a WordPress Post URL first.", "error");
       return;
     }
     setFetchingMeta(true);
@@ -754,8 +754,9 @@ export default function ClickableImage() {
       if (!res.ok) throw new Error(data.error || "Failed to fetch WordPress details.");
       setCustomTitle(data.title || "");
       setCustomDesc(data.excerpt || "");
+      showFaceToast("WordPress details fetched successfully!", "success");
     } catch (err: any) {
-      setErrorMessage(err.message || "Auto-fetch failed.");
+      showFaceToast(err.message || "Auto-fetch failed.", "error");
     } finally {
       setFetchingMeta(false);
     }
@@ -771,7 +772,7 @@ export default function ClickableImage() {
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wpUrl) {
-      setErrorMessage("Please enter a WordPress Post URL");
+      showFaceToast("Please enter a WordPress Post URL first.", "error");
       return;
     }
     setConverting(true);
@@ -817,8 +818,9 @@ export default function ClickableImage() {
       const host = typeof window !== "undefined" ? window.location.host : "yourdomain.com";
       const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
       setResultUrl(`${protocol}//${host}/${resJson.shortId}`);
+      showFaceToast("Clickable image redirect created!", "success");
     } catch (err: any) {
-      setErrorMessage(err.message || "An error occurred");
+      showFaceToast(err.message || "An error occurred", "error");
     } finally {
       setConverting(false);
     }
