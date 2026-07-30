@@ -1222,7 +1222,8 @@ export default function ClickableImage() {
                   <div className="form-field">
                     <label>Custom Image (Drag & Drop or Upload)</label>
                     <div 
-                      className={`dropzone ${isDraggingCustomImg ? "dragging" : ""} ${collageImageUrl ? "has-image" : ""}`}
+                      className={`dropzone ${isDraggingCustomImg ? "dragging" : ""}`}
+                      style={{ border: "2px dashed var(--glass-border)", borderRadius: "16px", padding: "24px", textAlign: "center", background: "var(--input-bg)", position: "relative" }}
                       onDragOver={(e) => { e.preventDefault(); setIsDraggingCustomImg(true); }}
                       onDragLeave={() => setIsDraggingCustomImg(false)}
                       onDrop={async (e) => {
@@ -1233,7 +1234,6 @@ export default function ClickableImage() {
                           await handleCustomImageUpload(file);
                         }
                       }}
-                      onClick={() => document.getElementById("customImageFile")?.click()}
                     >
                       <input
                         type="file"
@@ -1247,36 +1247,39 @@ export default function ClickableImage() {
                       />
                       
                       {collageImageUrl ? (
-                        <div className="dropzone-preview">
-                          <img src={collageImageUrl} alt="Preview" className="img-preview" />
-                          <div className="dropzone-overlay">
-                            <svg className="upload-icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
-                            <span>Change Image</span>
+                        <div>
+                          <img src={collageImageUrl} alt="Preview" style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "8px", marginBottom: "16px", objectFit: "contain" }} />
+                          <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                            <button type="button" className="btn-secondary" onClick={() => document.getElementById("customImageFile")?.click()}>Change Image</button>
+                            <button type="button" className="btn-secondary" style={{ color: "rgb(239, 68, 68)" }} onClick={() => setCollageImageUrl("")}>Remove</button>
                           </div>
                         </div>
                       ) : (
-                        <div className="dropzone-prompt">
-                          <svg className="upload-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                        <div onClick={() => document.getElementById("customImageFile")?.click()} style={{ cursor: "pointer" }}>
+                          <div className="dropzone-icon">
+                            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
                           {uploadingCustomImg ? (
-                            <span>Uploading to ImgBB...</span>
+                            <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)" }}>Uploading to ImgBB...</div>
                           ) : (
-                            <span><strong>Choose a file</strong> or drag & drop here (ImgBB)</span>
+                            <>
+                              <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>Choose a file or drag & drop here (ImgBB)</div>
+                              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Supports PNG, JPG, WEBP</div>
+                            </>
                           )}
                         </div>
                       )}
                     </div>
 
-                    <div className="image-url-manual">
-                      <span className="or-divider">Or enter URL manually:</span>
+                    <div style={{ marginTop: "10px" }}>
                       <input
                         type="url"
-                        placeholder="https://yourblog.com/wp-content/uploads/photo.jpg"
+                        placeholder="Or enter image URL manually..."
                         value={collageImageUrl}
                         onChange={(e) => setCollageImageUrl(e.target.value)}
+                        style={{ width: "100%" }}
                       />
                     </div>
                   </div>
@@ -1671,7 +1674,7 @@ export default function ClickableImage() {
         .ctrl-value {
           font-size: 0.75rem;
           font-weight: 700;
-          color: #a855f7;
+          color: var(--primary);
           min-width: 35px;
           text-align: right;
         }
@@ -1826,7 +1829,7 @@ export default function ClickableImage() {
         }
 
         .photo-slot-item:hover {
-          background: rgba(168, 85, 247, 0.05);
+          background: rgba(0, 113, 227, 0.12);
         }
 
         .slot-thumb {
@@ -2268,10 +2271,10 @@ export default function ClickableImage() {
 
         .btn-fetch {
           padding: 8px 16px;
-          background: rgba(52, 199, 89, 0.14);
-          border: 1px solid rgba(52, 199, 89, 0.35);
+          background: #72fc97;
+          border: 1px solid #5ce081;
           border-radius: 8px;
-          color: #34c759;
+          color: #064e3b;
           font-size: 0.82rem;
           font-weight: 700;
           cursor: pointer;
@@ -2281,8 +2284,8 @@ export default function ClickableImage() {
         }
 
         .btn-fetch:hover:not(:disabled) {
-          background: rgba(52, 199, 89, 0.24);
-          border-color: #34c759;
+          background: #2cf562;
+          border-color: #26db56;
           transform: translateY(-1px);
         }
 
