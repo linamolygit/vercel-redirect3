@@ -146,7 +146,32 @@ export default function ClickableImage() {
    */
   const autoFocusFace = async (index: number, imgUrl?: string) => {
     const url = imgUrl ?? images[index];
-    if (!url || !faceApiLoaded || !mediapipeDetector) return;
+    if (!url) return;
+
+    // Load detector on demand if not ready yet
+    if (!mediapipeDetector) {
+      try {
+        const { FaceDetector, FilesetResolver } = await import("@mediapipe/tasks-vision");
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+        );
+        mediapipeDetector = await FaceDetector.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/face_detector/short_range/float16/1/short_range.task",
+            delegate: "GPU",
+          },
+          runningMode: "IMAGE",
+          minDetectionConfidence: 0.4,
+          minSuppressionThreshold: 0.3,
+        });
+        setFaceApiLoaded(true);
+      } catch (e) {
+        console.warn("[MediaPipe] On-demand load error:", e);
+        showFaceToast("AI model load failed", "info");
+        return;
+      }
+    }
 
     setDetectingFace(index);
     try {
@@ -267,7 +292,7 @@ export default function ClickableImage() {
     }
   };
 
-  // Handle file upload
+  // Handle file upload — No auto-zoom or auto-crop on add
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -277,14 +302,15 @@ export default function ClickableImage() {
         updated[index] = url;
         return updated;
       });
-      // Immediately open edit modal for this slot
-      setEditingSlot(index);
-      // Auto face-detect after state update
-      setTimeout(() => autoFocusFace(index, url), 100);
+      setAdjustments((prev) => {
+        const updated = [...prev];
+        updated[index] = { ...DEFAULT_ADJ };
+        return updated;
+      });
     }
   };
 
-  // Handle drag and drop
+  // Handle drag and drop — No auto-zoom or auto-crop on drop
   const handleDrop = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     setDragOver(null);
@@ -296,10 +322,11 @@ export default function ClickableImage() {
         updated[index] = url;
         return updated;
       });
-      // Immediately open edit modal for this slot
-      setEditingSlot(index);
-      // Auto face-detect after state update
-      setTimeout(() => autoFocusFace(index, url), 100);
+      setAdjustments((prev) => {
+        const updated = [...prev];
+        updated[index] = { ...DEFAULT_ADJ };
+        return updated;
+      });
     }
   };
 
@@ -1266,7 +1293,7 @@ export default function ClickableImage() {
                     type="button"
                     className="btn-secondary"
                     title="Auto Detect & Crop Face"
-                    disabled={!faceApiLoaded || detectingFace !== null}
+                    disabled={detectingFace !== null}
                     onClick={() => autoFocusFace(editingSlot)}
                   >
                     {detectingFace === editingSlot ? "Cropping..." : "✂️ AI Crop Face"}
@@ -1288,8 +1315,11 @@ export default function ClickableImage() {
                 <span className="blur-val">{cropBlur}px</span>
               </div>
 
-              {/* Image Cropper Workspace */}
-              <div className="crop-container-box">
+              {/* Image Cropper Workspace with REAL-TIME LIVE BLUR PREVIEW */}
+              <div
+                className="crop-container-box"
+                style={{ filter: cropBlur > 0 ? `blur(${cropBlur}px)` : "none" }}
+              >
                 <Cropper
                   ref={cropperRef}
                   src={images[editingSlot]!}
