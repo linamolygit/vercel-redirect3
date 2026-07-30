@@ -37,6 +37,8 @@ export default function ClickableImage() {
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
 
   const [isCropping, setIsCropping] = useState(false);
+  const [cropAspect, setCropAspect] = useState<number | undefined>(undefined);
+  const [cropBlur, setCropBlur] = useState<number>(0);
 
   // When editingSlot changes to null, reset isCropping
   useEffect(() => {
@@ -1156,15 +1158,143 @@ export default function ClickableImage() {
               </div>
 
               {isCropping ? (
-                <>
+                <div className="adjust-framing-panel">
+                  <div className="crop-toolbar">
+                    {/* Ratio Presets */}
+                    <div className="ratio-btn-group">
+                      <button
+                        className={`btn-ratio ${cropAspect === currentSlotAspect ? "active" : ""}`}
+                        onClick={() => {
+                          setCropAspect(currentSlotAspect);
+                          cropperRef.current?.cropper?.setAspectRatio(currentSlotAspect);
+                        }}
+                      >
+                        Slot Ratio
+                      </button>
+                      <button
+                        className={`btn-ratio ${cropAspect === undefined ? "active" : ""}`}
+                        onClick={() => {
+                          setCropAspect(undefined);
+                          cropperRef.current?.cropper?.setAspectRatio(NaN);
+                        }}
+                      >
+                        Free
+                      </button>
+                      <button
+                        className={`btn-ratio ${cropAspect === 1 ? "active" : ""}`}
+                        onClick={() => {
+                          setCropAspect(1);
+                          cropperRef.current?.cropper?.setAspectRatio(1);
+                        }}
+                      >
+                        1:1
+                      </button>
+                      <button
+                        className={`btn-ratio ${cropAspect === 16 / 9 ? "active" : ""}`}
+                        onClick={() => {
+                          setCropAspect(16 / 9);
+                          cropperRef.current?.cropper?.setAspectRatio(16 / 9);
+                        }}
+                      >
+                        16:9
+                      </button>
+                      <button
+                        className={`btn-ratio ${cropAspect === 9 / 16 ? "active" : ""}`}
+                        onClick={() => {
+                          setCropAspect(9 / 16);
+                          cropperRef.current?.cropper?.setAspectRatio(9 / 16);
+                        }}
+                      >
+                        9:16
+                      </button>
+                    </div>
+
+                    {/* Tool Actions */}
+                    <div className="tool-btn-group">
+                      <button
+                        className="btn-icon"
+                        title="Zoom In"
+                        onClick={() => cropperRef.current?.cropper?.zoom(0.1)}
+                      >
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          <line x1="11" y1="8" x2="11" y2="14" />
+                          <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg>
+                      </button>
+                      <button
+                        className="btn-icon"
+                        title="Zoom Out"
+                        onClick={() => cropperRef.current?.cropper?.zoom(-0.1)}
+                      >
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg>
+                      </button>
+                      <button
+                        className="btn-icon"
+                        title="Rotate Left 45°"
+                        onClick={() => cropperRef.current?.cropper?.rotate(-45)}
+                      >
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <polyline points="1 4 1 10 7 10" />
+                          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                        </svg>
+                      </button>
+                      <button
+                        className="btn-icon"
+                        title="Rotate Right 45°"
+                        onClick={() => cropperRef.current?.cropper?.rotate(45)}
+                      >
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <polyline points="23 4 23 10 17 10" />
+                          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                        </svg>
+                      </button>
+                      <button
+                        className="btn-icon"
+                        title="Revert to Original"
+                        onClick={() => cropperRef.current?.cropper?.reset()}
+                      >
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                          <path d="M3 3v5h5" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Crop Blur Feature */}
+                  <div className="crop-blur-control">
+                    <div className="modal-ctrl-header">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span>Crop Blur Effect</span>
+                      <span className="ctrl-val">{cropBlur}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="20"
+                      step="1"
+                      value={cropBlur}
+                      onChange={(e) => setCropBlur(parseInt(e.target.value))}
+                    />
+                  </div>
+
                   <div className="modal-preview">
                     <Cropper
                       ref={cropperRef}
                       src={images[editingSlot]!}
-                      style={{ height: 400, width: "100%", background: "#1a1a1a" }}
+                      style={{ height: 380, width: "100%", background: "#1a1a1a" }}
                       zoomTo={1}
                       viewMode={1}
-                      aspectRatio={currentSlotAspect}
+                      aspectRatio={cropAspect !== undefined ? cropAspect : currentSlotAspect}
                       background={false}
                       responsive={true}
                       autoCropArea={1}
@@ -1172,38 +1302,52 @@ export default function ClickableImage() {
                       guides={true}
                     />
                   </div>
-                <div className="modal-controls">
-                  <div className="modal-actions">
-                    <button className="btn-crop" onClick={() => {
-                      const cropper = cropperRef.current?.cropper;
-                      if (cropper) {
-                        const croppedCanvas = cropper.getCroppedCanvas();
-                        if (croppedCanvas) {
-                          const dataUrl = croppedCanvas.toDataURL("image/jpeg", 0.9);
-                          const newImages = [...images];
-                          newImages[editingSlot] = dataUrl;
-                          setImages(newImages);
-                          // Reset adjustments just in case
-                          const newAdj = [...adjustments];
-                          newAdj[editingSlot] = { ...DEFAULT_ADJ };
-                          setAdjustments(newAdj);
-                          setIsCropping(false);
-                        }
-                      }
-                    }}>
-                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Crop & Save
-                    </button>
-                    <button className="btn-reset" onClick={() => cropperRef.current?.cropper.reset()}>
-                      Reset View
-                    </button>
-                    <button className="btn-done" onClick={() => setIsCropping(false)}>Cancel</button>
+                  <div className="modal-controls">
+                    <div className="modal-actions">
+                      <button
+                        className="btn-done"
+                        style={{ marginLeft: 0 }}
+                        onClick={() => {
+                          const cropper = cropperRef.current?.cropper;
+                          if (cropper) {
+                            const croppedCanvas = cropper.getCroppedCanvas({ imageSmoothingQuality: "high" });
+                            if (croppedCanvas) {
+                              let dataUrl = croppedCanvas.toDataURL("image/jpeg", 0.92);
+                              if (cropBlur > 0) {
+                                const blurredCanvas = document.createElement("canvas");
+                                blurredCanvas.width = croppedCanvas.width;
+                                blurredCanvas.height = croppedCanvas.height;
+                                const bCtx = blurredCanvas.getContext("2d");
+                                if (bCtx) {
+                                  bCtx.filter = `blur(${cropBlur}px)`;
+                                  bCtx.drawImage(croppedCanvas, 0, 0);
+                                  dataUrl = blurredCanvas.toDataURL("image/jpeg", 0.92);
+                                }
+                              }
+                              const newImages = [...images];
+                              newImages[editingSlot] = dataUrl;
+                              setImages(newImages);
+
+                              const newAdj = [...adjustments];
+                              newAdj[editingSlot] = { ...DEFAULT_ADJ, blur: cropBlur };
+                              setAdjustments(newAdj);
+                              setIsCropping(false);
+                            }
+                          }
+                        }}
+                      >
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Apply Crop & Save
+                      </button>
+                      <button className="btn-reset" onClick={() => setIsCropping(false)}>
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </>
-            ) : (
+              ) : (
               <>
                 <div className="modal-preview">
                   <img
@@ -2135,6 +2279,81 @@ export default function ClickableImage() {
           height: 100%;
           object-fit: cover;
           transform-origin: center;
+        }
+
+        /* ── Adjust Framing Crop Panel ── */
+        .adjust-framing-panel {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .crop-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 20px 8px;
+          flex-wrap: wrap;
+        }
+
+        .ratio-btn-group,
+        .tool-btn-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .btn-ratio {
+          padding: 6px 12px;
+          background: var(--input-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: 8px;
+          color: var(--text-main);
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.2s;
+        }
+
+        .btn-ratio:hover,
+        .btn-ratio.active {
+          background: rgba(0, 113, 227, 0.12);
+          border-color: var(--primary);
+          color: var(--primary);
+        }
+
+        .btn-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          background: var(--input-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: 8px;
+          color: var(--text-main);
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+          border-color: var(--primary);
+          color: var(--primary);
+          background: rgba(0, 113, 227, 0.08);
+        }
+
+        .crop-blur-control {
+          padding: 4px 20px 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .crop-blur-control input[type="range"] {
+          width: 100%;
+          accent-color: var(--primary);
         }
 
         .modal-controls {
