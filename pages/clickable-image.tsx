@@ -2269,23 +2269,35 @@ export default function ClickableImage() {
           padding: 8px 12px;
         }
 
+        .url-fetch-row {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .url-fetch-row input {
+          flex: 1;
+        }
+
         .btn-fetch {
-          padding: 8px 16px;
+          padding: 10px 18px;
           background: #72fc97;
           border: 1px solid #5ce081;
           border-radius: 8px;
           color: #064e3b;
-          font-size: 0.82rem;
+          font-size: 0.84rem;
           font-weight: 700;
           cursor: pointer;
           font-family: inherit;
           white-space: nowrap;
           transition: all 0.2s;
+          box-shadow: 0 2px 8px rgba(114, 252, 151, 0.3);
         }
 
         .btn-fetch:hover:not(:disabled) {
           background: #2cf562;
           border-color: #26db56;
+          box-shadow: 0 4px 14px rgba(44, 245, 98, 0.4);
           transform: translateY(-1px);
         }
 
