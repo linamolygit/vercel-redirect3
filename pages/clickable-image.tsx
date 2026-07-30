@@ -504,7 +504,7 @@ export default function ClickableImage() {
         }
       } else if (e.key.toLowerCase() === "g") {
         e.preventDefault();
-        handleConvert({ preventDefault: () => {} } as any);
+        handleConvert({ preventDefault: () => { } } as any);
       }
     };
 
@@ -1221,7 +1221,7 @@ export default function ClickableImage() {
 
                   <div className="form-field">
                     <label>Custom Image (Drag & Drop or Upload)</label>
-                    <div 
+                    <div
                       className={`dropzone ${isDraggingCustomImg ? "dragging" : ""}`}
                       style={{ border: "2px dashed var(--glass-border)", borderRadius: "16px", padding: "24px", textAlign: "center", background: "var(--input-bg)", position: "relative" }}
                       onDragOver={(e) => { e.preventDefault(); setIsDraggingCustomImg(true); }}
@@ -1245,7 +1245,7 @@ export default function ClickableImage() {
                         }}
                         style={{ display: "none" }}
                       />
-                      
+
                       {collageImageUrl ? (
                         <div>
                           <img src={collageImageUrl} alt="Preview" style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "8px", marginBottom: "16px", objectFit: "contain" }} />
@@ -1294,7 +1294,7 @@ export default function ClickableImage() {
                   </div>
                 )}
 
-                <button type="submit" className="btn-primary" style={{width:"100%", padding:"16px", fontSize:"16px"}} disabled={converting}>
+                <button type="submit" className="btn-primary" style={{ width: "100%", padding: "16px", fontSize: "16px" }} disabled={converting}>
                   <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
@@ -2280,24 +2280,22 @@ export default function ClickableImage() {
         }
 
         .btn-fetch {
-          padding: 10px 18px;
+          padding: 10px 16px;
           background: #72fc97;
           border: 1px solid #5ce081;
           border-radius: 8px;
           color: #064e3b;
-          font-size: 0.84rem;
+          font-size: 0.82rem;
           font-weight: 700;
           cursor: pointer;
           font-family: inherit;
           white-space: nowrap;
           transition: all 0.2s;
-          box-shadow: 0 2px 8px rgba(114, 252, 151, 0.3);
         }
 
         .btn-fetch:hover:not(:disabled) {
           background: #2cf562;
           border-color: #26db56;
-          box-shadow: 0 4px 14px rgba(44, 245, 98, 0.4);
           transform: translateY(-1px);
         }
 
