@@ -17,6 +17,47 @@ interface ImageAdjustment {
 
 const DEFAULT_ADJ: ImageAdjustment = { zoom: 1.0, x: 0, y: 0, blur: 0, rotate: 0 };
 
+// Get slot coordinates for canvas
+function getSlotCoordinates(layoutName: string, gapPx: number) {
+  const w = 1200;
+  const h = 630;
+  const coords: { x: number; y: number; w: number; h: number }[] = [];
+
+  if (layoutName === "5-photos") {
+    const r1h = Math.round((h - gapPx) * 0.6);
+    const r2h = h - gapPx - r1h;
+    const r1w = Math.round((w - gapPx) / 2);
+    coords.push({ x: 0, y: 0, w: r1w, h: r1h });
+    coords.push({ x: r1w + gapPx, y: 0, w: w - r1w - gapPx, h: r1h });
+    const r2w = Math.round((w - 2 * gapPx) / 3);
+    coords.push({ x: 0, y: r1h + gapPx, w: r2w, h: r2h });
+    coords.push({ x: r2w + gapPx, y: r1h + gapPx, w: r2w, h: r2h });
+    coords.push({ x: 2 * r2w + 2 * gapPx, y: r1h + gapPx, w: w - 2 * r2w - 2 * gapPx, h: r2h });
+  } else if (layoutName === "4-photos") {
+    const r1h = Math.round((h - gapPx) / 2);
+    const r2h = h - r1h - gapPx;
+    const r1w = Math.round((w - gapPx) / 2);
+    coords.push({ x: 0, y: 0, w: r1w, h: r1h });
+    coords.push({ x: r1w + gapPx, y: 0, w: w - r1w - gapPx, h: r1h });
+    coords.push({ x: 0, y: r1h + gapPx, w: r1w, h: r2h });
+    coords.push({ x: r1w + gapPx, y: r1h + gapPx, w: w - r1w - gapPx, h: r2h });
+  } else if (layoutName === "3-photos") {
+    const lw = Math.round((w - gapPx) * 0.6);
+    const rw = w - lw - gapPx;
+    const rh = Math.round((h - gapPx) / 2);
+    coords.push({ x: 0, y: 0, w: lw, h: h });
+    coords.push({ x: lw + gapPx, y: 0, w: rw, h: rh });
+    coords.push({ x: lw + gapPx, y: rh + gapPx, w: rw, h: h - rh - gapPx });
+  } else if (layoutName === "2-photos") {
+    const r1w = Math.round((w - gapPx) / 2);
+    coords.push({ x: 0, y: 0, w: r1w, h: h });
+    coords.push({ x: r1w + gapPx, y: 0, w: w - r1w - gapPx, h: h });
+  } else {
+    coords.push({ x: 0, y: 0, w: w, h: h });
+  }
+  return coords;
+}
+
 export default function ClickableImage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
@@ -70,6 +111,11 @@ export default function ClickableImage() {
   const [faceApiLoaded, setFaceApiLoaded] = useState(false);
   const [detectingFace, setDetectingFace] = useState<number | null>(null);
   const [faceToast, setFaceToast] = useState<{ msg: string; type: "success" | "info" } | null>(null);
+
+  // Keyboard Shortcuts Modal State
+  const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef<boolean>(false);
 
   const router = useRouter();
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -132,6 +178,41 @@ export default function ClickableImage() {
     loadModel();
     return () => { cancelled = true; };
   }, []);
+
+  // Reusable Crop Apply function
+  const applyCrop = () => {
+    if (editingSlot === null) return;
+    const cropper = cropperRef.current?.cropper;
+    if (cropper) {
+      const croppedCanvas = cropper.getCroppedCanvas({ imageSmoothingQuality: "high" });
+      if (croppedCanvas) {
+        let dataUrl = croppedCanvas.toDataURL("image/jpeg", 0.92);
+        if (cropBlur > 0) {
+          const blurredCanvas = document.createElement("canvas");
+          blurredCanvas.width = croppedCanvas.width;
+          blurredCanvas.height = croppedCanvas.height;
+          const bCtx = blurredCanvas.getContext("2d");
+          if (bCtx) {
+            bCtx.filter = `blur(${cropBlur}px)`;
+            bCtx.drawImage(croppedCanvas, 0, 0);
+            dataUrl = blurredCanvas.toDataURL("image/jpeg", 0.92);
+          }
+        }
+        setImages((prev) => {
+          const updated = [...prev];
+          updated[editingSlot] = dataUrl;
+          return updated;
+        });
+
+        setAdjustments((prev) => {
+          const updated = [...prev];
+          updated[editingSlot] = { ...DEFAULT_ADJ, blur: cropBlur };
+          return updated;
+        });
+      }
+    }
+    setEditingSlot(null);
+  };
 
   // Show & auto-dismiss the face toast
   const showFaceToast = (msg: string, type: "success" | "info" = "success") => {
@@ -330,14 +411,87 @@ export default function ClickableImage() {
     }
   };
 
-  // Crop change handler
-  const handleCropChange = (index: number, key: keyof ImageAdjustment, val: number) => {
-    setAdjustments((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [key]: val };
-      return updated;
-    });
+  // Long press & mouse handlers for slot interaction
+  const handleSlotMouseDown = (idx: number) => {
+    isLongPressRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      // Long hold (>500ms) opens device photo picker
+      fileInputRefs.current[idx]?.click();
+    }, 500);
   };
+
+  const handleSlotMouseUp = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleSlotClick = (idx: number, hasImage: boolean) => {
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return;
+    }
+    if (!hasImage) {
+      fileInputRefs.current[idx]?.click();
+    } else {
+      setEditingSlot(idx);
+    }
+  };
+
+  // Global Keyboard Shortcuts listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA");
+
+      // Enter key inside crop popup applies crop
+      if (e.key === "Enter" && editingSlot !== null) {
+        e.preventDefault();
+        applyCrop();
+        return;
+      }
+
+      // Esc closes open modals
+      if (e.key === "Escape") {
+        if (editingSlot !== null) setEditingSlot(null);
+        if (showShortcutsModal) setShowShortcutsModal(false);
+        return;
+      }
+
+      if (isInput) return;
+
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        e.preventDefault();
+        setShowShortcutsModal((prev) => !prev);
+      } else if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        const firstEmpty = images.findIndex((img) => !img);
+        const targetIdx = firstEmpty !== -1 ? firstEmpty : 0;
+        fileInputRefs.current[targetIdx]?.click();
+      } else if (e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        if (editingSlot === null) {
+          const firstWithImage = images.findIndex((img) => !!img);
+          if (firstWithImage !== -1) setEditingSlot(firstWithImage);
+        }
+      } else if (e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        const slotToCrop = editingSlot !== null ? editingSlot : images.findIndex((img) => !!img);
+        if (slotToCrop !== -1 && images[slotToCrop]) {
+          autoFocusFace(slotToCrop);
+        }
+      } else if (e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        handleConvert({ preventDefault: () => {} } as any);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editingSlot, showShortcutsModal, images, cropBlur, cropAspect]);
 
   // Random overlay text
   const handleRandomOverlay = () => {
@@ -669,11 +823,15 @@ export default function ClickableImage() {
         onDragOver={(e) => { e.preventDefault(); setDragOver(idx); }}
         onDragLeave={() => setDragOver(null)}
         onDrop={(e) => handleDrop(e, idx)}
-        onClick={() => {
-          if (!hasImage) {
-            fileInputRefs.current[idx]?.click();
-          }
+        onMouseDown={() => handleSlotMouseDown(idx)}
+        onMouseUp={handleSlotMouseUp}
+        onTouchStart={() => handleSlotMouseDown(idx)}
+        onTouchEnd={handleSlotMouseUp}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (hasImage) setEditingSlot(idx);
         }}
+        onClick={() => handleSlotClick(idx, hasImage)}
       >
         {hasImage ? (
           <>
@@ -687,16 +845,6 @@ export default function ClickableImage() {
                 }}
               />
             </div>
-            {/* Edit pencil button */}
-            <button
-              className="slot-edit-btn"
-              onClick={(e) => { e.stopPropagation(); setEditingSlot(idx); }}
-              title="Edit image"
-            >
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
             {/* Overlay on last slot */}
             {isLastSlot && showOverlay && overlayText && (
               <div
@@ -1168,7 +1316,7 @@ export default function ClickableImage() {
         const currentSlotAspect = slot ? slot.w / slot.h : 1;
 
         return (
-          <div className="modal-backdrop" onClick={() => setEditingSlot(null)}>
+          <div className="modal-backdrop" onClick={applyCrop}>
             <div className="modal-content-framing" onClick={(e) => e.stopPropagation()}>
               <button className="modal-close" onClick={() => setEditingSlot(null)} title="Close">
                 &times;
@@ -1343,34 +1491,7 @@ export default function ClickableImage() {
                 <button
                   type="button"
                   className="btn-primary"
-                  onClick={() => {
-                    const cropper = cropperRef.current?.cropper;
-                    if (cropper) {
-                      const croppedCanvas = cropper.getCroppedCanvas({ imageSmoothingQuality: "high" });
-                      if (croppedCanvas) {
-                        let dataUrl = croppedCanvas.toDataURL("image/jpeg", 0.92);
-                        if (cropBlur > 0) {
-                          const blurredCanvas = document.createElement("canvas");
-                          blurredCanvas.width = croppedCanvas.width;
-                          blurredCanvas.height = croppedCanvas.height;
-                          const bCtx = blurredCanvas.getContext("2d");
-                          if (bCtx) {
-                            bCtx.filter = `blur(${cropBlur}px)`;
-                            bCtx.drawImage(croppedCanvas, 0, 0);
-                            dataUrl = blurredCanvas.toDataURL("image/jpeg", 0.92);
-                          }
-                        }
-                        const newImages = [...images];
-                        newImages[editingSlot] = dataUrl;
-                        setImages(newImages);
-
-                        const newAdj = [...adjustments];
-                        newAdj[editingSlot] = { ...DEFAULT_ADJ, blur: cropBlur };
-                        setAdjustments(newAdj);
-                        setEditingSlot(null);
-                      }
-                    }
-                  }}
+                  onClick={applyCrop}
                 >
                   Apply Crop
                 </button>
@@ -1380,7 +1501,48 @@ export default function ClickableImage() {
         );
       })()}
 
-      <Footer />
+      {/* Floating Keyboard Shortcuts Button */}
+      <button
+        id="floatingShortcutsBtn"
+        title="Keyboard Shortcuts (?)"
+        onClick={() => setShowShortcutsModal(true)}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+          <line x1="6" y1="8" x2="6.01" y2="8"></line>
+          <line x1="10" y1="8" x2="10.01" y2="8"></line>
+          <line x1="14" y1="8" x2="14.01" y2="8"></line>
+          <line x1="18" y1="8" x2="18.01" y2="8"></line>
+          <line x1="6" y1="12" x2="6.01" y2="12"></line>
+          <line x1="10" y1="12" x2="10.01" y2="12"></line>
+          <line x1="14" y1="12" x2="14.01" y2="12"></line>
+          <line x1="18" y1="12" x2="18.01" y2="12"></line>
+          <line x1="8" y1="16" x2="16" y2="16"></line>
+        </svg>
+      </button>
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcutsModal && (
+        <div className="modal-backdrop" onClick={() => setShowShortcutsModal(false)}>
+          <div className="shortcuts-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowShortcutsModal(false)} title="Close">
+              &times;
+            </button>
+            <h2>Keyboard Shortcuts</h2>
+            <div className="shortcut-grid">
+              <div className="shortcut-item"><span>Open file picker / Add photo</span> <kbd>F</kbd></div>
+              <div className="shortcut-item"><span>Open crop tool (Selected slot)</span> <kbd>C</kbd></div>
+              <div className="shortcut-item"><span>Auto-magic AI face crop</span> <kbd>A</kbd></div>
+              <div className="shortcut-item"><span>Apply Crop (In crop popup)</span> <kbd>Enter</kbd></div>
+              <div className="shortcut-item"><span>Generate Redirect Link</span> <kbd>G</kbd></div>
+              <div className="shortcut-item"><span>Close open modals</span> <kbd>Esc</kbd></div>
+              <div className="shortcut-item"><span>Show Keyboard Shortcuts</span> <kbd>?</kbd></div>
+              <div className="shortcut-item"><span>Crop image slot</span> <kbd>Right Click</kbd></div>
+              <div className="shortcut-item"><span>Select photo from device</span> <kbd>Long Press</kbd></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Face detection toast notification */}
       {faceToast && (
@@ -2338,6 +2500,90 @@ export default function ClickableImage() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+
+        /* ── Floating Shortcuts Button ── */
+        #floatingShortcutsBtn {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          z-index: 999;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
+          border: 1px solid var(--glass-border);
+          box-shadow: var(--glass-shadow);
+          color: var(--text-main);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        #floatingShortcutsBtn:hover {
+          background: var(--primary);
+          color: #ffffff;
+          border-color: var(--primary);
+          transform: scale(1.1);
+        }
+
+        /* ── Keyboard Shortcuts Modal ── */
+        .shortcuts-modal-content {
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-lg);
+          box-shadow: var(--glass-shadow);
+          padding: 24px;
+          width: 100%;
+          max-width: 500px;
+          color: var(--text-main);
+          position: relative;
+        }
+
+        .shortcuts-modal-content h2 {
+          margin-top: 0;
+          margin-bottom: 20px;
+          font-size: 1.25rem;
+          font-weight: 700;
+        }
+
+        .shortcut-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+
+        .shortcut-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 12px;
+          background: var(--input-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          font-size: 14px;
+          color: var(--text-main);
+        }
+
+        .shortcut-item kbd {
+          background: var(--bg-main);
+          border: 1px solid var(--glass-border);
+          border-radius: 6px;
+          box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+          color: var(--primary);
+          display: inline-block;
+          font-family: inherit;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1;
+          padding: 5px 9px;
+          white-space: nowrap;
         }
 
         /* ── Face detection toast ── */
