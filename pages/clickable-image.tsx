@@ -225,6 +225,8 @@ export default function ClickableImage() {
         updated[index] = url;
         return updated;
       });
+      // Immediately open edit modal for this slot
+      setEditingSlot(index);
       // Auto face-detect after state update
       setTimeout(() => autoFocusFace(index, url), 100);
     }
@@ -242,6 +244,8 @@ export default function ClickableImage() {
         updated[index] = url;
         return updated;
       });
+      // Immediately open edit modal for this slot
+      setEditingSlot(index);
       // Auto face-detect after state update
       setTimeout(() => autoFocusFace(index, url), 100);
     }
@@ -1836,8 +1840,8 @@ export default function ClickableImage() {
         }
 
         .btn-download:hover {
-          border-color: rgba(168, 85, 247, 0.4);
-          background: rgba(168, 85, 247, 0.05);
+          border-color: rgba(0, 113, 227, 0.4);
+          background: rgba(0, 113, 227, 0.05);
         }
 
         .btn-download:disabled {
@@ -1893,7 +1897,7 @@ export default function ClickableImage() {
 
         .form-field input:focus,
         .form-field textarea:focus {
-          border-color: #a855f7;
+          border-color: var(--primary);
         }
 
         .form-row-2 {
@@ -2108,13 +2112,13 @@ export default function ClickableImage() {
         .ctrl-val {
           margin-left: auto;
           font-weight: 700;
-          color: #a855f7;
+          color: var(--primary);
           font-size: 0.75rem;
         }
 
         .modal-ctrl input[type="range"] {
           width: 100%;
-          accent-color: #a855f7;
+          accent-color: var(--primary);
         }
 
         .modal-actions {
@@ -2140,7 +2144,7 @@ export default function ClickableImage() {
         }
 
         .btn-replace:hover {
-          border-color: #a855f7;
+          border-color: var(--primary);
         }
 
         .btn-reset {
@@ -2184,10 +2188,10 @@ export default function ClickableImage() {
           align-items: center;
           gap: 6px;
           padding: 8px 14px;
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(99, 102, 241, 0.12));
-          border: 1px solid rgba(168, 85, 247, 0.45);
+          background: linear-gradient(135deg, rgba(0, 113, 227, 0.12), rgba(0, 113, 227, 0.06));
+          border: 1px solid rgba(0, 113, 227, 0.35);
           border-radius: 8px;
-          color: #c084fc;
+          color: var(--primary);
           font-size: 0.8rem;
           font-weight: 700;
           cursor: pointer;
@@ -2201,7 +2205,7 @@ export default function ClickableImage() {
           content: "";
           position: absolute;
           inset: 0;
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.2));
+          background: linear-gradient(135deg, rgba(0, 113, 227, 0.2), rgba(0, 113, 227, 0.1));
           opacity: 0;
           transition: opacity 0.2s;
         }
@@ -2211,9 +2215,9 @@ export default function ClickableImage() {
         }
 
         .btn-face-detect:hover:not(:disabled) {
-          border-color: rgba(168, 85, 247, 0.8);
-          box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
-          color: #e879f9;
+          border-color: var(--primary-hover);
+          box-shadow: 0 0 12px rgba(0, 113, 227, 0.25);
+          color: var(--primary-hover);
           transform: translateY(-1px);
         }
 
@@ -2227,8 +2231,8 @@ export default function ClickableImage() {
         }
 
         @keyframes face-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
-          50% { box-shadow: 0 0 0 6px rgba(168, 85, 247, 0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(0, 113, 227, 0.4); }
+          50% { box-shadow: 0 0 0 6px rgba(0, 113, 227, 0); }
         }
 
         .spin-icon {
@@ -2273,9 +2277,9 @@ export default function ClickableImage() {
         }
 
         .face-toast-info {
-          background: rgba(99, 102, 241, 0.12);
-          border: 1px solid rgba(99, 102, 241, 0.3);
-          color: #818cf8;
+          background: rgba(0, 113, 227, 0.12);
+          border: 1px solid rgba(0, 113, 227, 0.3);
+          color: var(--primary);
         }
 
         /* ── Slot "scanning" badge overlay ── */
@@ -2291,7 +2295,7 @@ export default function ClickableImage() {
           border-radius: 20px;
           font-size: 0.7rem;
           font-weight: 700;
-          color: #c084fc;
+          color: var(--primary);
           backdrop-filter: blur(6px);
           pointer-events: none;
           z-index: 10;
@@ -2349,10 +2353,10 @@ export default function ClickableImage() {
           gap: 8px;
           flex: 1;
           padding: 12px 20px;
-          background: rgba(168, 85, 247, 0.08);
-          border: 1px solid rgba(168, 85, 247, 0.2);
+          background: rgba(0, 113, 227, 0.08);
+          border: 1px solid rgba(0, 113, 227, 0.25);
           border-radius: 10px;
-          color: #a855f7;
+          color: var(--primary);
           font-size: 0.85rem;
           font-weight: 600;
           cursor: pointer;
@@ -2361,8 +2365,8 @@ export default function ClickableImage() {
         }
 
         .btn-upload-imgbb:hover {
-          background: rgba(168, 85, 247, 0.15);
-          border-color: rgba(168, 85, 247, 0.4);
+          background: rgba(0, 113, 227, 0.15);
+          border-color: var(--primary);
         }
 
         .btn-upload-imgbb:disabled {
@@ -2371,9 +2375,9 @@ export default function ClickableImage() {
         }
 
         :root.light-theme .btn-upload-imgbb {
-          background: rgba(139, 92, 246, 0.06);
-          border-color: rgba(139, 92, 246, 0.2);
-          color: #7c3aed;
+          background: rgba(0, 113, 227, 0.06);
+          border-color: rgba(0, 113, 227, 0.2);
+          color: var(--primary);
         }
 
         /* Hosted Image URL result */

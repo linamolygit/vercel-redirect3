@@ -198,16 +198,16 @@ export default function Header() {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.10), rgba(99, 102, 241, 0.08));
-          border: 1px solid rgba(168, 85, 247, 0.25);
-          color: #a855f7 !important;
+          background: rgba(0, 113, 227, 0.08);
+          border: 1px solid rgba(0, 113, 227, 0.25);
+          color: var(--primary) !important;
         }
 
         .nav-item-play:hover {
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(99, 102, 241, 0.15)) !important;
-          border-color: rgba(168, 85, 247, 0.5) !important;
-          color: #c084fc !important;
-          box-shadow: 0 0 10px rgba(168, 85, 247, 0.15);
+          background: rgba(0, 113, 227, 0.15) !important;
+          border-color: var(--primary) !important;
+          color: var(--primary-hover) !important;
+          box-shadow: 0 0 10px rgba(0, 113, 227, 0.2);
         }
 
         .nav-item-play svg {
