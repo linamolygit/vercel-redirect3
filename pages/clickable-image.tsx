@@ -138,9 +138,9 @@ export default function ClickableImage() {
   };
 
   /**
-   * Auto-detect the most prominent face in the image at `index`
-   * using Google MediaPipe FaceDetector and set X/Y/zoom adjustments
-   * so the face is perfectly centred in the slot.
+   * Auto-detect the human face in the image at `index` using Google MediaPipe
+   * and AUTOMATICALLY CROP the image around the face to match the layout slot's
+   * exact aspect ratio. This eliminates the need for manual cropping/positioning.
    */
   const autoFocusFace = async (index: number, imgUrl?: string) => {
     const url = imgUrl ?? images[index];
@@ -177,34 +177,84 @@ export default function ClickableImage() {
         return bW * bH > bestW * bestH ? d : best;
       });
 
-      // MediaPipe returns normalised coords (0-1) — convert to pixel space
       const box = biggest.boundingBox;
-      const faceCX = (box.originX + box.width / 2) * img.naturalWidth;
-      const faceCY = (box.originY + box.height / 2) * img.naturalHeight;
-      const imgCX = img.naturalWidth / 2;
-      const imgCY = img.naturalHeight / 2;
+      const imgW = img.naturalWidth;
+      const imgH = img.naturalHeight;
 
-      // Map to -100…+100 shift range used by adjustments.x / adjustments.y
-      const adjX = Math.round(((faceCX - imgCX) / imgCX) * 100);
-      const adjY = Math.round(((faceCY - imgCY) / imgCY) * 100);
+      // Calculate target layout slot dimensions and aspect ratio
+      const coords = getSlotCoordinates(layout, gap);
+      const slot = coords[index];
+      const slotW = slot ? slot.w : 600;
+      const slotH = slot ? slot.h : 630;
+      const slotAspect = slotW / slotH;
 
-      // Smart zoom: show face with comfortable framing (not too tight, not too loose)
-      const faceW = box.width * img.naturalWidth;
-      const faceH = box.height * img.naturalHeight;
-      const faceRatio = Math.max(faceW / img.naturalWidth, faceH / img.naturalHeight);
-      // Target: face takes ~40% of slot — zoom in more for small faces, less for large
-      const zoom = Math.min(Math.max((faceRatio < 0.25 ? 1 / (faceRatio * 2.2) : 1.2), 1.0), 2.8);
+      // Face bounding box dimensions & center in image pixels
+      const faceW = box.width * imgW;
+      const faceH = box.height * imgH;
+      const faceCX = (box.originX + box.width / 2) * imgW;
+      const faceCY = (box.originY + box.height / 2) * imgW > imgH ? (box.originY + box.height / 2) * imgH : (box.originY + box.height / 2) * imgH;
 
-      setAdjustments((prev) => {
-        const updated = [...prev];
-        updated[index] = { ...updated[index], x: adjX, y: adjY, zoom: parseFloat(zoom.toFixed(2)) };
-        return updated;
-      });
+      // Calculate crop box around face maintaining exact slotAspect
+      // Target: face height ~40% of crop height for natural head + shoulder framing
+      let cropH = faceH * 2.5;
+      let cropW = cropH * slotAspect;
+
+      if (cropW < faceW * 1.8) {
+        cropW = faceW * 1.8;
+        cropH = cropW / slotAspect;
+      }
+
+      // Clamp crop dimensions within original image size
+      if (cropW > imgW) {
+        cropW = imgW;
+        cropH = cropW / slotAspect;
+      }
+      if (cropH > imgH) {
+        cropH = imgH;
+        cropW = cropH * slotAspect;
+      }
+
+      // Center crop box on (faceCX, faceCY)
+      let cropX = faceCX - cropW / 2;
+      let cropY = faceCY - cropH / 2;
+
+      // Keep crop box within image boundaries [0, imgW - cropW] and [0, imgH - cropH]
+      cropX = Math.max(0, Math.min(imgW - cropW, cropX));
+      cropY = Math.max(0, Math.min(imgH - cropH, cropY));
+
+      // Perform automatic physical crop using offscreen canvas
+      const cropCanvas = document.createElement("canvas");
+      cropCanvas.width = Math.round(cropW);
+      cropCanvas.height = Math.round(cropH);
+      const ctx = cropCanvas.getContext("2d");
+
+      if (ctx) {
+        ctx.drawImage(
+          img,
+          Math.round(cropX), Math.round(cropY), Math.round(cropW), Math.round(cropH),
+          0, 0, Math.round(cropW), Math.round(cropH)
+        );
+        const croppedDataUrl = cropCanvas.toDataURL("image/jpeg", 0.92);
+
+        // Update images state with the AI cropped image
+        setImages((prev) => {
+          const updated = [...prev];
+          updated[index] = croppedDataUrl;
+          return updated;
+        });
+
+        // Reset manual adjustments for this slot
+        setAdjustments((prev) => {
+          const updated = [...prev];
+          updated[index] = { zoom: 1.0, x: 0, y: 0, blur: 0, rotate: 0 };
+          return updated;
+        });
+      }
 
       const faceScore = biggest.categories?.[0]?.score;
       const scoreText = faceScore ? ` (${Math.round(faceScore * 100)}% confidence)` : "";
       showFaceToast(
-        `✨ ${detections.length > 1 ? detections.length + " faces" : "Face"} detected${scoreText} — auto-centred!`,
+        `✨ Auto-cropped around face${scoreText}!`,
         "success"
       );
     } catch (err) {
@@ -1250,7 +1300,7 @@ export default function ClickableImage() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
                         </svg>
                       )}
-                      {detectingFace === editingSlot ? "Scanning..." : faceApiLoaded ? "🎯 Auto Focus Face" : "Loading AI..."}
+                      {detectingFace === editingSlot ? "Cropping..." : faceApiLoaded ? "✂️ Auto Crop Face" : "Loading AI..."}
                     </button>
                     <button className="btn-crop" onClick={() => setIsCropping(true)}>
                       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
