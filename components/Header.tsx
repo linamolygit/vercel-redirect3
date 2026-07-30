@@ -61,6 +61,18 @@ export default function Header() {
         <Link href="/clickable-image">
           <a className={`nav-item ${router.pathname === "/clickable-image" ? "active" : ""}`}>Mockup Gen</a>
         </Link>
+        <a
+          href="/fb_play_mockups.html"
+          className={`nav-item nav-item-play ${router.pathname === "/fb_play_mockups.html" ? "active" : ""}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="15" height="15">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.91 11.672a.375.375 0 0 1 0 .656l-5.603 3.113a.375.375 0 0 1-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112Z" />
+          </svg>
+          Mockup
+        </a>
         <Link href="/analytics">
           <a className={`nav-item ${router.pathname === "/analytics" ? "active" : ""}`}>Analytics</a>
         </Link>
@@ -180,6 +192,26 @@ export default function Header() {
         .nav-item.active {
           color: var(--primary);
           background: rgba(0, 113, 227, 0.08); /* slight primary tint */
+        }
+
+        .nav-item-play {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.10), rgba(99, 102, 241, 0.08));
+          border: 1px solid rgba(168, 85, 247, 0.25);
+          color: #a855f7 !important;
+        }
+
+        .nav-item-play:hover {
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(99, 102, 241, 0.15)) !important;
+          border-color: rgba(168, 85, 247, 0.5) !important;
+          color: #c084fc !important;
+          box-shadow: 0 0 10px rgba(168, 85, 247, 0.15);
+        }
+
+        .nav-item-play svg {
+          flex-shrink: 0;
         }
 
         .header-actions {

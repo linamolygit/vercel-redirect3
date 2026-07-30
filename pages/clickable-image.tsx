@@ -4,6 +4,8 @@ import { useRouter } from "next/router";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Cropper from "react-cropper";
+// face-api.js is loaded dynamically (browser-only)
+let faceapi: any = null;
 
 interface ImageAdjustment {
   zoom: number;
@@ -62,6 +64,11 @@ export default function ClickableImage() {
   // Drag state
   const [dragOver, setDragOver] = useState<number | null>(null);
 
+  // Face detection state
+  const [faceApiLoaded, setFaceApiLoaded] = useState(false);
+  const [detectingFace, setDetectingFace] = useState<number | null>(null);
+  const [faceToast, setFaceToast] = useState<{ msg: string; type: "success" | "info" } | null>(null);
+
   const router = useRouter();
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const cropperRef = useRef<any>(null);
@@ -89,6 +96,95 @@ export default function ClickableImage() {
     verifyUser();
   }, []);
 
+  // Load face-api.js TinyFaceDetector model (browser-only, once on mount)
+  useEffect(() => {
+    let cancelled = false;
+    const loadModel = async () => {
+      try {
+        // Dynamic import so it never runs on the server
+        const fa = await import("face-api.js");
+        faceapi = fa;
+        await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+        if (!cancelled) setFaceApiLoaded(true);
+      } catch (err) {
+        console.warn("face-api.js model load failed:", err);
+      }
+    };
+    loadModel();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Show & auto-dismiss the face toast
+  const showFaceToast = (msg: string, type: "success" | "info" = "success") => {
+    setFaceToast({ msg, type });
+    setTimeout(() => setFaceToast(null), 3000);
+  };
+
+  /**
+   * Auto-detect the most prominent face in the image at `index`
+   * and set X/Y adjustments to centre that face in the slot.
+   */
+  const autoFocusFace = async (index: number, imgUrl?: string) => {
+    const url = imgUrl ?? images[index];
+    if (!url || !faceApiLoaded || !faceapi) return;
+
+    setDetectingFace(index);
+    try {
+      const img = await new Promise<HTMLImageElement | null>((resolve) => {
+        const el = new Image();
+        el.crossOrigin = "anonymous";
+        el.onload = () => resolve(el);
+        el.onerror = () => resolve(null);
+        el.src = url;
+      });
+      if (!img) { setDetectingFace(null); return; }
+
+      const detections = await faceapi.detectAllFaces(
+        img,
+        new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 })
+      );
+
+      if (!detections || detections.length === 0) {
+        showFaceToast("No face found — showing full image", "info");
+        setDetectingFace(null);
+        return;
+      }
+
+      // Pick the largest detected face (most prominent person)
+      const biggest = detections.reduce((best: any, d: any) =>
+        d.box.width * d.box.height > best.box.width * best.box.height ? d : best
+      );
+
+      const box = biggest.box; // { x, y, width, height } in image-space
+      const faceCX = box.x + box.width / 2;
+      const faceCY = box.y + box.height / 2;
+      const imgCX = img.naturalWidth / 2;
+      const imgCY = img.naturalHeight / 2;
+
+      // Convert to the -100 … +100 range used by adjustments.x / adjustments.y
+      // Positive adjX → shift image right → face that was right-of-centre comes into view
+      const adjX = Math.round(((faceCX - imgCX) / imgCX) * 100);
+      const adjY = Math.round(((faceCY - imgCY) / imgCY) * 100);
+
+      // Mild zoom-in to exclude too much headroom
+      const faceRatio = Math.max(box.width / img.naturalWidth, box.height / img.naturalHeight);
+      const zoom = Math.min(Math.max(1 / (faceRatio * 2.5), 1.0), 2.5);
+
+      setAdjustments((prev) => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], x: adjX, y: adjY, zoom: parseFloat(zoom.toFixed(2)) };
+        return updated;
+      });
+
+      showFaceToast(`✨ ${detections.length > 1 ? detections.length + " faces" : "Face"} detected — auto-centred!`, "success");
+    } catch (err) {
+      console.warn("Face detection error:", err);
+      showFaceToast("Detection error — try manual adjust", "info");
+    } finally {
+      setDetectingFace(null);
+    }
+  };
+
   // Handle file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
@@ -99,6 +195,8 @@ export default function ClickableImage() {
         updated[index] = url;
         return updated;
       });
+      // Auto face-detect after state update
+      setTimeout(() => autoFocusFace(index, url), 100);
     }
   };
 
@@ -114,6 +212,8 @@ export default function ClickableImage() {
         updated[index] = url;
         return updated;
       });
+      // Auto face-detect after state update
+      setTimeout(() => autoFocusFace(index, url), 100);
     }
   };
 
@@ -491,6 +591,15 @@ export default function ClickableImage() {
                 style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
               >
                 <span className="overlay-number">{overlayText}</span>
+              </div>
+            )}
+            {/* Face scanning badge */}
+            {detectingFace === idx && (
+              <div className="slot-scanning-badge">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="spin-icon">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Scanning face...
               </div>
             )}
           </>
@@ -1091,6 +1200,24 @@ export default function ClickableImage() {
                   </div>
 
                   <div className="modal-actions">
+                    {/* Auto Face Focus button */}
+                    <button
+                      className={`btn-face-detect ${detectingFace === editingSlot ? "detecting" : ""} ${!faceApiLoaded ? "disabled" : ""}`}
+                      onClick={() => autoFocusFace(editingSlot)}
+                      disabled={!faceApiLoaded || detectingFace !== null}
+                      title={faceApiLoaded ? "Auto-detect and centre face" : "Loading AI model..."}
+                    >
+                      {detectingFace === editingSlot ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="spin-icon">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
+                        </svg>
+                      )}
+                      {detectingFace === editingSlot ? "Scanning..." : faceApiLoaded ? "🎯 Auto Focus Face" : "Loading AI..."}
+                    </button>
                     <button className="btn-crop" onClick={() => setIsCropping(true)}>
                       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -1118,6 +1245,23 @@ export default function ClickableImage() {
 
       <Footer />
 
+      {/* Face detection toast notification */}
+      {faceToast && (
+        <div className={`face-toast face-toast-${faceToast.type}`}>
+          {faceToast.type === "success" ? (
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
+          {faceToast.msg}
+        </div>
+      )}
+
+      {/* Detecting face overlay badges on preview slots */}
       <style jsx global>{`
         .ci-page {
           min-height: calc(100vh - 140px);
@@ -2002,6 +2146,125 @@ export default function ClickableImage() {
 
         .btn-done:hover {
           opacity: 0.9;
+        }
+
+        /* ── Auto Focus Face button ── */
+        .btn-face-detect {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(99, 102, 241, 0.12));
+          border: 1px solid rgba(168, 85, 247, 0.45);
+          border-radius: 8px;
+          color: #c084fc;
+          font-size: 0.8rem;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.2s;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .btn-face-detect::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.2));
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+
+        .btn-face-detect:hover:not(:disabled)::before {
+          opacity: 1;
+        }
+
+        .btn-face-detect:hover:not(:disabled) {
+          border-color: rgba(168, 85, 247, 0.8);
+          box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+          color: #e879f9;
+          transform: translateY(-1px);
+        }
+
+        .btn-face-detect:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .btn-face-detect.detecting {
+          animation: face-pulse 1.4s ease-in-out infinite;
+        }
+
+        @keyframes face-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+          50% { box-shadow: 0 0 0 6px rgba(168, 85, 247, 0); }
+        }
+
+        .spin-icon {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        /* ── Face detection toast ── */
+        .face-toast {
+          position: fixed;
+          bottom: 28px;
+          right: 28px;
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 18px;
+          border-radius: 12px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          font-family: inherit;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+          animation: toast-slide-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+          pointer-events: none;
+        }
+
+        @keyframes toast-slide-in {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .face-toast-success {
+          background: rgba(16, 185, 129, 0.14);
+          border: 1px solid rgba(16, 185, 129, 0.35);
+          color: #34d399;
+        }
+
+        .face-toast-info {
+          background: rgba(99, 102, 241, 0.12);
+          border: 1px solid rgba(99, 102, 241, 0.3);
+          color: #818cf8;
+        }
+
+        /* ── Slot "scanning" badge overlay ── */
+        .slot-scanning-badge {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px;
+          background: rgba(0, 0, 0, 0.7);
+          border-radius: 20px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #c084fc;
+          backdrop-filter: blur(6px);
+          pointer-events: none;
+          z-index: 10;
         }
 
         /* RESPONSIVE */
