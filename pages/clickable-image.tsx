@@ -76,7 +76,7 @@ export default function ClickableImage() {
   const [images, setImages] = useState<(string | null)[]>([null, null, null, null, null]);
   const [originalImages, setOriginalImages] = useState<(string | null)[]>([null, null, null, null, null]);
   const [layout, setLayout] = useState("5-photos");
-  const [outputRatio, setOutputRatio] = useState("191-1"); // default: 1.91:1 Link Share
+  const [outputRatio, setOutputRatio] = useState("1-1"); // default: 1:1 Square (1080×1080)
   const [layoutDropOpen, setLayoutDropOpen] = useState(false);
   const [ratioDropOpen, setRatioDropOpen] = useState(false);
   const [gap, setGap] = useState(3);
@@ -139,7 +139,7 @@ export default function ClickableImage() {
   // Helper: get slot coords for the current output ratio (used by all callbacks)
   const getRatioSlotCoords = useCallback(
     (layoutName: string, gapPx: number) => {
-      const { w, h } = RATIOS[outputRatio] ?? RATIOS["191-1"];
+      const { w, h } = RATIOS[outputRatio] ?? RATIOS["1-1"];
       return getSlotCoordinates(layoutName, gapPx, w, h);
     },
     [outputRatio]
@@ -599,7 +599,7 @@ export default function ClickableImage() {
 
   // Generate canvas for export — uses selected output ratio
   const generateCollageCanvas = async (): Promise<HTMLCanvasElement | null> => {
-    const { w: cw, h: ch } = RATIOS[outputRatio] ?? RATIOS["191-1"];
+    const { w: cw, h: ch } = RATIOS[outputRatio] ?? RATIOS["1-1"];
     const canvas = document.createElement("canvas");
     canvas.width = cw;
     canvas.height = ch;
@@ -1128,10 +1128,10 @@ export default function ClickableImage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
                 Live Preview
-                <span className="badge">{RATIOS[outputRatio]?.label.split("(")[1]?.replace(")","") ?? "1200×630"}</span>
+                <span className="badge">{RATIOS[outputRatio]?.label.split("(")[1]?.replace(")","") ?? "1080×1080"}</span>
               </div>
 
-              <div className="collage-preview" style={{ aspectRatio: RATIOS[outputRatio]?.aspect ?? "1200 / 630" }}>
+              <div className="collage-preview" style={{ aspectRatio: RATIOS[outputRatio]?.aspect ?? "1 / 1" }}>
                 {/* 5-photo layout */}
                 {layout === "5-photos" && (
                   <div className="grid-5">
@@ -1656,7 +1656,7 @@ export default function ClickableImage() {
       <style jsx global>{`
         .ci-page {
           min-height: calc(100vh - 140px);
-          padding: 16px 24px 40px;
+          padding: 24px 32px 48px;
           max-width: 1400px;
           margin: 0 auto;
         }
@@ -1682,50 +1682,29 @@ export default function ClickableImage() {
           line-height: 1.4;
         }
 
-        /* ── 2-column studio layout ── */
-        .studio-layout-2col {
+        .ci-body {
           display: flex;
-          gap: 20px;
+          gap: 24px;
           align-items: flex-start;
         }
 
-        .sidebar.glass-panel {
-          width: 270px;
-          min-width: 270px;
-          flex-shrink: 0;
+        /* LEFT CONTROLS */
+        .ci-controls {
+          width: 280px;
+          min-width: 280px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
           background: var(--glass-bg);
           border: 1px solid var(--glass-border);
           border-radius: 16px;
-          padding: 12px 16px;
+          padding: 16px;
           position: sticky;
           top: 80px;
-          max-height: calc(100vh - 110px);
-          overflow-y: auto;
-          scrollbar-width: thin;
-          scrollbar-color: var(--glass-border) transparent;
         }
-
-        .sidebar.glass-panel::-webkit-scrollbar {
-          width: 4px;
-        }
-        .sidebar.glass-panel::-webkit-scrollbar-track { background: transparent; }
-        .sidebar.glass-panel::-webkit-scrollbar-thumb {
-          background: var(--glass-border);
-          border-radius: 4px;
-        }
-
-        .workspace {
-          flex: 1;
-          min-width: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-
 
         .ctrl-section {
-          padding: 8px 0;
+          padding: 12px 0;
           border-bottom: 1px solid var(--glass-border);
         }
 
@@ -1990,9 +1969,13 @@ export default function ClickableImage() {
           border: 1px solid var(--glass-border);
           border-radius: 16px;
           padding: 16px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
 
         .preview-label {
+          width: 100%;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -2017,7 +2000,9 @@ export default function ClickableImage() {
         /* COLLAGE PREVIEW - aspect-ratio set dynamically via inline style */
         .collage-preview {
           width: 100%;
-          max-height: calc(100vh - 300px);
+          max-width: 100%;
+          max-height: 420px;
+          margin: 0 auto;
           border-radius: 8px;
           overflow: hidden;
           background: #1a1a1a;
