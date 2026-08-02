@@ -17,10 +17,19 @@ interface ImageAdjustment {
 
 const DEFAULT_ADJ: ImageAdjustment = { zoom: 1.0, x: 0, y: 0, blur: 0, rotate: 0 };
 
-// Get slot coordinates for canvas
-function getSlotCoordinates(layoutName: string, gapPx: number) {
-  const w = 1200;
-  const h = 630;
+// Available output ratios
+const RATIOS: Record<string, { w: number; h: number; label: string; aspect: string }> = {
+  "1-1":   { w: 1080, h: 1080, label: "1:1 Square (1080×1080)",       aspect: "1 / 1" },
+  "4-5":   { w: 1080, h: 1350, label: "4:5 Portrait (1080×1350)",     aspect: "4 / 5" },
+  "191-1": { w: 1200, h: 630,  label: "1.91:1 Link Share (1200×630)", aspect: "1200 / 630" },
+  "9-16":  { w: 1080, h: 1920, label: "9:16 Story (1080×1920)",       aspect: "9 / 16" },
+  "16-9":  { w: 1280, h: 720,  label: "16:9 Widescreen (1280×720)",   aspect: "16 / 9" },
+};
+
+// Get slot coordinates for canvas — accepts optional output dimensions
+function getSlotCoordinates(layoutName: string, gapPx: number, canvasW = 1200, canvasH = 630) {
+  const w = canvasW;
+  const h = canvasH;
   const coords: { x: number; y: number; w: number; h: number }[] = [];
 
   if (layoutName === "5-photos") {
@@ -67,6 +76,9 @@ export default function ClickableImage() {
   const [images, setImages] = useState<(string | null)[]>([null, null, null, null, null]);
   const [originalImages, setOriginalImages] = useState<(string | null)[]>([null, null, null, null, null]);
   const [layout, setLayout] = useState("5-photos");
+  const [outputRatio, setOutputRatio] = useState("191-1"); // default: 1.91:1 Link Share
+  const [layoutDropOpen, setLayoutDropOpen] = useState(false);
+  const [ratioDropOpen, setRatioDropOpen] = useState(false);
   const [gap, setGap] = useState(3);
   const [showOverlay, setShowOverlay] = useState(true);
   const [overlayText, setOverlayText] = useState("+3");
@@ -123,6 +135,15 @@ export default function ClickableImage() {
   const cropperRef = useRef<any>(null);
 
   const slotCount = layout === "5-photos" ? 5 : layout === "4-photos" ? 4 : layout === "3-photos" ? 3 : layout === "2-photos" ? 2 : 1;
+
+  // Helper: get slot coords for the current output ratio (used by all callbacks)
+  const getRatioSlotCoords = useCallback(
+    (layoutName: string, gapPx: number) => {
+      const { w, h } = RATIOS[outputRatio] ?? RATIOS["191-1"];
+      return getSlotCoordinates(layoutName, gapPx, w, h);
+    },
+    [outputRatio]
+  );
 
   // Auth check
   useEffect(() => {
@@ -291,7 +312,7 @@ export default function ClickableImage() {
       const imgH = img.naturalHeight;
 
       // Calculate target layout slot dimensions and aspect ratio
-      const coords = getSlotCoordinates(layout, gap);
+      const coords = getRatioSlotCoords(layout, gap);
       const slot = coords[index];
       const slotW = slot ? slot.w : 600;
       const slotH = slot ? slot.h : 630;
@@ -576,60 +597,20 @@ export default function ClickableImage() {
     ctx.restore();
   };
 
-  // Get slot coordinates for canvas
-  const getSlotCoordinates = (layoutName: string, gapPx: number) => {
-    const w = 1200;
-    const h = 630;
-    const coords: { x: number; y: number; w: number; h: number }[] = [];
-
-    if (layoutName === "5-photos") {
-      const r1h = Math.round((h - gapPx) * 0.6);
-      const r2h = h - gapPx - r1h;
-      const r1w = Math.round((w - gapPx) / 2);
-      coords.push({ x: 0, y: 0, w: r1w, h: r1h });
-      coords.push({ x: r1w + gapPx, y: 0, w: w - r1w - gapPx, h: r1h });
-      const r2w = Math.round((w - 2 * gapPx) / 3);
-      coords.push({ x: 0, y: r1h + gapPx, w: r2w, h: r2h });
-      coords.push({ x: r2w + gapPx, y: r1h + gapPx, w: r2w, h: r2h });
-      coords.push({ x: 2 * r2w + 2 * gapPx, y: r1h + gapPx, w: w - 2 * r2w - 2 * gapPx, h: r2h });
-    } else if (layoutName === "4-photos") {
-      const r1h = Math.round((h - gapPx) / 2);
-      const r2h = h - r1h - gapPx;
-      const r1w = Math.round((w - gapPx) / 2);
-      coords.push({ x: 0, y: 0, w: r1w, h: r1h });
-      coords.push({ x: r1w + gapPx, y: 0, w: w - r1w - gapPx, h: r1h });
-      coords.push({ x: 0, y: r1h + gapPx, w: r1w, h: r2h });
-      coords.push({ x: r1w + gapPx, y: r1h + gapPx, w: w - r1w - gapPx, h: r2h });
-    } else if (layoutName === "3-photos") {
-      const lw = Math.round((w - gapPx) * 0.6);
-      const rw = w - lw - gapPx;
-      const rh = Math.round((h - gapPx) / 2);
-      coords.push({ x: 0, y: 0, w: lw, h: h });
-      coords.push({ x: lw + gapPx, y: 0, w: rw, h: rh });
-      coords.push({ x: lw + gapPx, y: rh + gapPx, w: rw, h: h - rh - gapPx });
-    } else if (layoutName === "2-photos") {
-      const r1w = Math.round((w - gapPx) / 2);
-      coords.push({ x: 0, y: 0, w: r1w, h: h });
-      coords.push({ x: r1w + gapPx, y: 0, w: w - r1w - gapPx, h: h });
-    } else {
-      coords.push({ x: 0, y: 0, w: w, h: h });
-    }
-    return coords;
-  };
-
-  // Generate canvas for export
+  // Generate canvas for export — uses selected output ratio
   const generateCollageCanvas = async (): Promise<HTMLCanvasElement | null> => {
+    const { w: cw, h: ch } = RATIOS[outputRatio] ?? RATIOS["191-1"];
     const canvas = document.createElement("canvas");
-    canvas.width = 1200;
-    canvas.height = 630;
+    canvas.width = cw;
+    canvas.height = ch;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
     // White canvas background for gaps between photos
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, 1200, 630);
+    ctx.fillRect(0, 0, cw, ch);
 
-    const coords = getSlotCoordinates(layout, gap);
+    const coords = getRatioSlotCoords(layout, gap);
 
     for (let i = 0; i < coords.length; i++) {
       const coord = coords[i];
@@ -932,7 +913,7 @@ export default function ClickableImage() {
         <div className="studio-layout-2col">
           {/* Left: Controls */}
           <div className="sidebar glass-panel">
-            {/* Layout Selection */}
+            {/* Layout Selection — Custom Glass Dropdown */}
             <div className="ctrl-section">
               <div className="ctrl-label">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -940,13 +921,86 @@ export default function ClickableImage() {
                 </svg>
                 Layout
               </div>
-              <select value={layout} onChange={(e) => setLayout(e.target.value)}>
-                <option value="5-photos">5 Photos (2+3)</option>
-                <option value="4-photos">4 Photos (2×2)</option>
-                <option value="3-photos">3 Photos (1+2)</option>
-                <option value="2-photos">2 Photos</option>
-                <option value="1-photo">1 Photo</option>
-              </select>
+              {/* Custom glass select */}
+              <div className={`custom-select${layoutDropOpen ? " open" : ""}`}>
+                <button
+                  type="button"
+                  className="custom-select-trigger"
+                  onClick={() => setLayoutDropOpen((o) => !o)}
+                  onBlur={() => setTimeout(() => setLayoutDropOpen(false), 120)}
+                >
+                  <span>{
+                    layout === "5-photos" ? "5 Photos (2+3)" :
+                    layout === "4-photos" ? "4 Photos (2×2)" :
+                    layout === "3-photos" ? "3 Photos (1+2)" :
+                    layout === "2-photos" ? "2 Photos" : "1 Photo"
+                  }</span>
+                  <svg className="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+                {layoutDropOpen && (
+                  <div className="custom-select-menu">
+                    {[
+                      { v: "5-photos", l: "5 Photos (2+3)" },
+                      { v: "4-photos", l: "4 Photos (2×2)" },
+                      { v: "3-photos", l: "3 Photos (1+2)" },
+                      { v: "2-photos", l: "2 Photos" },
+                      { v: "1-photo",  l: "1 Photo" },
+                    ].map(({ v, l }) => (
+                      <div
+                        key={v}
+                        className={`custom-select-option${layout === v ? " selected" : ""}`}
+                        onMouseDown={() => { setLayout(v); setLayoutDropOpen(false); }}
+                      >
+                        <span>{l}</span>
+                        <svg className="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Output Ratio — Custom Glass Dropdown */}
+            <div className="ctrl-section">
+              <div className="ctrl-label">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                </svg>
+                Output Ratio
+              </div>
+              <div className={`custom-select${ratioDropOpen ? " open" : ""}`}>
+                <button
+                  type="button"
+                  className="custom-select-trigger"
+                  onClick={() => setRatioDropOpen((o) => !o)}
+                  onBlur={() => setTimeout(() => setRatioDropOpen(false), 120)}
+                >
+                  <span>{RATIOS[outputRatio]?.label ?? "Select ratio"}</span>
+                  <svg className="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+                {ratioDropOpen && (
+                  <div className="custom-select-menu">
+                    {Object.entries(RATIOS).map(([k, r]) => (
+                      <div
+                        key={k}
+                        className={`custom-select-option${outputRatio === k ? " selected" : ""}`}
+                        onMouseDown={() => { setOutputRatio(k); setRatioDropOpen(false); }}
+                      >
+                        <span>{r.label}</span>
+                        <svg className="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Gap */}
@@ -1074,10 +1128,10 @@ export default function ClickableImage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
                 Live Preview
-                <span className="badge">1200×630</span>
+                <span className="badge">{RATIOS[outputRatio]?.label.split("(")[1]?.replace(")","") ?? "1200×630"}</span>
               </div>
 
-              <div className="collage-preview">
+              <div className="collage-preview" style={{ aspectRatio: RATIOS[outputRatio]?.aspect ?? "1200 / 630" }}>
                 {/* 5-photo layout */}
                 {layout === "5-photos" && (
                   <div className="grid-5">
@@ -1335,7 +1389,7 @@ export default function ClickableImage() {
 
       {/* Adjust Framing Modal — 100% Exact match to fb_play_mockups.html */}
       {editingSlot !== null && images[editingSlot] && (() => {
-        const coords = getSlotCoordinates(layout, gap);
+        const coords = getRatioSlotCoords(layout, gap);
         const slot = coords[editingSlot];
         const currentSlotAspect = slot ? slot.w / slot.h : 1;
 
@@ -1939,10 +1993,9 @@ export default function ClickableImage() {
           letter-spacing: 0;
         }
 
-        /* COLLAGE PREVIEW - matches Facebook exactly */
+        /* COLLAGE PREVIEW - aspect-ratio set dynamically via inline style */
         .collage-preview {
           width: 100%;
-          aspect-ratio: 1200 / 630;
           border-radius: 8px;
           overflow: hidden;
           background: #1a1a1a;
@@ -2066,8 +2119,8 @@ export default function ClickableImage() {
         }
 
         .preview-slot:hover .slot-empty {
-          background: rgba(168, 85, 247, 0.08);
-          color: #a855f7;
+          background: rgba(0, 113, 227, 0.08);
+          color: var(--primary);
         }
 
         /* Pencil edit button on slot */
@@ -2926,7 +2979,7 @@ export default function ClickableImage() {
           border-radius: 12px;
           padding: 16px;
           margin: 16px 0;
-          background: rgba(168, 85, 247, 0.02);
+          background: rgba(0, 113, 227, 0.02);
         }
 
         .og-override-panel legend {
@@ -2958,18 +3011,45 @@ export default function ClickableImage() {
         }
 
         .og-override-panel textarea:focus {
-          border-color: #a855f7;
+          border-color: var(--primary);
         }
 
         :root.light-theme .og-override-panel {
-          background: rgba(139, 92, 246, 0.03);
+          background: rgba(0, 113, 227, 0.03);
         }
+
+        /* Custom Glass Select Dropdown */
+        .custom-select { position: relative; width: 100%; }
+        .custom-select-trigger {
+          width: 100%; display: flex; align-items: center; justify-content: space-between;
+          background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 8px;
+          padding: 8px 10px; font-size: 0.82rem; font-weight: 500; color: var(--text-main);
+          cursor: pointer; font-family: inherit; transition: border-color 0.2s;
+        }
+        .custom-select-trigger:hover, .custom-select.open .custom-select-trigger { border-color: var(--primary); }
+        .custom-select-trigger .chevron { width: 14px; height: 14px; color: var(--text-muted); transition: transform 0.2s ease; flex-shrink: 0; }
+        .custom-select.open .custom-select-trigger .chevron { transform: rotate(180deg); color: var(--primary); }
+        .custom-select-menu {
+          position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
+          background: var(--glass-bg); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+          border: 1px solid var(--glass-border); border-radius: 10px; box-shadow: var(--glass-shadow);
+          overflow: hidden; padding: 4px;
+        }
+        .custom-select-option {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 8px 10px; font-size: 0.82rem; font-weight: 500; color: var(--text-main);
+          border-radius: 6px; cursor: pointer; transition: background 0.15s;
+        }
+        .custom-select-option:hover { background: rgba(0,113,227,0.12); }
+        .custom-select-option.selected { color: var(--primary); font-weight: 700; background: rgba(0,113,227,0.08); }
+        .custom-select-option .check-icon { width: 15px; height: 15px; opacity: 0; flex-shrink: 0; }
+        .custom-select-option.selected .check-icon { opacity: 1; }
 
         /* Dropzone Styles */
         .dropzone {
           border: 2px dashed var(--glass-border);
           border-radius: 12px;
-          background: rgba(168, 85, 247, 0.02);
+          background: rgba(0, 113, 227, 0.02);
           cursor: pointer;
           transition: all 0.2s;
           text-align: center;
@@ -2983,8 +3063,8 @@ export default function ClickableImage() {
         }
 
         .dropzone:hover, .dropzone.dragging {
-          border-color: #a855f7;
-          background: rgba(168, 85, 247, 0.08);
+          border-color: var(--primary);
+          background: rgba(0, 113, 227, 0.08);
         }
 
         .dropzone-prompt {
@@ -3000,7 +3080,7 @@ export default function ClickableImage() {
         .upload-icon {
           width: 36px;
           height: 36px;
-          color: #a855f7;
+          color: var(--primary);
         }
 
         .dropzone-preview {
