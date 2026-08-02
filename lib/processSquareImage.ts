@@ -1,4 +1,3 @@
-import sharp from "sharp";
 import axios from "axios";
 
 /**
@@ -14,6 +13,14 @@ export async function processSquareImage(imageBuffer: Buffer): Promise<string> {
   const apiKey = process.env.IMGBB_API_KEY;
   if (!apiKey) {
     throw new Error("IMGBB_API_KEY is not defined in environment variables.");
+  }
+
+  let sharp: any;
+  try {
+    sharp = require("sharp");
+  } catch (err: any) {
+    console.warn("Sharp native module could not be loaded:", err?.message || err);
+    throw new Error(`Sharp module not available: ${err?.message || err}`);
   }
 
   try {
