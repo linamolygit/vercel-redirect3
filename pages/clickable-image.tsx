@@ -860,9 +860,20 @@ export default function ClickableImage() {
         }),
       });
 
-      if (!response.ok) throw new Error("Redirect creation failed");
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Redirect creation failed (${response.status}): ${text.substring(0, 100)}`);
+      }
 
-      const resJson = await response.json();
+      const contentType = response.headers.get("content-type");
+      let resJson: any = {};
+      if (contentType && contentType.includes("application/json")) {
+        resJson = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}`);
+      }
+
       const host = typeof window !== "undefined" ? window.location.host : "yourdomain.com";
       const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
       setResultUrl(`${protocol}//${host}/${resJson.shortId}`);

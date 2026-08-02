@@ -97,6 +97,15 @@ const Home: NextPage = () => {
     }
   };
 
+  const safeJsonParse = async (res: Response) => {
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return await res.json();
+    }
+    const text = await res.text();
+    throw new Error(`Server error (${res.status}): ${text.substring(0, 150) || "Invalid server response."}`);
+  };
+
   const handleFetchMetadata = async () => {
     if (!wpUrl) {
       showToast("Please enter a WordPress Post URL first.", "error");
@@ -106,7 +115,7 @@ const Home: NextPage = () => {
     setErrorMessage("");
     try {
       const res = await fetch(`/api/fetch-wp?url=${encodeURIComponent(wpUrl)}`);
-      const data = await res.json();
+      const data = await safeJsonParse(res);
       if (!res.ok) throw new Error(data.error || "Error fetching WordPress details.");
       
       setCustomTitle(data.title || "");
@@ -145,7 +154,7 @@ const Home: NextPage = () => {
         }),
       });
 
-      const data = await res.json();
+      const data = await safeJsonParse(res);
       if (!res.ok) throw new Error(data.error || "Error converting link.");
 
       setResultUrl(data.shortLink);
