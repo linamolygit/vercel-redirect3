@@ -2897,20 +2897,22 @@ export default function ClickableImage() {
 
         .btn-fetch {
           padding: 10px 16px;
-          background: var(--accent);
-          border: none;
+          background: #72fc97;
+          border: 1px solid #5ce081;
           border-radius: 8px;
-          color: #fff;
+          color: #064e3b;
           font-size: 0.82rem;
           font-weight: 700;
           cursor: pointer;
           font-family: inherit;
           white-space: nowrap;
-          transition: opacity 0.2s;
+          transition: all 0.2s;
         }
 
-        .btn-fetch:hover {
-          opacity: 0.9;
+        .btn-fetch:hover:not(:disabled) {
+          background: #2cf562;
+          border-color: #26db56;
+          transform: translateY(-1px);
         }
 
         .btn-fetch:disabled {
