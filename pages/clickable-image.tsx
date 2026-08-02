@@ -1656,7 +1656,7 @@ export default function ClickableImage() {
       <style jsx global>{`
         .ci-page {
           min-height: calc(100vh - 140px);
-          padding: 24px 32px 48px;
+          padding: 16px 24px 40px;
           max-width: 1400px;
           margin: 0 auto;
         }
@@ -1682,29 +1682,50 @@ export default function ClickableImage() {
           line-height: 1.4;
         }
 
-        .ci-body {
+        /* ── 2-column studio layout ── */
+        .studio-layout-2col {
           display: flex;
-          gap: 24px;
+          gap: 20px;
           align-items: flex-start;
         }
 
-        /* LEFT CONTROLS */
-        .ci-controls {
-          width: 280px;
-          min-width: 280px;
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
+        .sidebar.glass-panel {
+          width: 270px;
+          min-width: 270px;
+          flex-shrink: 0;
           background: var(--glass-bg);
           border: 1px solid var(--glass-border);
           border-radius: 16px;
-          padding: 16px;
+          padding: 12px 16px;
           position: sticky;
           top: 80px;
+          max-height: calc(100vh - 110px);
+          overflow-y: auto;
+          scrollbar-width: thin;
+          scrollbar-color: var(--glass-border) transparent;
         }
 
+        .sidebar.glass-panel::-webkit-scrollbar {
+          width: 4px;
+        }
+        .sidebar.glass-panel::-webkit-scrollbar-track { background: transparent; }
+        .sidebar.glass-panel::-webkit-scrollbar-thumb {
+          background: var(--glass-border);
+          border-radius: 4px;
+        }
+
+        .workspace {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+
+
         .ctrl-section {
-          padding: 12px 0;
+          padding: 8px 0;
           border-bottom: 1px solid var(--glass-border);
         }
 
@@ -1996,6 +2017,7 @@ export default function ClickableImage() {
         /* COLLAGE PREVIEW - aspect-ratio set dynamically via inline style */
         .collage-preview {
           width: 100%;
+          max-height: calc(100vh - 300px);
           border-radius: 8px;
           overflow: hidden;
           background: #1a1a1a;
