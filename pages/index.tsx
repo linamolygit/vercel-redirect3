@@ -40,7 +40,7 @@ const Home: NextPage = () => {
   const [userName, setUserName] = useState("");
   const [userUsername, setUserUsername] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(false); // Page renders immediately; auth loads in background
   const [editingLink, setEditingLink] = useState<SavedLink | null>(null);
   
   const [toast, setToast] = useState<{ msg: string; type: "success" | "info" | "error" } | null>(null);
@@ -233,13 +233,8 @@ const Home: NextPage = () => {
     });
   };
 
-  if (checkingAuth) {
-    return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', color: 'var(--text-main)' }}>
-        Loading session...
-      </div>
-    );
-  }
+  // NOTE: checkingAuth is no longer used to block rendering.
+  // Auth loads in background; page renders immediately.
 
   const filteredHistory = history.filter((link) => {
     const term = searchQuery.toLowerCase();
