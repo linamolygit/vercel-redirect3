@@ -83,6 +83,7 @@ export default function ClickableImage() {
   const [showOverlay, setShowOverlay] = useState(true);
   const [overlayText, setOverlayText] = useState("+3");
   const [overlayOpacity, setOverlayOpacity] = useState(0.5);
+  const [overlayFontSize, setOverlayFontSize] = useState<number>(32);
   const [adjustments, setAdjustments] = useState<ImageAdjustment[]>([
     { ...DEFAULT_ADJ }, { ...DEFAULT_ADJ }, { ...DEFAULT_ADJ }, { ...DEFAULT_ADJ }, { ...DEFAULT_ADJ },
   ]);
@@ -645,8 +646,8 @@ export default function ClickableImage() {
       ctx.fillStyle = `rgba(0, 0, 0, ${overlayOpacity})`;
       ctx.fillRect(lastCoord.x, lastCoord.y, lastCoord.w, lastCoord.h);
       ctx.fillStyle = "#ffffff";
-      // Smaller font size to match Facebook style
-      const fontSize = Math.min(lastCoord.w, lastCoord.h) * 0.25;
+      // Scalable font size based on overlayFontSize control
+      const fontSize = (overlayFontSize / 32) * Math.min(lastCoord.w, lastCoord.h) * 0.25;
       ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -853,7 +854,7 @@ export default function ClickableImage() {
                 className="slot-overlay"
                 style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
               >
-                <span className="overlay-number">{overlayText}</span>
+                <span className="overlay-number" style={{ fontSize: `${overlayFontSize}px` }}>{overlayText}</span>
               </div>
             )}
             {/* Face scanning badge */}
@@ -1048,11 +1049,18 @@ export default function ClickableImage() {
                 )}
               </div>
               {showOverlay && (
-                <div className="opacity-row">
-                  <span className="mini-label">Opacity</span>
-                  <input type="range" min="0.2" max="0.8" step="0.05" value={overlayOpacity} onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))} />
-                  <span className="ctrl-value">{Math.round(overlayOpacity * 100)}%</span>
-                </div>
+                <>
+                  <div className="opacity-row">
+                    <span className="mini-label">Opacity</span>
+                    <input type="range" min="0.2" max="0.8" step="0.05" value={overlayOpacity} onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))} />
+                    <span className="ctrl-value">{Math.round(overlayOpacity * 100)}%</span>
+                  </div>
+                  <div className="opacity-row" style={{ marginTop: "8px" }}>
+                    <span className="mini-label">Size</span>
+                    <input type="range" min="16" max="64" step="1" value={overlayFontSize} onChange={(e) => setOverlayFontSize(parseInt(e.target.value))} />
+                    <span className="ctrl-value">{overlayFontSize}px</span>
+                  </div>
+                </>
               )}
             </div>
 
