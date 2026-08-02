@@ -1131,7 +1131,18 @@ export default function ClickableImage() {
                 <span className="badge">{RATIOS[outputRatio]?.label.split("(")[1]?.replace(")","") ?? "1080×1080"}</span>
               </div>
 
-              <div className="collage-preview" style={{ aspectRatio: RATIOS[outputRatio]?.aspect ?? "1 / 1" }}>
+              {(() => {
+                const ratioObj = RATIOS[outputRatio] ?? RATIOS["1-1"];
+                const maxH = 420;
+                const calcW = Math.round(maxH * (ratioObj.w / ratioObj.h));
+                return (
+                  <div
+                    className="collage-preview"
+                    style={{
+                      aspectRatio: ratioObj.aspect,
+                      width: `min(100%, ${calcW}px)`,
+                    }}
+                  >
                 {/* 5-photo layout */}
                 {layout === "5-photos" && (
                   <div className="grid-5">
@@ -1189,6 +1200,8 @@ export default function ClickableImage() {
                   </div>
                 )}
               </div>
+                );
+              })()}
             </div>
 
             {/* Export Actions */}
@@ -1999,7 +2012,6 @@ export default function ClickableImage() {
 
         /* COLLAGE PREVIEW - aspect-ratio set dynamically via inline style */
         .collage-preview {
-          width: 100%;
           max-width: 100%;
           max-height: 420px;
           margin: 0 auto;
