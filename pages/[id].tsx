@@ -3,6 +3,46 @@ import Head from "next/head";
 import { GetServerSideProps } from "next";
 import { query, initDb } from "../lib/db";
 
+// ─── PERFORMANCE OPTIMIZATION ────────────────────────────────────────────────
+// 1. DB Init flag: initDb() runs CREATE TABLE queries — we only need it ONCE
+//    per serverless function instance, not on every request.
+let dbReady = false;
+async function ensureDb() {
+  if (!dbReady) {
+    await initDb();
+    dbReady = true;
+  }
+}
+
+// 2. In-memory redirect cache: avoids hitting MySQL on every click for the
+//    same short ID. TTL = 60 seconds. Cache is per-lambda-instance.
+interface CacheEntry {
+  data: any;
+  expiresAt: number;
+}
+const redirectCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60_000; // 60 seconds
+
+function getCached(shortId: string): any | null {
+  const entry = redirectCache.get(shortId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    redirectCache.delete(shortId);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache(shortId: string, data: any) {
+  // Keep cache size reasonable (max 500 entries)
+  if (redirectCache.size >= 500) {
+    const firstKey = redirectCache.keys().next().value;
+    if (firstKey) redirectCache.delete(firstKey);
+  }
+  redirectCache.set(shortId, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // User-Agent crawler detection list
 const CRAWLER_PATTERNS = [
   "facebookexternalhit",
@@ -32,78 +72,106 @@ function isFacebookReferer(referer: string = ""): boolean {
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const { id } = ctx.params as { id: string };
   const userAgent = ctx.req.headers["user-agent"] || "";
-  const referer = ctx.req.headers["referer"] || "";
-  const fbclid = ctx.query.fbclid || "";
+  const referer  = ctx.req.headers["referer"]  || "";
+  const fbclid   = ctx.query.fbclid || "";
+
+  // ── FAST PATH: Detect crawler/real-user BEFORE any DB work ─────────────────
+  // For real users (non-crawlers), we want the redirect to fire as fast as
+  // possible. We still need the destination URL from DB, but we skip initDb()
+  // on hot paths by using the dbReady flag.
+  const crawlerDetected = isCrawler(userAgent) || isFacebookReferer(referer) || !!fbclid;
 
   try {
-    // Ensure database table exists
-    await initDb();
+    // Only run initDb() once per lambda cold-start
+    await ensureDb();
 
-    // Query database for the short redirect ID
-    const results = (await query(
-      "SELECT id, original_url, custom_title, custom_desc, custom_image FROM redirects WHERE short_id = ?",
-      [id]
-    )) as any[];
+    // ── Try cache first, fall back to DB ──────────────────────────────────────
+    let redirectData = getCached(id);
+    if (!redirectData) {
+      const results = (await query(
+        "SELECT id, original_url, custom_title, custom_desc, custom_image FROM redirects WHERE short_id = ?",
+        [id]
+      )) as any[];
 
-    if (!results || results.length === 0) {
-      return {
-        notFound: true,
-      };
+      if (!results || results.length === 0) {
+        return { notFound: true };
+      }
+
+      redirectData = results[0];
+      // Cache the result so subsequent clicks don't hit MySQL
+      setCache(id, redirectData);
     }
 
-    const redirectData = results[0];
     const destination = redirectData.original_url;
 
-    // Track Analytics
-    const ipAddress = (ctx.req.headers["x-forwarded-for"] || ctx.req.socket.remoteAddress || "").toString().split(",")[0].trim();
-    const country = (ctx.req.headers["x-vercel-ip-country"] || ctx.req.headers["cf-ipcountry"] || "Unknown").toString();
-    const city = (ctx.req.headers["x-vercel-ip-city"] || ctx.req.headers["cf-ipcity"] || "Unknown").toString();
-
-    // Parse User-Agent
-    const UAParser = require("ua-parser-js");
-    const parser = new UAParser(userAgent);
-    const parsedUA = parser.getResult();
-    const deviceType = parsedUA.device.type || "Desktop";
-    const browser = parsedUA.browser.name || "Unknown";
-    const os = parsedUA.os.name || "Unknown";
-
-    // Detect Social Platforms from Referer & UA
-    let platform = "Direct";
-    if (isFacebookReferer(referer) || !!fbclid || userAgent.toLowerCase().includes("facebook")) {
-      platform = "Facebook";
-    } else if (referer.includes("t.co") || referer.includes("twitter")) {
-      platform = "Twitter";
-    } else if (referer.includes("instagram")) {
-      platform = "Instagram";
-    } else if (referer.includes("linkedin")) {
-      platform = "LinkedIn";
-    } else if (referer.includes("google")) {
-      platform = "Google";
-    } else if (referer) {
-      try {
-        platform = new URL(referer).hostname.replace("www.", "");
-      } catch (e) {
-        platform = referer;
-      }
-    }
-
-    // Insert asynchronously (fire and forget)
-    query(
-      "INSERT INTO analytics (redirect_id, ip_address, user_agent, referrer, country, city, device_type, browser, os, platform) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [redirectData.id, ipAddress, userAgent, referer, country, city, deviceType, browser, os, platform]
-    ).catch(e => console.error("Analytics insert error:", e));
-
-    const crawlerDetected = isCrawler(userAgent) || isFacebookReferer(referer) || !!fbclid;
-
-    // 🚀 Normal Users: Instant server-side 302 redirect to target WordPress post
+    // ── 🚀 REAL USER: Redirect immediately, log analytics in background ───────
     if (!crawlerDetected) {
+      // Fire-and-forget analytics — runs AFTER redirect is returned to user
+      setImmediate(async () => {
+        try {
+          const ipAddress = (ctx.req.headers["x-forwarded-for"] || ctx.req.socket?.remoteAddress || "").toString().split(",")[0].trim();
+          const country   = (ctx.req.headers["x-vercel-ip-country"] || "Unknown").toString();
+          const city      = (ctx.req.headers["x-vercel-ip-city"]    || "Unknown").toString();
+
+          const UAParser = require("ua-parser-js");
+          const parsedUA = new UAParser(userAgent).getResult();
+          const deviceType = parsedUA.device.type   || "Desktop";
+          const browser    = parsedUA.browser.name  || "Unknown";
+          const os         = parsedUA.os.name       || "Unknown";
+
+          let platform = "Direct";
+          if (isFacebookReferer(referer) || !!fbclid || userAgent.toLowerCase().includes("facebook")) platform = "Facebook";
+          else if (referer.includes("t.co") || referer.includes("twitter")) platform = "Twitter";
+          else if (referer.includes("instagram")) platform = "Instagram";
+          else if (referer.includes("linkedin"))  platform = "LinkedIn";
+          else if (referer.includes("google"))    platform = "Google";
+          else if (referer) {
+            try { platform = new URL(referer).hostname.replace("www.", ""); } catch { platform = referer; }
+          }
+
+          await query(
+            "INSERT INTO analytics (redirect_id, ip_address, user_agent, referrer, country, city, device_type, browser, os, platform) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [redirectData.id, ipAddress, userAgent, referer, country, city, deviceType, browser, os, platform]
+          );
+        } catch (e) {
+          console.error("Analytics insert error:", e);
+        }
+      });
+
+      // ⚡ Instant redirect — no waiting for analytics!
       return {
         redirect: {
-          destination: destination,
+          destination,
           permanent: false,
         },
       };
     }
+
+    // ── 🕷️ CRAWLER: Log analytics synchronously, then serve OG page ──────────
+    const ipAddress = (ctx.req.headers["x-forwarded-for"] || ctx.req.socket?.remoteAddress || "").toString().split(",")[0].trim();
+    const country   = (ctx.req.headers["x-vercel-ip-country"] || "Unknown").toString();
+    const city      = (ctx.req.headers["x-vercel-ip-city"]    || "Unknown").toString();
+
+    const UAParser  = require("ua-parser-js");
+    const parsedUA  = new UAParser(userAgent).getResult();
+    const deviceType = parsedUA.device.type  || "Desktop";
+    const browser    = parsedUA.browser.name || "Unknown";
+    const os         = parsedUA.os.name      || "Unknown";
+
+    let platform = "Direct";
+    if (isFacebookReferer(referer) || !!fbclid || userAgent.toLowerCase().includes("facebook")) platform = "Facebook";
+    else if (referer.includes("t.co") || referer.includes("twitter")) platform = "Twitter";
+    else if (referer.includes("instagram")) platform = "Instagram";
+    else if (referer.includes("linkedin"))  platform = "LinkedIn";
+    else if (referer.includes("google"))    platform = "Google";
+    else if (referer) {
+      try { platform = new URL(referer).hostname.replace("www.", ""); } catch { platform = referer; }
+    }
+
+    query(
+      "INSERT INTO analytics (redirect_id, ip_address, user_agent, referrer, country, city, device_type, browser, os, platform) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [redirectData.id, ipAddress, userAgent, referer, country, city, deviceType, browser, os, platform]
+    ).catch(e => console.error("Analytics insert error:", e));
 
     // 🕷️ Crawler Detected: Render OG metadata HTML page
     const host = ctx.req.headers.host || "localhost:3000";
