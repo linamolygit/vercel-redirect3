@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.0",
+    "axios": "^1.19.0",
     "bcryptjs": "^2.4.3",
     "cropperjs": "^2.1.1",
     "graphql": "^16.6.0",
@@ -22,6 +23,7 @@
     "react-cropper": "^2.3.3",
     "react-dom": "18.2.0",
     "recharts": "^3.9.1",
+    "sharp": "^0.35.3",
     "ua-parser-js": "^2.0.10"
   },
   "devDependencies": {
@@ -31,6 +33,7 @@
     "@types/nodemailer": "^6.4.7",
     "@types/react": "18.0.21",
     "@types/react-dom": "18.0.6",
+    "@types/sharp": "^0.31.1",
     "@types/ua-parser-js": "^0.7.39",
     "eslint": "8.25.0",
     "eslint-config-next": "12.3.1",

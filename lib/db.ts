@@ -51,6 +51,7 @@ export async function initDb() {
       custom_title VARCHAR(255),
       custom_desc TEXT,
       custom_image TEXT,
+      og_image_processed_url VARCHAR(500) NULL,
       user_id INT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -89,6 +90,10 @@ export async function initDb() {
     
     // 2. Create redirects table (depends on users table)
     await query(createRedirectsTableQuery);
+
+    try {
+      await query("ALTER TABLE redirects ADD COLUMN og_image_processed_url VARCHAR(500) NULL");
+    } catch (e) {}
     
     // 3. Create analytics table (depends on redirects table)
     await query(createAnalyticsTableQuery);

@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import axios from "axios";
 import { query, initDb } from "../../lib/db";
 import { getAuthUser } from "../../lib/auth";
+import { processSquareImage } from "../../lib/processSquareImage";
 
 // Generate unique 6-character alphanumeric short ID
 async function generateUniqueShortId(): Promise<string> {
@@ -86,10 +88,36 @@ export default async function handler(
       finalShortId = await generateUniqueShortId();
     }
 
+    // Process original image into 1080x1080 square image via sharp & ImgBB helper
+    let ogImageProcessedUrl: string | null = customImage || null;
+
+    if (customImage && typeof customImage === "string") {
+      try {
+        let imageBuffer: Buffer | null = null;
+
+        if (customImage.startsWith("http://") || customImage.startsWith("https://")) {
+          const imgRes = await axios.get(customImage, { responseType: "arraybuffer", timeout: 10000 });
+          imageBuffer = Buffer.from(imgRes.data);
+        } else if (customImage.startsWith("data:image")) {
+          const base64Data = customImage.split(",")[1];
+          if (base64Data) {
+            imageBuffer = Buffer.from(base64Data, "base64");
+          }
+        }
+
+        if (imageBuffer) {
+          ogImageProcessedUrl = await processSquareImage(imageBuffer);
+        }
+      } catch (imgError: any) {
+        console.error("Square image processing failed, falling back to unprocessed image:", imgError?.message || imgError);
+        ogImageProcessedUrl = customImage || null;
+      }
+    }
+
     // Insert redirect entry into MySQL linked to the user's ID
     const insertQuery = `
-      INSERT INTO redirects (short_id, original_url, wp_post_path, custom_title, custom_desc, custom_image, user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO redirects (short_id, original_url, wp_post_path, custom_title, custom_desc, custom_image, og_image_processed_url, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     await query(insertQuery, [
       finalShortId,
@@ -98,6 +126,7 @@ export default async function handler(
       customTitle || null,
       customDesc || null,
       customImage || null,
+      ogImageProcessedUrl || null,
       userId,
     ]);
 
@@ -106,10 +135,27 @@ export default async function handler(
     const protocol = req.headers["x-forwarded-proto"] || "http";
     const shortLink = `${protocol}://${host}/${finalShortId}`;
 
+    // Awaited Facebook Graph API Scrape request if token exists
+    if (process.env.FB_ADMIN_ACCESS_TOKEN) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `${protocol}://${host}`;
+      const urlToScrape = `${siteUrl.replace(/\/$/, "")}/${finalShortId}`;
+
+      await axios.post("https://graph.facebook.com/v19.0/", null, {
+        params: {
+          id: urlToScrape,
+          scrape: true,
+          access_token: process.env.FB_ADMIN_ACCESS_TOKEN,
+        },
+      }).catch((fbErr: any) => {
+        console.error("Facebook graph API scrape failed:", fbErr?.response?.data?.error?.message || fbErr?.message || fbErr);
+      });
+    }
+
     return res.status(200).json({
       success: true,
       shortId: finalShortId,
       shortLink,
+      ogImageProcessedUrl,
     });
   } catch (error: any) {
     console.error("Failed to create redirect link:", error);
