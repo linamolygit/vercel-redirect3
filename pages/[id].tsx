@@ -89,7 +89,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     let redirectData = getCached(id);
     if (!redirectData) {
       const results = (await query(
-        "SELECT id, original_url, custom_title, custom_desc, custom_image FROM redirects WHERE short_id = ?",
+        "SELECT id, original_url, custom_title, custom_desc, custom_image, og_image_processed_url FROM redirects WHERE short_id = ?",
         [id]
       )) as any[];
 
@@ -178,15 +178,18 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     const protocol = ctx.req.headers["x-forwarded-proto"] || "http";
     const requestUrl = `${protocol}://${host}/${id}`;
 
+    // Resolve pre-cached square image, falling back to original custom image
+    const resolvedImageUrl = redirectData.og_image_processed_url || redirectData.custom_image || "";
+
     return {
       props: {
         destination,
         title: redirectData.custom_title || "Article Preview",
         description: redirectData.custom_desc || "",
-        imageUrl: redirectData.custom_image || "",
+        imageUrl: resolvedImageUrl,
         canonicalUrl: requestUrl,
         siteName: host.split(".")[0],
-        fbAppId: process.env.FB_APP_ID || "966882222",
+        fbAppId: process.env.FB_APP_ID || "1610945270454998",
       },
     };
   } catch (error) {
@@ -241,8 +244,10 @@ const RedirectPage: React.FC<RedirectProps> = ({
           <>
             <meta property="og:image" content={imageUrl} />
             <meta property="og:image:secure_url" content={imageUrl} />
-            <meta property="og:image:width" content="1200" />
-            <meta property="og:image:height" content="630" />
+            <meta property="og:image:width" content="1080" />
+            <meta property="og:image:height" content="1080" />
+            <meta property="og:image:type" content="image/jpeg" />
+            <meta property="fb:use_square_image" content="true" />
           </>
         )}
         <meta property="og:locale" content="en_US" />
