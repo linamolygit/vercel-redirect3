@@ -26,6 +26,20 @@ const RATIOS: Record<string, { w: number; h: number; label: string; aspect: stri
   "16-9":  { w: 1280, h: 720,  label: "16:9 Widescreen (1280×720)",   aspect: "16 / 9" },
 };
 
+const LAYOUT_OPTIONS = [
+  { v: "5-photos",      l: "5 Photos (2 Top + 3 Bottom)" },
+  { v: "5-photos-left", l: "5 Photos (1 Left + 4 Right)" },
+  { v: "5-photos-2-3",  l: "5 Photos (2 Left + 3 Right)" },
+  { v: "4-photos-left", l: "4 Photos (1 Left + 3 Right)" },
+  { v: "4-photos-top",  l: "4 Photos (1 Top + 3 Bottom)" },
+  { v: "4-photos",      l: "4 Photos (2×2 Grid)" },
+  { v: "3-photos",      l: "3 Photos (1 Left + 2 Right)" },
+  { v: "3-photos-top",  l: "3 Photos (1 Top + 2 Bottom)" },
+  { v: "2-photos",      l: "2 Photos (Vertical Side-by-Side)" },
+  { v: "2-photos-h",    l: "2 Photos (Horizontal Stacked)" },
+  { v: "1-photo",       l: "1 Photo" },
+];
+
 // Get slot coordinates for canvas — accepts optional output dimensions
 function getSlotCoordinates(layoutName: string, gapPx: number, canvasW = 1200, canvasH = 630) {
   const w = canvasW;
@@ -42,6 +56,43 @@ function getSlotCoordinates(layoutName: string, gapPx: number, canvasW = 1200, c
     coords.push({ x: 0, y: r1h + gapPx, w: r2w, h: r2h });
     coords.push({ x: r2w + gapPx, y: r1h + gapPx, w: r2w, h: r2h });
     coords.push({ x: 2 * r2w + 2 * gapPx, y: r1h + gapPx, w: w - 2 * r2w - 2 * gapPx, h: r2h });
+  } else if (layoutName === "5-photos-left") {
+    const lw = Math.round((w - gapPx) * 0.5);
+    const rw = w - lw - gapPx;
+    const r1h = Math.round((h - gapPx) / 2);
+    const r2h = h - r1h - gapPx;
+    const r1w = Math.round((rw - gapPx) / 2);
+    coords.push({ x: 0, y: 0, w: lw, h: h });
+    coords.push({ x: lw + gapPx, y: 0, w: r1w, h: r1h });
+    coords.push({ x: lw + gapPx + r1w + gapPx, y: 0, w: rw - r1w - gapPx, h: r1h });
+    coords.push({ x: lw + gapPx, y: r1h + gapPx, w: r1w, h: r2h });
+    coords.push({ x: lw + gapPx + r1w + gapPx, y: r1h + gapPx, w: rw - r1w - gapPx, h: r2h });
+  } else if (layoutName === "5-photos-2-3") {
+    const lw = Math.round((w - gapPx) * 0.5);
+    const rw = w - lw - gapPx;
+    const l_rh = Math.round((h - gapPx) / 2);
+    const r_rh = Math.round((h - 2 * gapPx) / 3);
+    coords.push({ x: 0, y: 0, w: lw, h: l_rh });
+    coords.push({ x: 0, y: l_rh + gapPx, w: lw, h: h - l_rh - gapPx });
+    coords.push({ x: lw + gapPx, y: 0, w: rw, h: r_rh });
+    coords.push({ x: lw + gapPx, y: r_rh + gapPx, w: rw, h: r_rh });
+    coords.push({ x: lw + gapPx, y: 2 * r_rh + 2 * gapPx, w: rw, h: h - 2 * r_rh - 2 * gapPx });
+  } else if (layoutName === "4-photos-left") {
+    const lw = Math.round((w - gapPx) * 0.6);
+    const rw = w - lw - gapPx;
+    const rh = Math.round((h - 2 * gapPx) / 3);
+    coords.push({ x: 0, y: 0, w: lw, h: h });
+    coords.push({ x: lw + gapPx, y: 0, w: rw, h: rh });
+    coords.push({ x: lw + gapPx, y: rh + gapPx, w: rw, h: rh });
+    coords.push({ x: lw + gapPx, y: 2 * rh + 2 * gapPx, w: rw, h: h - 2 * rh - 2 * gapPx });
+  } else if (layoutName === "4-photos-top") {
+    const th = Math.round((h - gapPx) * 0.6);
+    const bh = h - th - gapPx;
+    const bw = Math.round((w - 2 * gapPx) / 3);
+    coords.push({ x: 0, y: 0, w: w, h: th });
+    coords.push({ x: 0, y: th + gapPx, w: bw, h: bh });
+    coords.push({ x: bw + gapPx, y: th + gapPx, w: bw, h: bh });
+    coords.push({ x: 2 * bw + 2 * gapPx, y: th + gapPx, w: w - 2 * bw - 2 * gapPx, h: bh });
   } else if (layoutName === "4-photos") {
     const r1h = Math.round((h - gapPx) / 2);
     const r2h = h - r1h - gapPx;
@@ -57,10 +108,21 @@ function getSlotCoordinates(layoutName: string, gapPx: number, canvasW = 1200, c
     coords.push({ x: 0, y: 0, w: lw, h: h });
     coords.push({ x: lw + gapPx, y: 0, w: rw, h: rh });
     coords.push({ x: lw + gapPx, y: rh + gapPx, w: rw, h: h - rh - gapPx });
+  } else if (layoutName === "3-photos-top") {
+    const th = Math.round((h - gapPx) * 0.6);
+    const bh = h - th - gapPx;
+    const bw = Math.round((w - gapPx) / 2);
+    coords.push({ x: 0, y: 0, w: w, h: th });
+    coords.push({ x: 0, y: th + gapPx, w: bw, h: bh });
+    coords.push({ x: bw + gapPx, y: th + gapPx, w: w - bw - gapPx, h: bh });
   } else if (layoutName === "2-photos") {
     const r1w = Math.round((w - gapPx) / 2);
     coords.push({ x: 0, y: 0, w: r1w, h: h });
     coords.push({ x: r1w + gapPx, y: 0, w: w - r1w - gapPx, h: h });
+  } else if (layoutName === "2-photos-h") {
+    const r1h = Math.round((h - gapPx) / 2);
+    coords.push({ x: 0, y: 0, w: w, h: r1h });
+    coords.push({ x: 0, y: r1h + gapPx, w: w, h: h - r1h - gapPx });
   } else {
     coords.push({ x: 0, y: 0, w: w, h: h });
   }
@@ -79,7 +141,7 @@ export default function ClickableImage() {
   const [outputRatio, setOutputRatio] = useState("1-1"); // default: 1:1 Square (1080×1080)
   const [layoutDropOpen, setLayoutDropOpen] = useState(false);
   const [ratioDropOpen, setRatioDropOpen] = useState(false);
-  const [gap, setGap] = useState(3);
+  const [gap, setGap] = useState(2);
   const [showOverlay, setShowOverlay] = useState(true);
   const [overlayText, setOverlayText] = useState("+3");
   const [overlayOpacity, setOverlayOpacity] = useState(0.5);
@@ -135,7 +197,11 @@ export default function ClickableImage() {
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const cropperRef = useRef<any>(null);
 
-  const slotCount = layout === "5-photos" ? 5 : layout === "4-photos" ? 4 : layout === "3-photos" ? 3 : layout === "2-photos" ? 2 : 1;
+  const slotCount =
+    layout.startsWith("5-photos") ? 5 :
+    layout.startsWith("4-photos") ? 4 :
+    layout.startsWith("3-photos") ? 3 :
+    layout.startsWith("2-photos") ? 2 : 1;
 
   // Helper: get slot coords for the current output ratio (used by all callbacks)
   const getRatioSlotCoords = useCallback(
@@ -930,25 +996,14 @@ export default function ClickableImage() {
                   onClick={() => setLayoutDropOpen((o) => !o)}
                   onBlur={() => setTimeout(() => setLayoutDropOpen(false), 120)}
                 >
-                  <span>{
-                    layout === "5-photos" ? "5 Photos (2+3)" :
-                    layout === "4-photos" ? "4 Photos (2×2)" :
-                    layout === "3-photos" ? "3 Photos (1+2)" :
-                    layout === "2-photos" ? "2 Photos" : "1 Photo"
-                  }</span>
+                  <span>{LAYOUT_OPTIONS.find((o) => o.v === layout)?.l ?? "5 Photos (2 Top + 3 Bottom)"}</span>
                   <svg className="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                   </svg>
                 </button>
                 {layoutDropOpen && (
                   <div className="custom-select-menu">
-                    {[
-                      { v: "5-photos", l: "5 Photos (2+3)" },
-                      { v: "4-photos", l: "4 Photos (2×2)" },
-                      { v: "3-photos", l: "3 Photos (1+2)" },
-                      { v: "2-photos", l: "2 Photos" },
-                      { v: "1-photo",  l: "1 Photo" },
-                    ].map(({ v, l }) => (
+                    {LAYOUT_OPTIONS.map(({ v, l }) => (
                       <div
                         key={v}
                         className={`custom-select-option${layout === v ? " selected" : ""}`}
@@ -1151,7 +1206,7 @@ export default function ClickableImage() {
                       width: `min(100%, ${calcW}px)`,
                     }}
                   >
-                {/* 5-photo layout */}
+                {/* 5-photo layout (2 Top + 3 Bottom) */}
                 {layout === "5-photos" && (
                   <div className="grid-5">
                     <div className="grid-5-top">
@@ -1166,7 +1221,69 @@ export default function ClickableImage() {
                   </div>
                 )}
 
-                {/* 4-photo layout */}
+                {/* 5-photo layout (1 Left + 4 Right) */}
+                {layout === "5-photos-left" && (
+                  <div className="grid-split-2">
+                    <div className="grid-col-left" style={{ flex: 1, display: "flex" }}>
+                      {renderPreviewSlot(0, false)}
+                    </div>
+                    <div className="grid-col-right" style={{ flex: 1, display: "flex", flexDirection: "column", gap: `${gap}px` }}>
+                      <div style={{ display: "flex", flex: 1, gap: `${gap}px` }}>
+                        {renderPreviewSlot(1, false)}
+                        {renderPreviewSlot(2, false)}
+                      </div>
+                      <div style={{ display: "flex", flex: 1, gap: `${gap}px` }}>
+                        {renderPreviewSlot(3, false)}
+                        {renderPreviewSlot(4, true)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5-photo layout (2 Left + 3 Right - Image 3) */}
+                {layout === "5-photos-2-3" && (
+                  <div className="grid-split-2">
+                    <div className="grid-col-left" style={{ flex: 1, display: "flex", flexDirection: "column", gap: `${gap}px` }}>
+                      {renderPreviewSlot(0, false)}
+                      {renderPreviewSlot(1, false)}
+                    </div>
+                    <div className="grid-col-right" style={{ flex: 1, display: "flex", flexDirection: "column", gap: `${gap}px` }}>
+                      {renderPreviewSlot(2, false)}
+                      {renderPreviewSlot(3, false)}
+                      {renderPreviewSlot(4, true)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4-photo layout (1 Left + 3 Right - Image 1) */}
+                {layout === "4-photos-left" && (
+                  <div className="grid-split-2">
+                    <div className="grid-col-left" style={{ flex: 1.2, display: "flex" }}>
+                      {renderPreviewSlot(0, false)}
+                    </div>
+                    <div className="grid-col-right" style={{ flex: 0.8, display: "flex", flexDirection: "column", gap: `${gap}px` }}>
+                      {renderPreviewSlot(1, false)}
+                      {renderPreviewSlot(2, false)}
+                      {renderPreviewSlot(3, true)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4-photo layout (1 Top + 3 Bottom) */}
+                {layout === "4-photos-top" && (
+                  <div className="grid-5">
+                    <div className="grid-5-top" style={{ flex: 1.2 }}>
+                      {renderPreviewSlot(0, false)}
+                    </div>
+                    <div className="grid-5-bottom" style={{ flex: 0.8 }}>
+                      {renderPreviewSlot(1, false)}
+                      {renderPreviewSlot(2, false)}
+                      {renderPreviewSlot(3, true)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4-photo layout (2x2 Grid) */}
                 {layout === "4-photos" && (
                   <div className="grid-4">
                     <div className="grid-4-row">
@@ -1180,7 +1297,7 @@ export default function ClickableImage() {
                   </div>
                 )}
 
-                {/* 3-photo layout */}
+                {/* 3-photo layout (1 Left + 2 Right) */}
                 {layout === "3-photos" && (
                   <div className="grid-3">
                     <div className="grid-3-left">
@@ -1193,9 +1310,30 @@ export default function ClickableImage() {
                   </div>
                 )}
 
-                {/* 2-photo layout */}
+                {/* 3-photo layout (1 Top + 2 Bottom) */}
+                {layout === "3-photos-top" && (
+                  <div className="grid-5">
+                    <div className="grid-5-top" style={{ flex: 1.2 }}>
+                      {renderPreviewSlot(0, false)}
+                    </div>
+                    <div className="grid-5-bottom" style={{ flex: 0.8 }}>
+                      {renderPreviewSlot(1, false)}
+                      {renderPreviewSlot(2, true)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2-photo layout (Vertical Side-by-Side) */}
                 {layout === "2-photos" && (
                   <div className="grid-2">
+                    {renderPreviewSlot(0, false)}
+                    {renderPreviewSlot(1, true)}
+                  </div>
+                )}
+
+                {/* 2-photo layout (Horizontal Stacked) */}
+                {layout === "2-photos-h" && (
+                  <div className="grid-2-h" style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", gap: `${gap}px` }}>
                     {renderPreviewSlot(0, false)}
                     {renderPreviewSlot(1, true)}
                   </div>
@@ -2094,6 +2232,13 @@ export default function ClickableImage() {
           display: flex;
           width: 100%;
           height: 100%;
+        }
+
+        .grid-split-2 {
+          display: flex;
+          width: 100%;
+          height: 100%;
+          gap: ${gap}px;
         }
 
         /* Preview Slot */
