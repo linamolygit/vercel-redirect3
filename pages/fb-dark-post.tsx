@@ -132,7 +132,7 @@ const FbDarkPost: NextPage = () => {
   const [destinationUrl, setDestinationUrl] = useState("");
   const [displayUrl, setDisplayUrl] = useState("facebook.com");
   const [fakeMore, setFakeMore] = useState(true);
-  const [fakeCount, setFakeCount] = useState(9);
+  const [fakeCount, setFakeCount] = useState(() => Math.floor(Math.random() * (23 - 5 + 1)) + 5);
   const [saveAsDraft, setSaveAsDraft] = useState(false);
   const [schedule, setSchedule] = useState(false);
   const [scheduledTime, setScheduledTime] = useState("");
@@ -159,9 +159,10 @@ const FbDarkPost: NextPage = () => {
   const bulkFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Batch Image & Sequential Interval Processing States
-  const [placementDelay, setPlacementDelay] = useState<number>(350);
+  const [placementDelay, setPlacementDelay] = useState<number>(200);
   const [isBatchFilling, setIsBatchFilling] = useState<boolean>(false);
   const [activeFillingSlot, setActiveFillingSlot] = useState<number | null>(null);
+
 
   // Drag-and-Drop Slot Swap States
   const [draggedSlotIndex, setDraggedSlotIndex] = useState<number | null>(null);
@@ -694,17 +695,36 @@ const FbDarkPost: NextPage = () => {
               </div>
             )}
 
-            {/* Facebook Pages Custom Rich Selector */}
+            {/* Facebook Pages Native Select Dropdown */}
             <div className="form-group">
               <label className="input-label">
-                <Share2 size={14} /> Select Facebook Page
+                <Share2 size={14} /> Facebook Pages
               </label>
+              <div className="select-wrapper">
+                <select
+                  value={selectedPageId}
+                  onChange={(e) => {
+                    setSelectedPageId(e.target.value);
+                    const pg = fbPages.find((p) => p.id === e.target.value);
+                    if (pg) setSelectedPageToken(pg.access_token);
+                  }}
+                >
+                  {fbPages.length === 0 ? (
+                    <option value="">-- No Facebook Page Connected --</option>
+                  ) : (
+                    fbPages.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.id})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
 
-              {fbPages.length === 0 ? (
-                <div className="no-pages-alert">
-                  No Facebook Page Connected. Please sync via Extension or paste User Access Token.
-                </div>
-              ) : (
+            {/* Facebook Pages Rich Card List */}
+            {fbPages.length > 0 && (
+              <div className="form-group">
                 <div className="pages-selector-grid">
                   {fbPages.map((p) => {
                     const isSelected = selectedPageId === p.id;
@@ -731,8 +751,9 @@ const FbDarkPost: NextPage = () => {
                     );
                   })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
 
 
             {/* Ad Accounts Selector */}
@@ -820,16 +841,27 @@ const FbDarkPost: NextPage = () => {
                 </div>
 
                 {fakeMore && (
-                  <div className="form-group">
-                    <input
-                      type="number"
-                      min={1}
-                      max={99}
-                      value={fakeCount}
-                      onChange={(e) => setFakeCount(parseInt(e.target.value) || 9)}
-                    />
+                  <div className="form-group fake-count-group">
+                    <div className="fake-count-wrapper">
+                      <input
+                        type="number"
+                        min={5}
+                        max={23}
+                        value={fakeCount}
+                        onChange={(e) => setFakeCount(parseInt(e.target.value) || 9)}
+                      />
+                      <button
+                        type="button"
+                        className="btn-random-count"
+                        title="Randomize Fake Count (+5 to +23)"
+                        onClick={() => setFakeCount(Math.floor(Math.random() * (23 - 5 + 1)) + 5)}
+                      >
+                        <RefreshCw size={15} />
+                      </button>
+                    </div>
                   </div>
                 )}
+
               </>
             )}
 
@@ -975,41 +1007,7 @@ const FbDarkPost: NextPage = () => {
                   <span>Canvas Preview</span>
                 </div>
 
-                {/* Batch Import Button & Interval Processing Controls */}
-                {!singleImageMode && (
-                  <div className="batch-controls-group">
-                    <button
-                      className="btn-batch-import"
-                      onClick={() => bulkFileInputRef.current?.click()}
-                      disabled={isBatchFilling}
-                      title="Select multiple photos to auto-fill grid slots with sequential timing delay"
-                    >
-                      <Upload size={13} />
-                      <span>{isBatchFilling ? "FILLING SLOTS..." : "Batch Import Photos"}</span>
-                    </button>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      ref={bulkFileInputRef}
-                      style={{ display: "none" }}
-                      onChange={(e) => handleBatchFilesUpload(e.target.files)}
-                    />
 
-                    <div className="delay-chips-row" title="Interval Delay between sequential slot placements">
-                      <span className="delay-title">Interval:</span>
-                      {[200, 350, 600, 1000].map((d) => (
-                        <button
-                          key={d}
-                          className={`delay-chip ${placementDelay === d ? "active" : ""}`}
-                          onClick={() => setPlacementDelay(d)}
-                        >
-                          {d}ms
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 <div className="canvas-toggle-mode">
                   <span className="mode-label">Single Custom Image Mode</span>
@@ -1102,12 +1100,19 @@ const FbDarkPost: NextPage = () => {
                           <input
                             type="file"
                             accept="image/*"
+                            multiple
                             ref={(el) => (fileInputRefs.current[idx] = el)}
                             style={{ display: "none" }}
-                            onChange={(e) =>
-                              e.target.files?.[0] && handleImageUpload(idx, e.target.files[0])
-                            }
+                            onChange={(e) => {
+                              if (!e.target.files || e.target.files.length === 0) return;
+                              if (e.target.files.length > 1) {
+                                handleBatchFilesUpload(e.target.files);
+                              } else {
+                                handleImageUpload(idx, e.target.files[0]);
+                              }
+                            }}
                           />
+
 
                           {hasImage ? (
                             <>
@@ -1520,11 +1525,41 @@ const FbDarkPost: NextPage = () => {
           color: var(--primary);
         }
 
+        .fake-count-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .fake-count-wrapper input {
+          flex: 1;
+        }
+
+        .btn-random-count {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px 12px;
+          border-radius: var(--radius-sm);
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          color: var(--text-main);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-random-count:hover {
+          border-color: var(--primary);
+          color: var(--primary);
+          transform: rotate(180deg);
+        }
+
         .row-group {
           flex-direction: row;
           align-items: center;
           justify-content: space-between;
         }
+
 
         /* Toggle Switch */
         .toggle-switch {
