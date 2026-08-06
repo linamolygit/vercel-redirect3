@@ -156,11 +156,69 @@ const FbDarkPost: NextPage = () => {
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const singleFileInputRef = useRef<HTMLInputElement | null>(null);
+  const bulkFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Batch Image & Sequential Interval Processing States
+  const [placementDelay, setPlacementDelay] = useState<number>(350);
+  const [isBatchFilling, setIsBatchFilling] = useState<boolean>(false);
+  const [activeFillingSlot, setActiveFillingSlot] = useState<number | null>(null);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
+
+  // Batch Image Selection & Sequential Interval Auto-Filling
+  const handleBatchFilesUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const fileList = Array.from(files).slice(0, 5); // Max 5 slots
+    setIsBatchFilling(true);
+
+    // Auto-adjust layout to match uploaded image count
+    if (fileList.length === 5) {
+      setActiveLayout("5-photos-2-3-top");
+    } else if (fileList.length === 4) {
+      setActiveLayout("4-photos");
+    } else if (fileList.length === 3) {
+      setActiveLayout("3-photos-top");
+    } else if (fileList.length === 1) {
+      setActiveLayout("1-photo");
+    }
+
+    // Read all selected files to Data URLs
+    const loadedDataUrls: string[] = [];
+    for (let i = 0; i < fileList.length; i++) {
+      const url = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve((e.target?.result as string) || "");
+        reader.readAsDataURL(fileList[i]);
+      });
+      loadedDataUrls.push(url);
+    }
+
+    // Sequential Slot Placement with Timing Interval Delay
+    setImages((prev) => {
+      const reset = [...prev];
+      for (let i = 0; i < 5; i++) reset[i] = null;
+      return reset;
+    });
+
+    for (let i = 0; i < loadedDataUrls.length; i++) {
+      setActiveFillingSlot(i);
+      await new Promise((resolve) => setTimeout(resolve, placementDelay));
+      setImages((prev) => {
+        const copy = [...prev];
+        copy[i] = loadedDataUrls[i];
+        return copy;
+      });
+    }
+
+    setActiveFillingSlot(null);
+    setIsBatchFilling(false);
+    showToast(`Batch imported ${loadedDataUrls.length} photos with ${placementDelay}ms interval fill!`, "success");
+  };
+
 
   // LocalStorage Auto-Cache for Message, Destination URL, Display URL & FB Token
   useEffect(() => {
@@ -893,12 +951,49 @@ const FbDarkPost: NextPage = () => {
 
             {/* Interactive Canvas Card */}
             <div className="canvas-card">
-              {/* Canvas Header Bar with Single Image Mode Toggle */}
+              {/* Canvas Header Bar with Batch Import & Single Image Mode Toggle */}
               <div className="canvas-header-bar">
                 <div className="canvas-header-title">
                   <Sliders size={15} />
                   <span>Canvas Preview</span>
                 </div>
+
+                {/* Batch Import Button & Interval Processing Controls */}
+                {!singleImageMode && (
+                  <div className="batch-controls-group">
+                    <button
+                      className="btn-batch-import"
+                      onClick={() => bulkFileInputRef.current?.click()}
+                      disabled={isBatchFilling}
+                      title="Select multiple photos to auto-fill grid slots with sequential timing delay"
+                    >
+                      <Upload size={13} />
+                      <span>{isBatchFilling ? "FILLING SLOTS..." : "Batch Import Photos"}</span>
+                    </button>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      ref={bulkFileInputRef}
+                      style={{ display: "none" }}
+                      onChange={(e) => handleBatchFilesUpload(e.target.files)}
+                    />
+
+                    <div className="delay-chips-row" title="Interval Delay between sequential slot placements">
+                      <span className="delay-title">Interval:</span>
+                      {[200, 350, 600, 1000].map((d) => (
+                        <button
+                          key={d}
+                          className={`delay-chip ${placementDelay === d ? "active" : ""}`}
+                          onClick={() => setPlacementDelay(d)}
+                        >
+                          {d}ms
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="canvas-toggle-mode">
                   <span className="mode-label">Single Custom Image Mode</span>
                   <label className="toggle-switch small-toggle">
@@ -955,11 +1050,13 @@ const FbDarkPost: NextPage = () => {
                     .map((idx, index, array) => {
                       const isLast = index === array.length - 1;
                       const hasImage = !!images[idx];
+                      const isAnimatingSlot = activeFillingSlot === idx;
 
                       return (
                         <div
                           key={idx}
-                          className={`grid-slot slot-${idx}`}
+                          className={`grid-slot slot-${idx} ${isAnimatingSlot ? "filling-active-pulse" : ""}`}
+
                           onClick={() => fileInputRefs.current[idx]?.click()}
                         >
                           <input
@@ -1671,6 +1768,8 @@ const FbDarkPost: NextPage = () => {
           justify-content: space-between;
           padding-bottom: 12px;
           border-bottom: 1px solid var(--glass-border);
+          gap: 12px;
+          flex-wrap: wrap;
         }
 
         .canvas-header-title {
@@ -1681,6 +1780,89 @@ const FbDarkPost: NextPage = () => {
           align-items: center;
           gap: 6px;
         }
+
+        .batch-controls-group {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .btn-batch-import {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: var(--radius-sm);
+          background: var(--primary);
+          color: white;
+          border: none;
+          font-size: 0.78rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: transform 0.15s, opacity 0.15s;
+          box-shadow: 0 2px 10px rgba(0, 113, 227, 0.25);
+        }
+
+        .btn-batch-import:hover {
+          opacity: 0.92;
+          transform: translateY(-1px);
+        }
+
+        .btn-batch-import:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .delay-chips-row {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: var(--input-bg);
+          padding: 3px 6px;
+          border-radius: 20px;
+          border: 1px solid var(--glass-border);
+        }
+
+        .delay-title {
+          font-size: 0.72rem;
+          color: var(--text-muted);
+          font-weight: 600;
+          margin-right: 2px;
+        }
+
+        .delay-chip {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .delay-chip:hover {
+          color: var(--text-main);
+        }
+
+        .delay-chip.active {
+          background: var(--primary);
+          color: white;
+        }
+
+        /* Pulsing Glow Animation during Sequential Filling */
+        .grid-slot.filling-active-pulse {
+          box-shadow: 0 0 0 3px var(--primary), 0 0 20px rgba(0, 113, 227, 0.6);
+          z-index: 10;
+          animation: slotPulse 0.4s infinite alternate;
+        }
+
+        @keyframes slotPulse {
+          0% { opacity: 0.7; transform: scale(0.98); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+
 
         .canvas-toggle-mode {
           display: flex;
