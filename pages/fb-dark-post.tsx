@@ -635,8 +635,12 @@ const FbDarkPost: NextPage = () => {
 
       const postData = await postRes.json();
       if (!postRes.ok || !postData.success) {
-        throw new Error(postData.error || "Facebook post failed.");
+        const fullErr = postData.hint
+          ? `${postData.error}\n💡 Hint: ${postData.hint}`
+          : postData.error || "Facebook post failed.";
+        throw new Error(fullErr);
       }
+
 
       setPostResult({ postId: postData.postId, postUrl: postData.postUrl });
       showToast("Posted to Facebook successfully!", "success");

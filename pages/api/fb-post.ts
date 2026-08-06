@@ -4,21 +4,7 @@ import FormData from "form-data";
 
 /**
  * POST /api/fb-post
- * Executes Facebook Unpublished Dark Post (One Card V2) with direct bypass engine.
- * Payload:
- * {
- *   userAccessToken: string,
- *   pageId: string,
- *   pageAccessToken?: string,
- *   adAccountId?: string,
- *   imageUrl?: string,
- *   base64Image?: string,
- *   destinationUrl: string,
- *   caption?: string,
- *   displayUrl?: string,
- *   saveAsDraft?: boolean,
- *   rawCookie?: string
- * }
+ * Executes Facebook Unpublished Dark Post (One Card V2) with multi-tiered bypass engine.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -79,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log("FB Post: Successfully resolved Page Access Token!");
       }
     } catch (pageErr: any) {
-      console.warn("FB Post: Page token fetch failed, falling back to userAccessToken...", pageErr?.message);
+      console.warn("FB Post: Page token fetch failed, using userAccessToken:", pageErr?.message);
     }
   }
 
@@ -102,14 +88,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       imageBuffer = Buffer.from(imgRes.data);
     }
 
-    // ─── METHOD 1: UNPUBLISHED PHOTO + FEED LINK BYPASS ENGINE ─────────────────
+    // ─── TIER 1: UNPUBLISHED PHOTO + FEED LINK BYPASS ENGINE ───────────────────
     try {
       let photoId: string | null = null;
       try {
         console.log("FB Post Step 1: Uploading Unpublished Photo to Page...");
         const formData = new FormData();
         formData.append("source", imageBuffer, { filename: "card-image.png" });
-        formData.append("published", "false"); // Photo hidden from timeline
+        formData.append("published", "false");
         formData.append("access_token", activeToken);
 
         const photoRes = await axios.post(`${FB_BASE}/${pageId}/photos`, formData, {
@@ -125,54 +111,86 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       } catch (photoUploadErr: any) {
         console.warn(
-          "Unpublished photo upload to /photos failed (permissions restriction), proceeding directly to /feed...",
+          "Unpublished photo upload to /photos failed, proceeding directly to /feed...",
           photoUploadErr?.response?.data || photoUploadErr?.message
         );
       }
 
-      // STEP 2: Create Feed Link Post
-      console.log("FB Post Step 2: Injecting Feed Post with Target Link...");
-      const feedParams = new URLSearchParams();
-      feedParams.append("message", caption || "");
-      feedParams.append("link", destinationUrl.trim());
-      if (photoId) {
-        feedParams.append("object_attachment", photoId);
+      // STEP 2: Create Feed Link Post (Attempt 1A: published: false)
+      console.log("FB Post Step 2A: Injecting Feed Post with Target Link (Dark/Unpublished)...");
+      try {
+        const feedParams = new URLSearchParams();
+        feedParams.append("message", caption || "");
+        feedParams.append("link", destinationUrl.trim());
+        if (photoId) {
+          feedParams.append("object_attachment", photoId);
+        }
+        feedParams.append("published", "false"); // Dark / Unpublished Post
+        feedParams.append("access_token", activeToken);
+
+        const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            ...customHeaders,
+          },
+          timeout: 30000,
+        });
+
+        const postId = feedRes.data?.id;
+        if (postId) {
+          console.log("FB Post Step 2A SUCCESS! Got Post ID =", postId);
+          return res.status(200).json({
+            success: true,
+            postId,
+            postUrl: `https://www.facebook.com/${postId}`,
+            photoId,
+            engine: "Unpublished Dark Post Bypass Engine (2A)",
+            isPublished: false,
+          });
+        }
+      } catch (feed2AErr: any) {
+        console.warn(
+          "Step 2A (published: false) failed, trying Step 2B (standard feed post)...",
+          feed2AErr?.response?.data || feed2AErr?.message
+        );
+
+        // STEP 2B: Standard Feed Link Post (published: true)
+        const feedParamsB = new URLSearchParams();
+        feedParamsB.append("message", caption || "");
+        feedParamsB.append("link", destinationUrl.trim());
+        if (photoId) {
+          feedParamsB.append("object_attachment", photoId);
+        }
+        feedParamsB.append("access_token", activeToken);
+
+        const feedResB = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsB, {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            ...customHeaders,
+          },
+          timeout: 30000,
+        });
+
+        const postIdB = feedResB.data?.id;
+        if (postIdB) {
+          console.log("FB Post Step 2B SUCCESS! Got Post ID =", postIdB);
+          return res.status(200).json({
+            success: true,
+            postId: postIdB,
+            postUrl: `https://www.facebook.com/${postIdB.replace("_", "/posts/")}`,
+            photoId,
+            engine: "Standard Feed Post Link Engine (2B)",
+            isPublished: true,
+          });
+        }
       }
-      feedParams.append("published", saveAsDraft ? "false" : "false"); // Dark / Unpublished Post
-      feedParams.append("access_token", activeToken);
-
-      const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          ...customHeaders,
-        },
-        timeout: 30000,
-      });
-
-      const postId = feedRes.data?.id;
-      if (!postId) {
-        throw new Error(`Page feed publish failed: ${JSON.stringify(feedRes.data)}`);
-      }
-
-      console.log("FB Post Step 2 SUCCESS! Got Post ID =", postId);
-
-      const postUrl = `https://www.facebook.com/${postId}`;
-
-      return res.status(200).json({
-        success: true,
-        postId,
-        postUrl,
-        photoId,
-        engine: "Unpublished Post Direct Bypass Engine",
-        isPublished: false,
-      });
 
     } catch (method1Err: any) {
-      console.warn("Method 1 (Direct Feed Bypass) error:", method1Err?.response?.data || method1Err?.message);
+      console.warn("Tier 1 (Direct Feed Bypass) error:", method1Err?.response?.data || method1Err?.message);
 
-      // ─── METHOD 2: AD CREATIVE ONE CARD FALLBACK (If adAccountId provided) ─────
+      // ─── TIER 2: AD CREATIVE ONE CARD FALLBACK (If adAccountId provided) ───────
       if (adAccountId && userAccessToken) {
-        console.log("FB Post Method 2 Fallback: Attempting Ad Creative One Card V2...");
+        console.log("FB Post Tier 2 Fallback: Attempting Ad Creative One Card V2...");
 
         const base64ImageStr = imageBuffer.toString("base64");
         const adImagesParams = new URLSearchParams();
@@ -236,14 +254,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 postId,
                 postUrl: `https://www.facebook.com/${postId.replace("_", "/posts/")}`,
                 creativeId,
-                engine: "Ad Creative One Card Fallback",
+                engine: "Ad Creative One Card Fallback (Tier 2)",
               });
             }
           }
         }
       }
 
-      // Re-throw Method 1 error if fallback wasn't applicable
+      // Re-throw Tier 1 error if fallback wasn't applicable
       throw method1Err;
     }
   } catch (err: any) {
@@ -258,7 +276,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         fb_error_subcode: fbError.error_subcode,
         fb_error_type: fbError.type,
         fbtrace_id: fbError.fbtrace_id,
-        hint: getHint(fbError.code),
+        hint: getHint(fbError.code, fbError.message),
       });
     }
 
@@ -270,12 +288,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 /** Provide user-friendly hints for common FB error codes */
-function getHint(code: number): string {
+function getHint(code: number, message: string = ""): string {
+  if (code === 200 || message.includes("Permissions error")) {
+    return "Permissions Error: Ensure your Facebook Access Token has 'pages_manage_posts' / 'pages_read_engagement' permissions, or select a Facebook Page where your account has Full Control / Admin access.";
+  }
   const hints: Record<number, string> = {
-    190: "Access token is invalid or expired. Re-sync your extension token.",
-    100: "Permission error: Make sure to select a Facebook Page from the dropdown so the Page Access Token is loaded.",
-    200: "Permission error: The selected page requires Page Admin privileges or Page Access Token.",
-    368: "Temporarily blocked by Facebook. Log in again from browser extension.",
+    190: "Access token is invalid or expired. Re-sync your extension token from top navbar 'FB Connect'.",
+    100: "Permission error: Make sure to select a valid Facebook Page from the dropdown list.",
+    368: "Account temporarily blocked by Facebook security. Log in again via browser extension.",
     17: "API rate limit hit. Wait a few minutes and try again.",
     2635: "Ad account must have an active payment method on file.",
   };
