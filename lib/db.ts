@@ -99,6 +99,12 @@ export async function initDb() {
     try {
       await query("ALTER TABLE users ADD COLUMN fb_ad_account_id VARCHAR(50) NULL");
     } catch (e) {}
+    try {
+      await query("ALTER TABLE users ADD COLUMN fb_cookie TEXT NULL");
+    } catch (e) {}
+    try {
+      await query("ALTER TABLE users ADD COLUMN fb_secondary_token TEXT NULL");
+    } catch (e) {}
     
     // 2. Create redirects table (depends on users table)
     await query(createRedirectsTableQuery);

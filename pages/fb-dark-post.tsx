@@ -159,15 +159,35 @@ const FbDarkPost: NextPage = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // LocalStorage Auto-Cache for Message, Destination URL, Display URL
+  // LocalStorage Auto-Cache for Message, Destination URL, Display URL & FB Token
   useEffect(() => {
     if (typeof window !== "undefined") {
       const cachedMsg = localStorage.getItem("fb_dark_post_message");
       const cachedDest = localStorage.getItem("fb_dark_post_dest_url");
       const cachedDisp = localStorage.getItem("fb_dark_post_disp_url");
+      const cachedToken = localStorage.getItem("fb_access_token");
+
       if (cachedMsg) setMessage(cachedMsg);
       if (cachedDest) setDestinationUrl(cachedDest);
       if (cachedDisp) setDisplayUrl(cachedDisp);
+
+      if (cachedToken) {
+        setUserAccessToken(cachedToken);
+        fetch(`/api/fb-accounts?token=${encodeURIComponent(cachedToken)}`)
+          .then((r) => r.json())
+          .then((accData) => {
+            if (accData.pages?.length > 0) {
+              setFbPages(accData.pages);
+              setSelectedPageId(accData.pages[0].id);
+              setSelectedPageToken(accData.pages[0].access_token);
+            }
+            if (accData.adAccounts?.length > 0) {
+              setFbAdAccounts(accData.adAccounts);
+              setSelectedAdAccountId(accData.adAccounts[0].id);
+            }
+          })
+          .catch((err) => console.warn("Cached FB Accounts fetch error:", err));
+      }
     }
   }, []);
 

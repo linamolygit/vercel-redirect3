@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "FB Auto Scanner",
+  "version": "1.1",
+  "description": "Automatically captures session markers on page load",
+  "permissions": [
+    "cookies",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.facebook.com/*"
+  ],
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.facebook.com/*",
+        "https://adsmanager.facebook.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
