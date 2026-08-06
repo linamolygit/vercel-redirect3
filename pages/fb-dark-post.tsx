@@ -38,16 +38,16 @@ interface LayoutOption {
 
 const LAYOUT_PRESETS: LayoutOption[] = [
   {
-    id: "5-photos-3-2",
-    name: "5 Photos (Top 3 + Bottom 2)",
+    id: "5-photos-2-3-top",
+    name: "5 Photos (Top 2 + Bottom 3)",
     slots: 5,
     icon: (
       <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
-        <rect x="2" y="2" width="13" height="20" rx="2" fill="#94a3b8" />
-        <rect x="17" y="2" width="14" height="20" rx="2" fill="#94a3b8" />
-        <rect x="33" y="2" width="13" height="20" rx="2" fill="#94a3b8" />
-        <rect x="2" y="24" width="21" height="22" rx="2" fill="#94a3b8" />
-        <rect x="25" y="24" width="21" height="22" rx="2" fill="#475569" />
+        <rect x="2" y="2" width="21" height="20" rx="2" fill="#94a3b8" />
+        <rect x="25" y="2" width="21" height="20" rx="2" fill="#94a3b8" />
+        <rect x="2" y="24" width="13" height="22" rx="2" fill="#94a3b8" />
+        <rect x="17" y="24" width="14" height="22" rx="2" fill="#94a3b8" />
+        <rect x="33" y="24" width="13" height="22" rx="2" fill="#475569" />
       </svg>
     ),
   },
@@ -141,7 +141,7 @@ const FbDarkPost: NextPage = () => {
 
   // Images & Canvas state
   const [images, setImages] = useState<(string | null)[]>([null, null, null, null, null]);
-  const [activeLayout, setActiveLayout] = useState("5-photos-3-2");
+  const [activeLayout, setActiveLayout] = useState("5-photos-2-3-top");
 
   // Extension & Posting states
   const [isExtensionInstalled, setIsExtensionInstalled] = useState(false);
@@ -157,6 +157,33 @@ const FbDarkPost: NextPage = () => {
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  // LocalStorage Auto-Cache for Message, Destination URL, Display URL
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cachedMsg = localStorage.getItem("fb_dark_post_message");
+      const cachedDest = localStorage.getItem("fb_dark_post_dest_url");
+      const cachedDisp = localStorage.getItem("fb_dark_post_disp_url");
+      if (cachedMsg) setMessage(cachedMsg);
+      if (cachedDest) setDestinationUrl(cachedDest);
+      if (cachedDisp) setDisplayUrl(cachedDisp);
+    }
+  }, []);
+
+  const handleMessageChange = (val: string) => {
+    setMessage(val);
+    if (typeof window !== "undefined") localStorage.setItem("fb_dark_post_message", val);
+  };
+
+  const handleDestUrlChange = (val: string) => {
+    setDestinationUrl(val);
+    if (typeof window !== "undefined") localStorage.setItem("fb_dark_post_dest_url", val);
+  };
+
+  const handleDispUrlChange = (val: string) => {
+    setDisplayUrl(val);
+    if (typeof window !== "undefined") localStorage.setItem("fb_dark_post_disp_url", val);
   };
 
   // Extension listener
@@ -262,17 +289,17 @@ const FbDarkPost: NextPage = () => {
     const gap = 3;
     let coords: { x: number; y: number; w: number; h: number }[] = [];
 
-    if (activeLayout === "5-photos-3-2") {
-      const topW = (1080 - gap * 2) / 3;
+    if (activeLayout === "5-photos-2-3-top") {
+      const topW = (1080 - gap) / 2;
       const topH = 540 - gap / 2;
-      const botW = (1080 - gap) / 2;
+      const botW = (1080 - gap * 2) / 3;
       const botH = 540 - gap / 2;
       coords = [
         { x: 0, y: 0, w: topW, h: topH },
         { x: topW + gap, y: 0, w: topW, h: topH },
-        { x: (topW + gap) * 2, y: 0, w: topW, h: topH },
         { x: 0, y: topH + gap, w: botW, h: botH },
         { x: botW + gap, y: topH + gap, w: botW, h: botH },
+        { x: (botW + gap) * 2, y: topH + gap, w: botW, h: botH },
       ];
     } else if (activeLayout === "5-photos-2-3") {
       const leftW = (1080 - gap) / 2;
@@ -362,22 +389,32 @@ const FbDarkPost: NextPage = () => {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(`+${fakeCount}`, lastSlot.x + lastSlot.w / 2, lastSlot.y + lastSlot.h / 2);
-    } else if (activeLayout === "video-card" && lastSlot) {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-      ctx.fillRect(0, 0, 1080, 1080);
+    } else if (activeLayout === "video-card") {
+      // Draw bottom 20% dark gradient overlay
+      const botOverlayH = 1080 * 0.2;
+      const grad = ctx.createLinearGradient(0, 1080 - botOverlayH, 0, 1080);
+      grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0.65)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 1080 - botOverlayH, 1080, botOverlayH);
 
+      // Centered Facebook Play Button
+      ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
       ctx.beginPath();
-      ctx.arc(540, 540, 90, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.arc(540, 540, 65, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.beginPath();
-      ctx.moveTo(525, 490);
-      ctx.lineTo(575, 540);
-      ctx.lineTo(525, 590);
-      ctx.closePath();
-      ctx.fillStyle = "#0f1117";
-      ctx.fill();
+      // Facebook Play Icon path: M7 4v16c0 1.5 1.6 2.5 3 1.7l12-8c1.3-.9 1.3-2.6 0-3.5l-12-8C8.6 1.4 7 2.4 7 4z
+      const p = new Path2D("M7 4v16c0 1.5 1.6 2.5 3 1.7l12-8c1.3-.9 1.3-2.6 0-3.5l-12-8C8.6 1.4 7 2.4 7 4z");
+      ctx.save();
+      ctx.translate(540 - 30, 540 - 32);
+      ctx.scale(2.6, 2.6);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill(p);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke(p);
+      ctx.restore();
     }
 
     return canvas.toDataURL("image/jpeg", 0.92);
@@ -552,7 +589,7 @@ const FbDarkPost: NextPage = () => {
               </div>
             </div>
 
-            {/* Message / Caption Textarea */}
+            {/* Message / Caption Textarea (Auto-Cached) */}
             <div className="form-group">
               <label className="input-label">
                 <FileText size={14} /> Message :
@@ -562,7 +599,7 @@ const FbDarkPost: NextPage = () => {
                   rows={3}
                   placeholder="Write something..."
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={(e) => handleMessageChange(e.target.value)}
                 />
                 <button type="button" className="emoji-icon-btn" title="Add Emoji">
                   <Smile size={16} />
@@ -570,7 +607,7 @@ const FbDarkPost: NextPage = () => {
               </div>
             </div>
 
-            {/* Destination URL */}
+            {/* Destination URL (Auto-Cached) */}
             <div className="form-group">
               <label className="input-label">
                 <Globe size={14} /> Destination URL :
@@ -579,11 +616,11 @@ const FbDarkPost: NextPage = () => {
                 type="url"
                 placeholder="Your target website"
                 value={destinationUrl}
-                onChange={(e) => setDestinationUrl(e.target.value)}
+                onChange={(e) => handleDestUrlChange(e.target.value)}
               />
             </div>
 
-            {/* Display URL */}
+            {/* Display URL (Auto-Cached) */}
             <div className="form-group">
               <label className="input-label">
                 <Globe size={14} /> Display URL :
@@ -592,7 +629,7 @@ const FbDarkPost: NextPage = () => {
                 type="text"
                 placeholder="facebook.com"
                 value={displayUrl}
-                onChange={(e) => setDisplayUrl(e.target.value)}
+                onChange={(e) => handleDispUrlChange(e.target.value)}
               />
             </div>
 
@@ -855,11 +892,28 @@ const FbDarkPost: NextPage = () => {
                             </div>
                           )}
 
-                          {/* Video Play Overlay */}
+                          {/* Video Play Overlay with Bottom 20% Gradient and Exact FB Play Button */}
                           {activeLayout === "video-card" && (
-                            <div className="video-play-overlay">
-                              <div className="play-circle">
-                                <Play size={28} className="play-icon" />
+                            <div className="video-card-overlay">
+                              <div className="video-bottom-gradient"></div>
+                              <div
+                                className="play-button"
+                                id="playButtonUI"
+                                style={{
+                                  width: 65,
+                                  height: 65,
+                                  backgroundColor: "rgba(0, 0, 0, 0.1)",
+                                }}
+                              >
+                                <svg viewBox="0 0 24 24" style={{ transform: "translateX(-2%)" }}>
+                                  <path
+                                    d="M7 4v16c0 1.5 1.6 2.5 3 1.7l12-8c1.3-.9 1.3-2.6 0-3.5l-12-8C8.6 1.4 7 2.4 7 4z"
+                                    fill="currentColor"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinejoin="round"
+                                  ></path>
+                                </svg>
                               </div>
                             </div>
                           )}
@@ -1379,28 +1433,30 @@ const FbDarkPost: NextPage = () => {
           max-width: 320px;
         }
 
+        /* White 2px Border Gaps Between Slots */
         .grid-canvas-layout {
           width: 100%;
           max-width: 540px;
           height: 540px;
-          background: #cbd5e1;
+          background: #ffffff;
           display: grid;
-          gap: 3px;
+          gap: 2px;
           position: relative;
           border-radius: 8px;
           overflow: hidden;
+          box-shadow: inset 0 0 0 1px #e2e8f0;
         }
 
         /* Layout Grid variations */
-        .layout-5-photos-3-2 {
+        .layout-5-photos-2-3-top {
           grid-template-columns: repeat(6, 1fr);
           grid-template-rows: 1fr 1fr;
         }
-        .layout-5-photos-3-2 .slot-0 { grid-column: span 2; grid-row: 1; }
-        .layout-5-photos-3-2 .slot-1 { grid-column: span 2; grid-row: 1; }
-        .layout-5-photos-3-2 .slot-2 { grid-column: span 2; grid-row: 1; }
-        .layout-5-photos-3-2 .slot-3 { grid-column: span 3; grid-row: 2; }
-        .layout-5-photos-3-2 .slot-4 { grid-column: span 3; grid-row: 2; }
+        .layout-5-photos-2-3-top .slot-0 { grid-column: span 3; grid-row: 1; }
+        .layout-5-photos-2-3-top .slot-1 { grid-column: span 3; grid-row: 1; }
+        .layout-5-photos-2-3-top .slot-2 { grid-column: span 2; grid-row: 2; }
+        .layout-5-photos-2-3-top .slot-3 { grid-column: span 2; grid-row: 2; }
+        .layout-5-photos-2-3-top .slot-4 { grid-column: span 2; grid-row: 2; }
 
         .layout-5-photos-2-3 {
           grid-template-columns: 1fr 1fr;
@@ -1493,6 +1549,7 @@ const FbDarkPost: NextPage = () => {
           justify-content: center;
           cursor: pointer;
           transition: background 0.2s;
+          z-index: 10;
         }
 
         .btn-delete-slot:hover {
@@ -1512,25 +1569,40 @@ const FbDarkPost: NextPage = () => {
           pointer-events: none;
         }
 
-        .video-play-overlay {
+        /* Facebook Exact Video Card Overlay */
+        .video-card-overlay {
           position: absolute;
           inset: 0;
-          background: rgba(0, 0, 0, 0.35);
+          pointer-events: none;
           display: flex;
           align-items: center;
           justify-content: center;
-          pointer-events: none;
         }
 
-        .play-circle {
-          width: 70px;
-          height: 70px;
+        .video-bottom-gradient {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 20%;
+          background: linear-gradient(to top, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0) 100%);
+        }
+
+        .play-button {
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.9);
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #0f1117;
+          color: #ffffff;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+          backdrop-filter: blur(2px);
+          position: relative;
+          z-index: 2;
+        }
+
+        .play-button svg {
+          width: 32px;
+          height: 32px;
         }
 
         .display-url-strip {
