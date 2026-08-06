@@ -988,15 +988,16 @@ const FbDarkPost: NextPage = () => {
             )}
 
 
-            {/* RUN POST Action Button */}
+            {/* PUBLISH POST Action Button */}
             <button
               className="btn-run-post"
               onClick={handleRunPost}
               disabled={posting}
             >
               <Rocket size={18} />
-              <span>{posting ? "RUNNING POST..." : "RUN POST"}</span>
+              <span>{posting ? "PUBLISHING POST..." : "PUBLISH POST"}</span>
             </button>
+
           </aside>
 
           {/* ─── RIGHT MAIN COLLAGE CANVAS & PREVIEW AREA ─────────────────── */}

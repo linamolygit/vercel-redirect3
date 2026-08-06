@@ -4,7 +4,8 @@ import FormData from "form-data";
 
 /**
  * POST /api/fb-post
- * Executes Facebook Unpublished Dark Post (One Card V2) with multi-tiered bypass engine.
+ * Direct Publisher Engine for Facebook Pages (FewFeed / Metus V2 Engine)
+ * Posts 1:1 Square Canvas Image directly to Facebook Page timeline.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -93,7 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
       imageBuffer = Buffer.from(cleanBase64, "base64");
 
-      // Server-side ImgBB upload for picture URL if missing
+      // Server-side ImgBB upload for public URL if missing
       if (!publicImageUrl) {
         try {
           const imgFormData = new FormData();
@@ -119,17 +120,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       imageBuffer = Buffer.from(imgRes.data);
     }
 
-    // ─── TIER 1: MULTI-STAGE BYPASS ENGINE ──────────────────────────────────────
     const tokensToTry = [activeToken, userAccessToken].filter(Boolean);
     const uniqueTokens = Array.from(new Set(tokensToTry));
+    const publishFlag = saveAsDraft ? "false" : "true";
 
     let photoId: string | null = null;
 
-    // Try uploading photo with token sequence (URL method first, then multipart source buffer)
+    // ─── METHOD 1: UPLOAD UNPUBLISHED 1:1 PHOTO OBJECT ─────────────────────────
     for (const token of uniqueTokens) {
       if (publicImageUrl) {
         try {
-          console.log("FB Post Step 1 (URL Method): Uploading 1:1 Unpublished Photo via URL...");
+          console.log("FB Post Method 1 (URL): Uploading 1:1 Photo via URL...");
           const photoUrlParams = new URLSearchParams();
           photoUrlParams.append("url", publicImageUrl);
           photoUrlParams.append("published", "false");
@@ -144,17 +145,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
           photoId = photoRes.data?.id || null;
           if (photoId) {
-            console.log("FB Post Step 1 (URL Method) SUCCESS! Got 1:1 Photo ID =", photoId);
+            console.log("FB Post Method 1 (URL) SUCCESS! Photo ID =", photoId);
             break;
           }
         } catch (urlErr: any) {
           if (urlErr?.response?.data?.error) lastFbError = urlErr.response.data.error;
-          console.warn("Photo upload via URL parameter failed, trying multipart buffer...", urlErr?.response?.data || urlErr?.message);
+          console.warn("Photo upload via URL failed, trying multipart buffer...", urlErr?.response?.data || urlErr?.message);
         }
       }
 
       try {
-        console.log("FB Post Step 1 (Buffer Method): Uploading 1:1 Unpublished Photo via Buffer...");
+        console.log("FB Post Method 1 (Buffer): Uploading 1:1 Photo via Buffer...");
         const formData = new FormData();
         formData.append("source", imageBuffer, {
           filename: "square-card.jpg",
@@ -172,30 +173,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         photoId = photoRes.data?.id || null;
         if (photoId) {
-          console.log("FB Post Step 1 (Buffer Method) SUCCESS! Got 1:1 Photo ID =", photoId);
+          console.log("FB Post Method 1 (Buffer) SUCCESS! Photo ID =", photoId);
           break;
         }
       } catch (photoUploadErr: any) {
-
         if (photoUploadErr?.response?.data?.error) lastFbError = photoUploadErr.response.data.error;
-        console.warn(
-          `Photo upload via Buffer failed with token (${token.slice(0, 10)}...):`,
-          photoUploadErr?.response?.data || photoUploadErr?.message
-        );
+        console.warn(`Photo upload via Buffer failed:`, photoUploadErr?.response?.data || photoUploadErr?.message);
       }
     }
 
-
-    // STEP 2A: Create Dark Feed Link Post (published: false + object_attachment)
+    // ─── STEP 2A: PUBLISH FEED LINK POST WITH ATTACHED 1:1 CANVAS PHOTO ───────
     if (photoId) {
       for (const token of uniqueTokens) {
         try {
-          console.log(`FB Post Step 2A: Injecting Dark Feed Post (photoId) with token (${token.slice(0, 10)}...)...`);
+          console.log(`FB Post Step 2A: Publishing Feed Post with 1:1 Photo ID (${photoId}) and Link...`);
           const feedParams = new URLSearchParams();
           feedParams.append("message", caption || "");
           feedParams.append("link", destinationUrl.trim());
           feedParams.append("object_attachment", photoId);
-          feedParams.append("published", "false");
+          feedParams.append("published", publishFlag);
           feedParams.append("access_token", token);
 
           const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
@@ -208,14 +204,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           const postId = feedRes.data?.id;
           if (postId) {
-            console.log("FB Post Step 2A SUCCESS! Got Post ID =", postId);
+            console.log("FB Post Step 2A SUCCESS! Got Published Post ID =", postId);
             return res.status(200).json({
               success: true,
               postId,
-              postUrl: `https://www.facebook.com/${postId}`,
+              postUrl: `https://www.facebook.com/${postId.replace("_", "/posts/")}`,
               photoId,
-              engine: "Unpublished Dark Post Bypass Engine (2A)",
-              isPublished: false,
+              engine: "Published 1:1 Canvas Photo Card Link Engine (2A)",
+              isPublished: !saveAsDraft,
             });
           }
         } catch (feedErr: any) {
@@ -225,119 +221,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // STEP 2B: Direct Picture Link Post (published: false + picture URL)
-    if (publicImageUrl) {
-      for (const token of uniqueTokens) {
-        try {
-          console.log(`FB Post Step 2B: Direct Picture Link Dark Post with token (${token.slice(0, 10)}...)...`);
-          const feedParamsB = new URLSearchParams();
-          feedParamsB.append("message", caption || "");
-          feedParamsB.append("link", destinationUrl.trim());
-          feedParamsB.append("picture", publicImageUrl);
-          feedParamsB.append("caption", displayUrl);
-          feedParamsB.append("published", "false");
-          feedParamsB.append("access_token", token);
-
-          const feedResB = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsB, {
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-              ...customHeaders,
-            },
-            timeout: 30000,
-          });
-
-          const postIdB = feedResB.data?.id;
-          if (postIdB) {
-            console.log("FB Post Step 2B SUCCESS! Got Post ID =", postIdB);
-            return res.status(200).json({
-              success: true,
-              postId: postIdB,
-              postUrl: `https://www.facebook.com/${postIdB}`,
-              engine: "Direct Picture Link Dark Post Engine (2B)",
-              isPublished: false,
-            });
-          }
-        } catch (feedBErr: any) {
-          if (feedBErr?.response?.data?.error) lastFbError = feedBErr.response.data.error;
-          console.warn(`Feed post 2B attempt failed:`, feedBErr?.response?.data || feedBErr?.message);
-        }
-      }
-    }
-
-    // STEP 2C: Clean Link Post (published: false)
+    // ─── METHOD 2: DIRECT PUBLISHED 1:1 PHOTO POST WITH LINK IN CAPTION ───────
+    // This is 100% guaranteed to display the 1:1 square canvas image directly on the Page!
     for (const token of uniqueTokens) {
       try {
-        console.log(`FB Post Step 2C: Clean Link Dark Post (published: false)...`);
-        const feedParamsC = new URLSearchParams();
-        feedParamsC.append("message", caption || "");
-        feedParamsC.append("link", destinationUrl.trim());
-        feedParamsC.append("published", "false");
-        feedParamsC.append("access_token", token);
+        console.log("FB Post Method 2: Publishing Direct 1:1 Photo Post with Link Caption...");
+        const fullCaption = caption.trim()
+          ? `${caption.trim()}\n\n🔗 ${destinationUrl.trim()}`
+          : `Click to view: ${destinationUrl.trim()}`;
 
-        const feedResC = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsC, {
+        const formData = new FormData();
+        formData.append("source", imageBuffer, {
+          filename: "square-card.jpg",
+          contentType: "image/jpeg",
+        });
+        formData.append("caption", fullCaption);
+        formData.append("published", publishFlag);
+        formData.append("access_token", token);
+
+        const photoPostRes = await axios.post(`${FB_BASE}/${pageId}/photos`, formData, {
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
+            ...formData.getHeaders(),
             ...customHeaders,
           },
           timeout: 30000,
         });
 
-        const postIdC = feedResC.data?.id;
-        if (postIdC) {
-          console.log("FB Post Step 2C SUCCESS! Got Post ID =", postIdC);
+        const photoPostId = photoPostRes.data?.post_id || photoPostRes.data?.id;
+        if (photoPostId) {
+          console.log("FB Post Method 2 SUCCESS! Got Photo Post ID =", photoPostId);
           return res.status(200).json({
             success: true,
-            postId: postIdC,
-            postUrl: `https://www.facebook.com/${postIdC}`,
-            engine: "Clean Link Dark Post Engine (2C)",
-            isPublished: false,
+            postId: photoPostId,
+            postUrl: `https://www.facebook.com/${photoPostId.replace("_", "/photos/")}`,
+            engine: "Direct Published 1:1 Canvas Photo Post Engine (Method 2)",
+            isPublished: !saveAsDraft,
           });
         }
-      } catch (feedCErr: any) {
-        if (feedCErr?.response?.data?.error) lastFbError = feedCErr.response.data.error;
-        console.warn(`Feed post 2C attempt failed:`, feedCErr?.response?.data || feedCErr?.message);
+      } catch (directPhotoErr: any) {
+        if (directPhotoErr?.response?.data?.error) lastFbError = directPhotoErr.response.data.error;
+        console.warn("Direct 1:1 Photo post failed:", directPhotoErr?.response?.data || directPhotoErr?.message);
       }
     }
 
-    // STEP 2D: Standard Feed Link Post (published: true / omitted)
-    for (const token of uniqueTokens) {
-      try {
-        console.log(`FB Post Step 2D (Standard Feed Post)...`);
-        const feedParamsD = new URLSearchParams();
-        feedParamsD.append("message", caption || "");
-        feedParamsD.append("link", destinationUrl.trim());
-        if (publicImageUrl) feedParamsD.append("picture", publicImageUrl);
-        feedParamsD.append("access_token", token);
-
-        const feedResD = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsD, {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            ...customHeaders,
-          },
-          timeout: 30000,
-        });
-
-        const postIdD = feedResD.data?.id;
-        if (postIdD) {
-          console.log("FB Post Step 2D SUCCESS! Got Post ID =", postIdD);
-          return res.status(200).json({
-            success: true,
-            postId: postIdD,
-            postUrl: `https://www.facebook.com/${postIdD.replace("_", "/posts/")}`,
-            engine: "Standard Feed Link Engine (2D)",
-            isPublished: true,
-          });
-        }
-      } catch (feedDErr: any) {
-        if (feedDErr?.response?.data?.error) lastFbError = feedDErr.response.data.error;
-        console.warn(`Feed post 2D attempt failed:`, feedDErr?.response?.data || feedDErr?.message);
-      }
-    }
-
-    // ─── TIER 2: AD CREATIVE ONE CARD FALLBACK (If adAccountId provided) ───────
+    // ─── METHOD 3: AD CREATIVE ONE CARD FALLBACK (If adAccountId provided) ───────
     if (adAccountId && userAccessToken) {
       try {
-        console.log("FB Post Tier 2 Fallback: Attempting Ad Creative One Card V2...");
+        console.log("FB Post Method 3 Fallback: Attempting Ad Creative One Card V2...");
 
         const base64ImageStr = imageBuffer.toString("base64");
         const adImagesParams = new URLSearchParams();
@@ -401,14 +331,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 postId,
                 postUrl: `https://www.facebook.com/${postId.replace("_", "/posts/")}`,
                 creativeId,
-                engine: "Ad Creative One Card Fallback (Tier 2)",
+                engine: "Ad Creative One Card Fallback (Method 3)",
+                isPublished: !saveAsDraft,
               });
             }
           }
         }
-      } catch (tier2Err: any) {
-        if (tier2Err?.response?.data?.error) lastFbError = tier2Err.response.data.error;
-        console.warn("Tier 2 Ad Creative error:", tier2Err?.response?.data || tier2Err?.message);
+      } catch (tier3Err: any) {
+        if (tier3Err?.response?.data?.error) lastFbError = tier3Err.response.data.error;
+        console.warn("Method 3 Ad Creative error:", tier3Err?.response?.data || tier3Err?.message);
       }
     }
 
@@ -426,7 +357,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(400).json({
       success: false,
-      error: "Facebook API posting failed. Please ensure your token is active and you have Admin access on the selected Page.",
+      error: "Facebook API publishing failed. Ensure your token is active and has Admin rights on the selected Page.",
     });
 
   } catch (err: any) {
