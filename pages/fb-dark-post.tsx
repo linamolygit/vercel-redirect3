@@ -179,9 +179,7 @@ const FbDarkPost: NextPage = () => {
         fetch(`/api/fb-accounts?token=${encodeURIComponent(cachedToken)}`)
           .then((r) => r.json())
           .then((accData) => {
-            if (accData.fbUser) {
-              setExtUser(accData.fbUser);
-            }
+            if (accData.fbUser) setExtUser(accData.fbUser);
             if (accData.pages?.length > 0) {
               setFbPages(accData.pages);
               setSelectedPageId(accData.pages[0].id);
@@ -193,10 +191,40 @@ const FbDarkPost: NextPage = () => {
             }
           })
           .catch((err) => console.warn("FB Accounts fetch error:", err));
+      } else {
+        // Fallback: check logged-in DB user
+        fetch("/api/auth/user")
+          .then((r) => r.json())
+          .then((userData) => {
+            const dbToken = userData?.user?.fbAccessToken;
+            const dbCookie = userData?.user?.fbCookie;
+            if (dbToken) {
+              setUserAccessToken(dbToken);
+              localStorage.setItem("fb_access_token", dbToken);
+              if (dbCookie) localStorage.setItem("fb_raw_cookie", dbCookie);
 
+              fetch(`/api/fb-accounts?token=${encodeURIComponent(dbToken)}`)
+                .then((r) => r.json())
+                .then((accData) => {
+                  if (accData.fbUser) setExtUser(accData.fbUser);
+                  if (accData.pages?.length > 0) {
+                    setFbPages(accData.pages);
+                    setSelectedPageId(accData.pages[0].id);
+                    setSelectedPageToken(accData.pages[0].access_token);
+                  }
+                  if (accData.adAccounts?.length > 0) {
+                    setFbAdAccounts(accData.adAccounts);
+                    setSelectedAdAccountId(accData.adAccounts[0].id);
+                  }
+                })
+                .catch((err) => console.warn("DB FB Accounts fetch error:", err));
+            }
+          })
+          .catch((err) => console.warn("Auth user fetch error:", err));
       }
     }
   }, []);
+
 
 
   const handleMessageChange = (val: string) => {
