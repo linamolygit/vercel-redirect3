@@ -147,7 +147,8 @@ const FbDarkPost: NextPage = () => {
 
   // Extension & Posting states
   const [isExtensionInstalled, setIsExtensionInstalled] = useState(false);
-  const [extUser, setExtUser] = useState<{ id: string; name: string } | null>(null);
+  const [extUser, setExtUser] = useState<{ id: string; name: string; profilePic?: string } | null>(null);
+
   const [posting, setPosting] = useState(false);
   const [postResult, setPostResult] = useState<{ postId: string; postUrl: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -178,6 +179,9 @@ const FbDarkPost: NextPage = () => {
         fetch(`/api/fb-accounts?token=${encodeURIComponent(cachedToken)}`)
           .then((r) => r.json())
           .then((accData) => {
+            if (accData.fbUser) {
+              setExtUser(accData.fbUser);
+            }
             if (accData.pages?.length > 0) {
               setFbPages(accData.pages);
               setSelectedPageId(accData.pages[0].id);
@@ -188,10 +192,12 @@ const FbDarkPost: NextPage = () => {
               setSelectedAdAccountId(accData.adAccounts[0].id);
             }
           })
-          .catch((err) => console.warn("Cached FB Accounts fetch error:", err));
+          .catch((err) => console.warn("FB Accounts fetch error:", err));
+
       }
     }
   }, []);
+
 
   const handleMessageChange = (val: string) => {
     setMessage(val);
@@ -226,6 +232,9 @@ const FbDarkPost: NextPage = () => {
         fetch(`/api/fb-accounts?token=${encodeURIComponent(data.accessToken)}`)
           .then((r) => r.json())
           .then((accData) => {
+            if (accData.fbUser) {
+              setExtUser(accData.fbUser);
+            }
             if (accData.pages?.length > 0) {
               setFbPages(accData.pages);
               setSelectedPageId(accData.pages[0].id);
@@ -236,6 +245,7 @@ const FbDarkPost: NextPage = () => {
               setSelectedAdAccountId(accData.adAccounts[0].id);
             }
           })
+
           .catch((err) => console.warn("FB Accounts fetch error:", err));
       }
     };
@@ -566,32 +576,61 @@ const FbDarkPost: NextPage = () => {
         <div className="dark-post-container">
           {/* ─── LEFT CONTROL FORM SIDEBAR ─────────────────────────────────── */}
           <aside className="control-sidebar">
-            {/* Facebook Pages Selector */}
+            {/* User Profile Connection Header */}
+            {extUser && (
+              <div className="fb-user-header-badge">
+                {extUser.profilePic ? (
+                  <img src={extUser.profilePic} alt={extUser.name} className="fb-user-avatar-sm" />
+                ) : (
+                  <div className="fb-user-initial">{extUser.name.charAt(0).toUpperCase()}</div>
+                )}
+                <div className="fb-user-info-text">
+                  <div className="fb-user-name">{extUser.name}</div>
+                  <div className="fb-user-status">● Connected via Extension / Token</div>
+                </div>
+              </div>
+            )}
+
+            {/* Facebook Pages Custom Rich Selector */}
             <div className="form-group">
               <label className="input-label">
-                <Share2 size={14} /> Facebook Pages
+                <Share2 size={14} /> Select Facebook Page
               </label>
-              <div className="select-wrapper">
-                <select
-                  value={selectedPageId}
-                  onChange={(e) => {
-                    setSelectedPageId(e.target.value);
-                    const pg = fbPages.find((p) => p.id === e.target.value);
-                    if (pg) setSelectedPageToken(pg.access_token);
-                  }}
-                >
-                  {fbPages.length === 0 ? (
-                    <option value="">-- No Facebook Page Connected --</option>
-                  ) : (
-                    fbPages.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.id})
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
+
+              {fbPages.length === 0 ? (
+                <div className="no-pages-alert">
+                  No Facebook Page Connected. Please sync via Extension or paste User Access Token.
+                </div>
+              ) : (
+                <div className="pages-selector-grid">
+                  {fbPages.map((p) => {
+                    const isSelected = selectedPageId === p.id;
+                    return (
+                      <div
+                        key={p.id}
+                        className={`page-select-card ${isSelected ? "active" : ""}`}
+                        onClick={() => {
+                          setSelectedPageId(p.id);
+                          setSelectedPageToken(p.access_token);
+                        }}
+                      >
+                        {p.picture ? (
+                          <img src={p.picture} alt={p.name} className="page-card-avatar" />
+                        ) : (
+                          <div className="page-card-initial">{p.name.charAt(0).toUpperCase()}</div>
+                        )}
+                        <div className="page-card-info">
+                          <div className="page-card-title">{p.name}</div>
+                          <div className="page-card-id">ID: {p.id}</div>
+                        </div>
+                        {isSelected && <CheckCircle2 size={16} className="selected-check" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
 
             {/* Ad Accounts Selector */}
             <div className="form-group">
@@ -1106,11 +1145,138 @@ const FbDarkPost: NextPage = () => {
           gap: 16px;
         }
 
+        /* Metus.vn FB User Header Badge & Page Selector Grid */
+        .fb-user-header-badge {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          background: var(--input-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+        }
+
+        .fb-user-avatar-sm {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 1px solid var(--primary);
+        }
+
+        .fb-user-initial {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: var(--primary);
+          color: white;
+          font-weight: 700;
+          font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .fb-user-name {
+          font-weight: 700;
+          font-size: 0.88rem;
+          color: var(--text-main);
+        }
+
+        .fb-user-status {
+          font-size: 0.72rem;
+          color: #22c55e;
+          font-weight: 600;
+        }
+
+        .no-pages-alert {
+          font-size: 0.78rem;
+          color: var(--text-muted);
+          background: var(--input-bg);
+          padding: 10px;
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--glass-border);
+        }
+
+        .pages-selector-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          max-height: 220px;
+          overflow-y: auto;
+          padding-right: 2px;
+        }
+
+        .page-select-card {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 10px;
+          border-radius: var(--radius-sm);
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .page-select-card:hover {
+          border-color: var(--primary);
+        }
+
+        .page-select-card.active {
+          border-color: var(--primary);
+          background: rgba(0, 113, 227, 0.1);
+        }
+
+        .page-card-avatar {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+
+        .page-card-initial {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: var(--primary);
+          color: white;
+          font-size: 0.78rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .page-card-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .page-card-title {
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: var(--text-main);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .page-card-id {
+          font-size: 0.72rem;
+          color: var(--text-muted);
+        }
+
+        .page-select-card :global(.selected-check) {
+          color: var(--primary);
+        }
+
         .form-group {
           display: flex;
           flex-direction: column;
           gap: 6px;
         }
+
 
         .input-label {
           font-size: 0.82rem;
