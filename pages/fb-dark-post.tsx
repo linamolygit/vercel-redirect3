@@ -248,13 +248,15 @@ const FbDarkPost: NextPage = () => {
 
       if (cachedMsg) setMessage(cachedMsg);
       if (cachedDest) setDestinationUrl(cachedDest);
-      if (cachedDisp) setDisplayUrl(cachedDisp);
-
-      if (cachedToken) {
+      if (cachedDisp) setDisplayUrl(cachedDisp);      if (cachedToken) {
         setUserAccessToken(cachedToken);
-        fetch(`/api/fb-accounts?token=${encodeURIComponent(cachedToken)}`)
+        const cachedCookie = localStorage.getItem("fb_raw_cookie") || "";
+        fetch(`/api/fb-accounts?token=${encodeURIComponent(cachedToken)}&cookie=${encodeURIComponent(cachedCookie)}`)
           .then((r) => r.json())
           .then((accData) => {
+            if (!accData.success && accData.error) {
+              setErrorMessage(`FB Accounts Error: ${accData.error}`);
+            }
             if (accData.fbUser) setExtUser(accData.fbUser);
             if (accData.pages?.length > 0) {
               setFbPages(accData.pages);
@@ -279,9 +281,12 @@ const FbDarkPost: NextPage = () => {
               localStorage.setItem("fb_access_token", dbToken);
               if (dbCookie) localStorage.setItem("fb_raw_cookie", dbCookie);
 
-              fetch(`/api/fb-accounts?token=${encodeURIComponent(dbToken)}`)
+              fetch(`/api/fb-accounts?token=${encodeURIComponent(dbToken)}&cookie=${encodeURIComponent(dbCookie || "")}`)
                 .then((r) => r.json())
                 .then((accData) => {
+                  if (!accData.success && accData.error) {
+                    setErrorMessage(`FB Accounts Error: ${accData.error}`);
+                  }
                   if (accData.fbUser) setExtUser(accData.fbUser);
                   if (accData.pages?.length > 0) {
                     setFbPages(accData.pages);
@@ -333,9 +338,16 @@ const FbDarkPost: NextPage = () => {
         setUserAccessToken(data.accessToken);
         if (data.user) setExtUser(data.user);
 
-        fetch(`/api/fb-accounts?token=${encodeURIComponent(data.accessToken)}`)
+        const rawCookie = data.cookieString || localStorage.getItem("fb_raw_cookie") || "";
+        if (data.cookieString) localStorage.setItem("fb_raw_cookie", data.cookieString);
+        localStorage.setItem("fb_access_token", data.accessToken);
+
+        fetch(`/api/fb-accounts?token=${encodeURIComponent(data.accessToken)}&cookie=${encodeURIComponent(rawCookie)}`)
           .then((r) => r.json())
           .then((accData) => {
+            if (!accData.success && accData.error) {
+              setErrorMessage(`FB Accounts Error: ${accData.error}`);
+            }
             if (accData.fbUser) {
               setExtUser(accData.fbUser);
             }
@@ -349,7 +361,6 @@ const FbDarkPost: NextPage = () => {
               setSelectedAdAccountId(accData.adAccounts[0].id);
             }
           })
-
           .catch((err) => console.warn("FB Accounts fetch error:", err));
       }
     };
@@ -358,6 +369,7 @@ const FbDarkPost: NextPage = () => {
     window.postMessage({ type: "FBVIRALL_PING" }, "*");
     return () => window.removeEventListener("message", handleMsg);
   }, []);
+
 
   // Multi-Image Upload Handler
   const handleImageUpload = (index: number, file: File) => {
