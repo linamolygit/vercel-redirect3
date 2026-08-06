@@ -25,6 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     pageAccessToken,
     adAccountId,
     imageUrl,
+    base64Image,
     destinationUrl,
     caption,
     displayUrl = "facebook.com",
@@ -33,10 +34,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } = req.body;
 
   // Validate required fields
-  if ((!userAccessToken && !pageAccessToken) || !pageId || !imageUrl || !destinationUrl) {
+  if ((!userAccessToken && !pageAccessToken) || !pageId || (!imageUrl && !base64Image) || !destinationUrl) {
     return res.status(400).json({
       error: "Missing required fields",
-      required: ["pageId", "imageUrl", "destinationUrl"],
+      required: ["pageId", "destinationUrl", "imageUrl OR base64Image"],
     });
   }
 
@@ -56,13 +57,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log("FB Post: Downloading image from:", imageUrl);
-    const imgRes = await axios.get(imageUrl, {
-      responseType: "arraybuffer",
-      timeout: 25000,
-    });
+    let imageBuffer: Buffer;
+    if (base64Image) {
+      console.log("FB Post: Processing direct base64 image data...");
+      const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
+      imageBuffer = Buffer.from(cleanBase64, "base64");
+    } else {
+      console.log("FB Post: Downloading image from:", imageUrl);
+      const imgRes = await axios.get(imageUrl, {
+        responseType: "arraybuffer",
+        timeout: 25000,
+      });
+      imageBuffer = Buffer.from(imgRes.data);
+    }
 
-    const imageBuffer = Buffer.from(imgRes.data);
 
     // ─── METHOD 1: UNPUBLISHED PHOTO + FEED LINK BYPASS ENGINE ─────────────────
     try {

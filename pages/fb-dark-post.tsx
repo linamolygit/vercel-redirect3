@@ -590,25 +590,27 @@ const FbDarkPost: NextPage = () => {
 
     try {
       const dataUrl = await generateCollage();
-      const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-
-      const formData = new FormData();
-      formData.append("image", base64Data);
-
-      const IMGBB_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY || "369527ad0caec6bb3e52adfbcc28b2be";
-      const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const imgbbData = await imgbbRes.json();
-      if (!imgbbRes.ok || !imgbbData?.data?.url) {
-        throw new Error("Collage image upload failed to ImgBB.");
-      }
-
-      const imageUrl = imgbbData.data.url;
-
       const rawCookie = typeof window !== "undefined" ? localStorage.getItem("fb_raw_cookie") || "" : "";
+
+      let imageUrl = "";
+      try {
+        const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+        const formData = new FormData();
+        formData.append("image", base64Data);
+
+        const IMGBB_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY || "369527ad0caec6bb3e52adfbcc28b2be";
+        const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const imgbbData = await imgbbRes.json();
+        if (imgbbRes.ok && imgbbData?.data?.url) {
+          imageUrl = imgbbData.data.url;
+        }
+      } catch (imgbbErr) {
+        console.warn("ImgBB upload failed, falling back to direct base64 image data...", imgbbErr);
+      }
 
       const postRes = await fetch("/api/fb-post", {
         method: "POST",
@@ -618,6 +620,7 @@ const FbDarkPost: NextPage = () => {
           pageId: selectedPageId,
           pageAccessToken: selectedPageToken,
           adAccountId: selectedAdAccountId,
+          base64Image: dataUrl,
           imageUrl,
           destinationUrl: destinationUrl.trim(),
           caption: message.trim() || "Click to view full album...",
@@ -627,6 +630,7 @@ const FbDarkPost: NextPage = () => {
           rawCookie,
         }),
       });
+
 
 
       const postData = await postRes.json();
