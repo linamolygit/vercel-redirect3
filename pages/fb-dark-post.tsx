@@ -399,49 +399,53 @@ const FbDarkPost: NextPage = () => {
     setImages(newImgs);
   };
 
-  // Generate 1080x1080 Canvas Buffer
+  // Generate 1200x1080 Canvas Buffer (Wider horizontal aspect ratio)
   const generateCollage = useCallback(async (): Promise<string> => {
     const canvas = document.createElement("canvas");
-    canvas.width = 1080;
-    canvas.height = 1080;
+    const W = 1200;
+    const H = 1080;
+    canvas.width = W;
+    canvas.height = H;
     const ctx = canvas.getContext("2d");
     if (!ctx) return "";
 
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, 1080, 1080);
+    ctx.fillRect(0, 0, W, H);
 
     // Single Custom Image Mode Override
     if (singleImageMode) {
       if (singleImageSrc) {
         const img = await new Promise<HTMLImageElement | null>((res) => {
           const image = new Image();
-          image.crossOrigin = "anonymous";
+          if (singleImageSrc.startsWith("http")) {
+            image.crossOrigin = "anonymous";
+          }
           image.onload = () => res(image);
           image.onerror = () => res(null);
           image.src = singleImageSrc;
         });
         if (img) {
-          ctx.drawImage(img, 0, 0, 1080, 1080);
+          ctx.drawImage(img, 0, 0, W, H);
         } else {
           ctx.fillStyle = "#e2e8f0";
-          ctx.fillRect(0, 0, 1080, 1080);
+          ctx.fillRect(0, 0, W, H);
         }
       } else {
         ctx.fillStyle = "#e2e8f0";
-        ctx.fillRect(0, 0, 1080, 1080);
+        ctx.fillRect(0, 0, W, H);
       }
       return canvas.toDataURL("image/jpeg", 0.92);
     }
 
     // Multi-Collage Mode
-    const gap = 3;
+    const gap = 4;
     let coords: { x: number; y: number; w: number; h: number }[] = [];
 
     if (activeLayout === "5-photos-2-3-top") {
-      const topW = (1080 - gap) / 2;
-      const topH = 540 - gap / 2;
-      const botW = (1080 - gap * 2) / 3;
-      const botH = 540 - gap / 2;
+      const topW = (W - gap) / 2;
+      const topH = (H - gap) / 2;
+      const botW = (W - gap * 2) / 3;
+      const botH = (H - gap) / 2;
       coords = [
         { x: 0, y: 0, w: topW, h: topH },
         { x: topW + gap, y: 0, w: topW, h: topH },
@@ -450,10 +454,10 @@ const FbDarkPost: NextPage = () => {
         { x: (botW + gap) * 2, y: topH + gap, w: botW, h: botH },
       ];
     } else if (activeLayout === "5-photos-2-3") {
-      const leftW = (1080 - gap) / 2;
-      const leftH = (1080 - gap) / 2;
-      const rightW = (1080 - gap) / 2;
-      const rightH = (1080 - gap * 2) / 3;
+      const leftW = (W - gap) / 2;
+      const leftH = (H - gap) / 2;
+      const rightW = (W - gap) / 2;
+      const rightH = (H - gap * 2) / 3;
       coords = [
         { x: 0, y: 0, w: leftW, h: leftH },
         { x: 0, y: leftH + gap, w: leftW, h: leftH },
@@ -462,8 +466,8 @@ const FbDarkPost: NextPage = () => {
         { x: leftW + gap, y: (rightH + gap) * 2, w: rightW, h: rightH },
       ];
     } else if (activeLayout === "4-photos") {
-      const w = (1080 - gap) / 2;
-      const h = (1080 - gap) / 2;
+      const w = (W - gap) / 2;
+      const h = (H - gap) / 2;
       coords = [
         { x: 0, y: 0, w, h },
         { x: w + gap, y: 0, w, h },
@@ -471,16 +475,16 @@ const FbDarkPost: NextPage = () => {
         { x: w + gap, y: h + gap, w, h },
       ];
     } else if (activeLayout === "3-photos-top") {
-      const topH = 540 - gap / 2;
-      const botW = (1080 - gap) / 2;
-      const botH = 540 - gap / 2;
+      const topH = (H - gap) / 2;
+      const botW = (W - gap) / 2;
+      const botH = (H - gap) / 2;
       coords = [
-        { x: 0, y: 0, w: 1080, h: topH },
+        { x: 0, y: 0, w: W, h: topH },
         { x: 0, y: topH + gap, w: botW, h: botH },
         { x: botW + gap, y: topH + gap, w: botW, h: botH },
       ];
     } else {
-      coords = [{ x: 0, y: 0, w: 1080, h: 1080 }];
+      coords = [{ x: 0, y: 0, w: W, h: H }];
     }
 
     for (let i = 0; i < coords.length; i++) {
@@ -542,23 +546,23 @@ const FbDarkPost: NextPage = () => {
       ctx.fillText(`+${fakeCount}`, lastSlot.x + lastSlot.w / 2, lastSlot.y + lastSlot.h / 2);
     } else if (activeLayout === "video-card") {
       // Draw bottom 20% dark gradient overlay
-      const botOverlayH = 1080 * 0.2;
-      const grad = ctx.createLinearGradient(0, 1080 - botOverlayH, 0, 1080);
+      const botOverlayH = H * 0.2;
+      const grad = ctx.createLinearGradient(0, H - botOverlayH, 0, H);
       grad.addColorStop(0, "rgba(0, 0, 0, 0)");
       grad.addColorStop(1, "rgba(0, 0, 0, 0.65)");
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 1080 - botOverlayH, 1080, botOverlayH);
+      ctx.fillRect(0, H - botOverlayH, W, botOverlayH);
 
       // Centered Facebook Play Button
       ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
       ctx.beginPath();
-      ctx.arc(540, 540, 65, 0, Math.PI * 2);
+      ctx.arc(W / 2, H / 2, 65, 0, Math.PI * 2);
       ctx.fill();
 
       // Facebook Play Icon path: M7 4v16c0 1.5 1.6 2.5 3 1.7l12-8c1.3-.9 1.3-2.6 0-3.5l-12-8C8.6 1.4 7 2.4 7 4z
       const p = new Path2D("M7 4v16c0 1.5 1.6 2.5 3 1.7l12-8c1.3-.9 1.3-2.6 0-3.5l-12-8C8.6 1.4 7 2.4 7 4z");
       ctx.save();
-      ctx.translate(540 - 30, 540 - 32);
+      ctx.translate(W / 2 - 30, H / 2 - 32);
       ctx.scale(2.6, 2.6);
       ctx.fillStyle = "#ffffff";
       ctx.fill(p);
@@ -570,6 +574,7 @@ const FbDarkPost: NextPage = () => {
 
     return canvas.toDataURL("image/jpeg", 0.92);
   }, [images, activeLayout, fakeMore, fakeCount, singleImageMode, singleImageSrc]);
+
 
   // Upload to ImgBB then post via Marketing API
   const handleRunPost = async () => {

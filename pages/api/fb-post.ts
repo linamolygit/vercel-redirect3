@@ -182,16 +182,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // ─── STEP 2A: PUBLISH FEED LINK POST WITH ATTACHED 1:1 CANVAS PHOTO ───────
+    // ─── STEP 2A: CLICKABLE CANVAS PHOTO LINK POST (object_attachment: photoId) ───────
     if (photoId) {
       for (const token of uniqueTokens) {
+        // Try published: false (Dark Post Mode - Required by Graph API for object_attachment)
         try {
-          console.log(`FB Post Step 2A: Publishing Feed Post with 1:1 Photo ID (${photoId}) and Link...`);
+          console.log(`FB Post Step 2A (Dark Post): Injecting Clickable Card with Photo ID (${photoId})...`);
           const feedParams = new URLSearchParams();
           feedParams.append("message", caption || "");
           feedParams.append("link", destinationUrl.trim());
           feedParams.append("object_attachment", photoId);
-          feedParams.append("published", publishFlag);
+          feedParams.append("published", "false");
           feedParams.append("access_token", token);
 
           const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
@@ -204,22 +205,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           const postId = feedRes.data?.id;
           if (postId) {
-            console.log("FB Post Step 2A SUCCESS! Got Published Post ID =", postId);
+            console.log("FB Post Step 2A Dark Post SUCCESS! Got Post ID =", postId);
             return res.status(200).json({
               success: true,
               postId,
-              postUrl: `https://www.facebook.com/${postId.replace("_", "/posts/")}`,
+              postUrl: `https://www.facebook.com/${postId}`,
               photoId,
-              engine: "Published 1:1 Canvas Photo Card Link Engine (2A)",
-              isPublished: !saveAsDraft,
+              engine: "Clickable 1:1 Canvas Photo Card Engine (Step 2A)",
+              isPublished: false,
             });
           }
         } catch (feedErr: any) {
           if (feedErr?.response?.data?.error) lastFbError = feedErr.response.data.error;
-          console.warn(`Feed post 2A attempt failed:`, feedErr?.response?.data || feedErr?.message);
+          console.warn(`Dark Feed post 2A attempt failed:`, feedErr?.response?.data || feedErr?.message);
+        }
+
+        // Try published: true as secondary fallback
+        try {
+          console.log(`FB Post Step 2A (Published Mode): Injecting Clickable Card with Photo ID (${photoId})...`);
+          const feedParamsPub = new URLSearchParams();
+          feedParamsPub.append("message", caption || "");
+          feedParamsPub.append("link", destinationUrl.trim());
+          feedParamsPub.append("object_attachment", photoId);
+          feedParamsPub.append("published", "true");
+          feedParamsPub.append("access_token", token);
+
+          const feedResPub = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsPub, {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              ...customHeaders,
+            },
+            timeout: 30000,
+          });
+
+          const postIdPub = feedResPub.data?.id;
+          if (postIdPub) {
+            console.log("FB Post Step 2A Published SUCCESS! Got Post ID =", postIdPub);
+            return res.status(200).json({
+              success: true,
+              postId: postIdPub,
+              postUrl: `https://www.facebook.com/${postIdPub.replace("_", "/posts/")}`,
+              photoId,
+              engine: "Clickable 1:1 Canvas Photo Card Engine (Step 2A Published)",
+              isPublished: true,
+            });
+          }
+        } catch (feedPubErr: any) {
+          if (feedPubErr?.response?.data?.error) lastFbError = feedPubErr.response.data.error;
+          console.warn(`Published Feed post 2A attempt failed:`, feedPubErr?.response?.data || feedPubErr?.message);
         }
       }
     }
+
 
     // ─── METHOD 2: DIRECT PUBLISHED 1:1 PHOTO POST WITH LINK IN CAPTION ───────
     // This is 100% guaranteed to display the 1:1 square canvas image directly on the Page!
