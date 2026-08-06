@@ -3,6 +3,28 @@ import Head from "next/head";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import {
+  Rocket,
+  Smile,
+  Image as ImageIcon,
+  X,
+  Globe,
+  Layers,
+  CheckCircle2,
+  AlertCircle,
+  Zap,
+  Play,
+  Upload,
+  Calendar,
+  FileText,
+  Lock,
+  ExternalLink,
+  Plus,
+  Trash2,
+  RefreshCw,
+  Sparkles,
+  Share2,
+} from "lucide-react";
 
 // Layout Presets
 interface LayoutOption {
@@ -18,7 +40,7 @@ const LAYOUT_PRESETS: LayoutOption[] = [
     name: "5 Photos (Top 3 + Bottom 2)",
     slots: 5,
     icon: (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
         <rect x="2" y="2" width="13" height="20" rx="2" fill="#94a3b8" />
         <rect x="17" y="2" width="14" height="20" rx="2" fill="#94a3b8" />
         <rect x="33" y="2" width="13" height="20" rx="2" fill="#94a3b8" />
@@ -32,7 +54,7 @@ const LAYOUT_PRESETS: LayoutOption[] = [
     name: "5 Photos (Left 2 + Right 3)",
     slots: 5,
     icon: (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
         <rect x="2" y="2" width="21" height="21" rx="2" fill="#94a3b8" />
         <rect x="2" y="25" width="21" height="21" rx="2" fill="#94a3b8" />
         <rect x="25" y="2" width="21" height="13" rx="2" fill="#94a3b8" />
@@ -46,7 +68,7 @@ const LAYOUT_PRESETS: LayoutOption[] = [
     name: "4 Photos (2x2 Grid)",
     slots: 4,
     icon: (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
         <rect x="2" y="2" width="21" height="21" rx="2" fill="#94a3b8" />
         <rect x="25" y="2" width="21" height="21" rx="2" fill="#94a3b8" />
         <rect x="2" y="25" width="21" height="21" rx="2" fill="#94a3b8" />
@@ -59,7 +81,7 @@ const LAYOUT_PRESETS: LayoutOption[] = [
     name: "3 Photos (Top 1 + Bottom 2)",
     slots: 3,
     icon: (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
         <rect x="2" y="2" width="44" height="22" rx="2" fill="#94a3b8" />
         <rect x="2" y="26" width="21" height="20" rx="2" fill="#94a3b8" />
         <rect x="25" y="26" width="21" height="20" rx="2" fill="#475569" />
@@ -71,7 +93,7 @@ const LAYOUT_PRESETS: LayoutOption[] = [
     name: "Single Square Photo (1:1)",
     slots: 1,
     icon: (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
         <rect x="4" y="4" width="40" height="40" rx="4" fill="#94a3b8" />
       </svg>
     ),
@@ -81,7 +103,7 @@ const LAYOUT_PRESETS: LayoutOption[] = [
     name: "Play Button Overlay",
     slots: 1,
     icon: (
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
         <rect x="4" y="4" width="40" height="40" rx="4" fill="#475569" />
         <circle cx="24" cy="24" r="10" fill="#ffffff" opacity="0.9" />
         <polygon points="21,18 30,24 21,30" fill="#0f1117" />
@@ -98,7 +120,7 @@ const FbDarkPost: NextPage = () => {
   const [selectedPageToken, setSelectedPageToken] = useState("");
   const [selectedAdAccountId, setSelectedAdAccountId] = useState("");
   const [userAccessToken, setUserAccessToken] = useState("");
-  
+
   const [message, setMessage] = useState("");
   const [destinationUrl, setDestinationUrl] = useState("");
   const [displayUrl, setDisplayUrl] = useState("facebook.com");
@@ -110,7 +132,7 @@ const FbDarkPost: NextPage = () => {
   // Images & Canvas state
   const [images, setImages] = useState<(string | null)[]>([null, null, null, null, null]);
   const [activeLayout, setActiveLayout] = useState("5-photos-3-2");
-  
+
   // Extension & Posting states
   const [isExtensionInstalled, setIsExtensionInstalled] = useState(false);
   const [extUser, setExtUser] = useState<{ id: string; name: string } | null>(null);
@@ -120,7 +142,6 @@ const FbDarkPost: NextPage = () => {
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -141,7 +162,7 @@ const FbDarkPost: NextPage = () => {
       if (type === "FBVIRALL_EXTENSION_RESPONSE" && data?.accessToken) {
         setUserAccessToken(data.accessToken);
         if (data.user) setExtUser(data.user);
-        
+
         fetch(`/api/fb-accounts?token=${encodeURIComponent(data.accessToken)}`)
           .then((r) => r.json())
           .then((accData) => {
@@ -255,7 +276,6 @@ const FbDarkPost: NextPage = () => {
           image.src = imgUrl;
         });
         if (img) {
-          // Object-fit cover algorithm
           const imgAspect = img.width / img.height;
           const slotAspect = c.w / c.h;
           let renderW = c.w;
@@ -339,11 +359,9 @@ const FbDarkPost: NextPage = () => {
     setPostResult(null);
 
     try {
-      // 1. Generate 1080x1080 image
       const dataUrl = await generateCollage();
       const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
 
-      // 2. Upload to ImgBB
       const formData = new FormData();
       formData.append("image", base64Data);
 
@@ -360,7 +378,6 @@ const FbDarkPost: NextPage = () => {
 
       const imageUrl = imgbbData.data.url;
 
-      // 3. Post to Facebook via /api/fb-post
       const postRes = await fetch("/api/fb-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -382,7 +399,7 @@ const FbDarkPost: NextPage = () => {
       }
 
       setPostResult({ postId: postData.postId, postUrl: postData.postUrl });
-      showToast("🚀 Posted to Facebook successfully!", "success");
+      showToast("Posted to Facebook successfully!", "success");
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred.");
       showToast(err.message || "Post failed.", "error");
@@ -396,25 +413,57 @@ const FbDarkPost: NextPage = () => {
   return (
     <div className="dark-post-wrapper">
       <Head>
-        <title>FB Dark Post V2 — One Card Auto-Poster | LinkPika</title>
+        <title>Post to Facebook (One Card V2) — LinkPika</title>
         <meta name="description" content="Create 1:1 Square Facebook One Card Ads & Dark Posts with Fake Album Badges." />
       </Head>
 
       <Header />
 
       <main className="main-content">
+        {/* Main Page Title Header */}
+        <div className="page-title-banner">
+          <div className="banner-left">
+            <h1 className="main-heading">
+              <Rocket className="heading-icon" size={28} />
+              <span>Post to Facebook (One Card V2)</span>
+            </h1>
+            <p className="sub-heading">
+              Create 1:1 Square Facebook Clickable Album Posts using Meta Ad Creative Engine.
+            </p>
+          </div>
+
+          <div className="banner-right">
+            {isExtensionInstalled ? (
+              <div className="ext-badge connected">
+                <Zap size={15} />
+                <span>Extension Active {extUser ? `(${extUser.name})` : ""}</span>
+              </div>
+            ) : (
+              <a href="/extension/manifest.json" download="manifest.json" className="ext-badge install">
+                <Zap size={15} />
+                <span>Get Chrome Extension</span>
+              </a>
+            )}
+          </div>
+        </div>
+
         <div className="dark-post-container">
           {/* ─── LEFT CONTROL FORM SIDEBAR ─────────────────────────────────── */}
           <aside className="control-sidebar">
             {/* Facebook Pages Selector */}
             <div className="form-group">
-              <label>Facebook Pages</label>
+              <label className="input-label">
+                <Share2 size={14} /> Facebook Pages
+              </label>
               <div className="select-wrapper">
-                <select value={selectedPageId} onChange={(e) => {
-                  setSelectedPageId(e.target.value);
-                  const pg = fbPages.find((p) => p.id === e.target.value);
-                  if (pg) setSelectedPageToken(pg.access_token);
-                }}>
+                <select
+                  value={selectedPageId}
+                  onChange={(e) => {
+                    setSelectedPageId(e.target.value);
+                    const pg = fbPages.find((p) => p.id === e.target.value);
+                    if (pg) setSelectedPageToken(pg.access_token);
+                  }}
+                >
                   {fbPages.length === 0 ? (
                     <option value="">WoodnMetal Skills (105550589064990)</option>
                   ) : (
@@ -430,9 +479,14 @@ const FbDarkPost: NextPage = () => {
 
             {/* Ad Accounts Selector */}
             <div className="form-group">
-              <label>Ad Accounts</label>
+              <label className="input-label">
+                <Layers size={14} /> Ad Accounts
+              </label>
               <div className="select-wrapper">
-                <select value={selectedAdAccountId} onChange={(e) => setSelectedAdAccountId(e.target.value)}>
+                <select
+                  value={selectedAdAccountId}
+                  onChange={(e) => setSelectedAdAccountId(e.target.value)}
+                >
                   {fbAdAccounts.length === 0 ? (
                     <option value="act_621181569724674">621181569724674</option>
                   ) : (
@@ -448,7 +502,9 @@ const FbDarkPost: NextPage = () => {
 
             {/* Message / Caption Textarea */}
             <div className="form-group">
-              <label>Message :</label>
+              <label className="input-label">
+                <FileText size={14} /> Message :
+              </label>
               <div className="textarea-container">
                 <textarea
                   rows={3}
@@ -456,13 +512,17 @@ const FbDarkPost: NextPage = () => {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                 />
-                <span className="emoji-btn" title="Add Emoji">😋</span>
+                <button type="button" className="emoji-icon-btn" title="Add Emoji">
+                  <Smile size={16} />
+                </button>
               </div>
             </div>
 
             {/* Destination URL */}
             <div className="form-group">
-              <label>Destination URL :</label>
+              <label className="input-label">
+                <Globe size={14} /> Destination URL :
+              </label>
               <input
                 type="url"
                 placeholder="Your target website"
@@ -473,7 +533,9 @@ const FbDarkPost: NextPage = () => {
 
             {/* Display URL */}
             <div className="form-group">
-              <label>Display URL :</label>
+              <label className="input-label">
+                <Globe size={14} /> Display URL :
+              </label>
               <input
                 type="text"
                 placeholder="facebook.com"
@@ -484,9 +546,15 @@ const FbDarkPost: NextPage = () => {
 
             {/* Fake More Toggle */}
             <div className="form-group row-group">
-              <label>Fake more</label>
+              <label className="input-label">
+                <Sparkles size={14} /> Fake more
+              </label>
               <label className="toggle-switch">
-                <input type="checkbox" checked={fakeMore} onChange={(e) => setFakeMore(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={fakeMore}
+                  onChange={(e) => setFakeMore(e.target.checked)}
+                />
                 <span className="toggle-slider"></span>
               </label>
             </div>
@@ -507,7 +575,11 @@ const FbDarkPost: NextPage = () => {
             {/* Save as draft Checkbox */}
             <div className="form-group row-group-checkbox">
               <label className="checkbox-container">
-                <input type="checkbox" checked={saveAsDraft} onChange={(e) => setSaveAsDraft(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={saveAsDraft}
+                  onChange={(e) => setSaveAsDraft(e.target.checked)}
+                />
                 <span className="checkmark"></span>
                 Save as draft
               </label>
@@ -515,9 +587,15 @@ const FbDarkPost: NextPage = () => {
 
             {/* Schedule Toggle */}
             <div className="form-group row-group">
-              <label>Schedule :</label>
+              <label className="input-label">
+                <Calendar size={14} /> Schedule :
+              </label>
               <label className="toggle-switch red-toggle">
-                <input type="checkbox" checked={schedule} onChange={(e) => setSchedule(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={schedule}
+                  onChange={(e) => setSchedule(e.target.checked)}
+                />
                 <span className="toggle-slider"></span>
               </label>
             </div>
@@ -525,7 +603,9 @@ const FbDarkPost: NextPage = () => {
             {/* Access Token Field (Hidden or Manual Edit) */}
             {!isExtensionInstalled && (
               <div className="form-group">
-                <label>User Access Token :</label>
+                <label className="input-label">
+                  <Lock size={14} /> User Access Token :
+                </label>
                 <input
                   type="text"
                   placeholder="EAABwzLixnjY..."
@@ -536,21 +616,34 @@ const FbDarkPost: NextPage = () => {
             )}
 
             {/* Error Message Display */}
-            {errorMessage && <div className="error-box">{errorMessage}</div>}
+            {errorMessage && (
+              <div className="error-box">
+                <AlertCircle size={16} />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             {/* Success Post Result */}
             {postResult && (
               <div className="success-box">
-                <div>✅ Published Successfully!</div>
-                <a href={postResult.postUrl} target="_blank" rel="noreferrer">
-                  View Live Post ↗
-                </a>
+                <CheckCircle2 size={16} />
+                <div style={{ flex: 1 }}>
+                  <div>Published Successfully!</div>
+                  <a href={postResult.postUrl} target="_blank" rel="noreferrer">
+                    View Live Post <ExternalLink size={12} />
+                  </a>
+                </div>
               </div>
             )}
 
             {/* RUN POST Action Button */}
-            <button className="btn-run-post" onClick={handleRunPost} disabled={posting}>
-              {posting ? "RUNNING POST..." : "RUN POST"}
+            <button
+              className="btn-run-post"
+              onClick={handleRunPost}
+              disabled={posting}
+            >
+              <Rocket size={18} />
+              <span>{posting ? "RUNNING POST..." : "RUN POST"}</span>
             </button>
           </aside>
 
@@ -562,71 +655,87 @@ const FbDarkPost: NextPage = () => {
                 {activePageObj?.name ? activePageObj.name.charAt(0).toUpperCase() : "W"}
               </div>
               <div className="page-meta">
-                <div className="page-title">{activePageObj?.name || "WoodnMetal Skills"}</div>
-                <div className="page-id">{activePageObj?.id || "10555089064990"}</div>
+                <div className="page-title">
+                  {activePageObj?.name || "WoodnMetal Skills"}
+                </div>
+                <div className="page-id">
+                  {activePageObj?.id || "105550589064990"}
+                </div>
               </div>
             </div>
 
             {/* Interactive Grid Canvas Preview Card */}
             <div className="canvas-card">
               <div className={`grid-canvas-layout layout-${activeLayout}`}>
-                {[0, 1, 2, 3, 4].slice(0, LAYOUT_PRESETS.find((l) => l.id === activeLayout)?.slots || 5).map((idx, index, array) => {
-                  const isLast = index === array.length - 1;
-                  const hasImage = !!images[idx];
+                {[0, 1, 2, 3, 4]
+                  .slice(0, LAYOUT_PRESETS.find((l) => l.id === activeLayout)?.slots || 5)
+                  .map((idx, index, array) => {
+                    const isLast = index === array.length - 1;
+                    const hasImage = !!images[idx];
 
-                  return (
-                    <div
-                      key={idx}
-                      className={`grid-slot slot-${idx}`}
-                      onClick={() => fileInputRefs.current[idx]?.click()}
-                    >
-                      <input
-                        type="file"
-                        accept="image/*"
-                        ref={(el) => (fileInputRefs.current[idx] = el)}
-                        style={{ display: "none" }}
-                        onChange={(e) => e.target.files?.[0] && handleImageUpload(idx, e.target.files[0])}
-                      />
+                    return (
+                      <div
+                        key={idx}
+                        className={`grid-slot slot-${idx}`}
+                        onClick={() => fileInputRefs.current[idx]?.click()}
+                      >
+                        <input
+                          type="file"
+                          accept="image/*"
+                          ref={(el) => (fileInputRefs.current[idx] = el)}
+                          style={{ display: "none" }}
+                          onChange={(e) =>
+                            e.target.files?.[0] && handleImageUpload(idx, e.target.files[0])
+                          }
+                        />
 
-                      {hasImage ? (
-                        <>
-                          <img src={images[idx]!} alt={`Slot ${idx + 1}`} className="slot-img" />
-                          <button className="btn-delete-slot" onClick={(e) => handleDeletePhoto(idx, e)}>
-                            ✕
-                          </button>
-                        </>
-                      ) : (
-                        <div className="slot-placeholder">
-                          <span>{isLast && fakeMore ? `Ctrl +${fakeCount} v` : "Ctrl + v"}</span>
-                        </div>
-                      )}
-
-                      {/* Top floating Add Photos button */}
-                      <button className="btn-add-photos-top" onClick={(e) => {
-                        e.stopPropagation();
-                        fileInputRefs.current[idx]?.click();
-                      }}>
-                        🖼️ Add Photos
-                      </button>
-
-                      {/* Fake More +9 Badge Overlay on Last Slot */}
-                      {isLast && fakeMore && (
-                        <div className="fake-more-overlay">
-                          <span>+{fakeCount}</span>
-                        </div>
-                      )}
-
-                      {/* Video Play Overlay */}
-                      {activeLayout === "video-card" && (
-                        <div className="video-play-overlay">
-                          <div className="play-circle">
-                            <div className="play-triangle"></div>
+                        {hasImage ? (
+                          <>
+                            <img src={images[idx]!} alt={`Slot ${idx + 1}`} className="slot-img" />
+                            <button
+                              className="btn-delete-slot"
+                              onClick={(e) => handleDeletePhoto(idx, e)}
+                              title="Delete photo"
+                            >
+                              <X size={14} />
+                            </button>
+                          </>
+                        ) : (
+                          <div className="slot-placeholder">
+                            <span>{isLast && fakeMore ? `Ctrl +${fakeCount} v` : "Ctrl + v"}</span>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+
+                        {/* Top floating Add Photos button */}
+                        <button
+                          className="btn-add-photos-top"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fileInputRefs.current[idx]?.click();
+                          }}
+                        >
+                          <ImageIcon size={14} />
+                          <span>Add Photos</span>
+                        </button>
+
+                        {/* Fake More +9 Badge Overlay on Last Slot */}
+                        {isLast && fakeMore && (
+                          <div className="fake-more-overlay">
+                            <span>+{fakeCount}</span>
+                          </div>
+                        )}
+
+                        {/* Video Play Overlay */}
+                        {activeLayout === "video-card" && (
+                          <div className="video-play-overlay">
+                            <div className="play-circle">
+                              <Play size={28} className="play-icon" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
 
               {/* Bottom Display URL strip */}
@@ -656,29 +765,97 @@ const FbDarkPost: NextPage = () => {
       <Footer />
 
       {/* Toast Notification */}
-      {toast && <div className={`dark-toast ${toast.type}`}>{toast.msg}</div>}
+      {toast && (
+        <div className={`dark-toast ${toast.type}`}>
+          {toast.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+          <span>{toast.msg}</span>
+        </div>
+      )}
 
       <style jsx>{`
         .dark-post-wrapper {
           min-height: 100vh;
-          background: #f0f2f5;
+          background: #f8fafc;
           color: #0f1117;
           display: flex;
           flex-direction: column;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
         .main-content {
           flex: 1;
-          padding: 30px 20px;
+          padding: 24px 20px 40px;
           max-width: 1280px;
           margin: 0 auto;
           width: 100%;
           box-sizing: border-box;
         }
 
+        /* Banner Header */
+        .page-title-banner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 24px;
+          padding: 20px 24px;
+          background: #ffffff;
+          border-radius: 16px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        }
+
+        .main-heading {
+          margin: 0;
+          font-size: 1.4rem;
+          font-weight: 800;
+          color: #0f1117;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          letter-spacing: -0.4px;
+        }
+
+        .main-heading :global(.heading-icon) {
+          color: #1877f2;
+        }
+
+        .sub-heading {
+          margin: 4px 0 0 0;
+          font-size: 0.83rem;
+          color: #64748b;
+        }
+
+        .ext-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          font-weight: 700;
+          text-decoration: none;
+          transition: all 0.2s;
+        }
+
+        .ext-badge.connected {
+          background: rgba(34, 197, 94, 0.1);
+          color: #16a34a;
+          border: 1px solid #86efac;
+        }
+
+        .ext-badge.install {
+          background: rgba(24, 119, 242, 0.08);
+          color: #1877f2;
+          border: 1px solid rgba(24, 119, 242, 0.3);
+        }
+
+        .ext-badge.install:hover {
+          background: rgba(24, 119, 242, 0.15);
+        }
+
         .dark-post-container {
           display: grid;
-          grid-template-columns: 340px 1fr;
+          grid-template-columns: 350px 1fr;
           gap: 24px;
           align-items: start;
         }
@@ -688,7 +865,7 @@ const FbDarkPost: NextPage = () => {
           background: #ffffff;
           border-radius: 16px;
           padding: 24px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
           border: 1px solid #e2e8f0;
           display: flex;
           flex-direction: column;
@@ -701,10 +878,13 @@ const FbDarkPost: NextPage = () => {
           gap: 6px;
         }
 
-        .form-group label {
+        .input-label {
           font-size: 0.82rem;
-          font-weight: 600;
-          color: #64748b;
+          font-weight: 700;
+          color: #475569;
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
 
         .select-wrapper select,
@@ -721,7 +901,7 @@ const FbDarkPost: NextPage = () => {
           font-size: 0.88rem;
           color: #0f1117;
           outline: none;
-          transition: border-color 0.2s;
+          transition: all 0.2s;
         }
 
         .select-wrapper select:focus,
@@ -729,19 +909,30 @@ const FbDarkPost: NextPage = () => {
         .textarea-container textarea:focus {
           border-color: #1877f2;
           background: #ffffff;
+          box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.12);
         }
 
         .textarea-container {
           position: relative;
         }
 
-        .emoji-btn {
+        .emoji-icon-btn {
           position: absolute;
-          right: 12px;
+          right: 10px;
           bottom: 10px;
-          font-size: 1.1rem;
+          background: none;
+          border: none;
+          color: #94a3b8;
           cursor: pointer;
-          user-select: none;
+          padding: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: color 0.2s;
+        }
+
+        .emoji-icon-btn:hover {
+          color: #1877f2;
         }
 
         .row-group {
@@ -809,6 +1000,7 @@ const FbDarkPost: NextPage = () => {
           gap: 8px;
           cursor: pointer;
           font-size: 0.85rem;
+          font-weight: 600;
           color: #334155;
         }
 
@@ -827,6 +1019,10 @@ const FbDarkPost: NextPage = () => {
           box-shadow: 0 4px 20px rgba(24, 119, 242, 0.35);
           transition: transform 0.15s, opacity 0.15s;
           margin-top: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
 
         .btn-run-post:hover {
@@ -844,8 +1040,11 @@ const FbDarkPost: NextPage = () => {
           border: 1px solid #fca5a5;
           color: #dc2626;
           padding: 10px 14px;
-          border-radius: 8px;
-          font-size: 0.8rem;
+          border-radius: 10px;
+          font-size: 0.82rem;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         .success-box {
@@ -853,8 +1052,21 @@ const FbDarkPost: NextPage = () => {
           border: 1px solid #86efac;
           color: #16a34a;
           padding: 10px 14px;
-          border-radius: 8px;
-          font-size: 0.8rem;
+          border-radius: 10px;
+          font-size: 0.82rem;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .success-box a {
+          color: #1877f2;
+          font-weight: 700;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 2px;
         }
 
         /* ─── PREVIEW MAIN ─────────────────────────────────────────────── */
@@ -868,7 +1080,7 @@ const FbDarkPost: NextPage = () => {
           background: #ffffff;
           border-radius: 16px;
           padding: 16px 20px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
           border: 1px solid #e2e8f0;
           display: flex;
           align-items: center;
@@ -904,7 +1116,7 @@ const FbDarkPost: NextPage = () => {
           background: #ffffff;
           border-radius: 16px;
           padding: 20px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
           border: 1px solid #e2e8f0;
           display: flex;
           flex-direction: column;
@@ -915,7 +1127,7 @@ const FbDarkPost: NextPage = () => {
           width: 100%;
           max-width: 540px;
           height: 540px;
-          background: #e2e8f0;
+          background: #cbd5e1;
           display: grid;
           gap: 3px;
           position: relative;
@@ -980,7 +1192,7 @@ const FbDarkPost: NextPage = () => {
           top: 10px;
           left: 50%;
           transform: translateX(-50%);
-          background: rgba(255, 255, 255, 0.92);
+          background: rgba(255, 255, 255, 0.95);
           border: 1px solid #cbd5e1;
           border-radius: 6px;
           padding: 6px 12px;
@@ -990,6 +1202,10 @@ const FbDarkPost: NextPage = () => {
           opacity: 0;
           transition: opacity 0.2s;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #0f1117;
         }
 
         .grid-slot:hover .btn-add-photos-top {
@@ -1000,17 +1216,21 @@ const FbDarkPost: NextPage = () => {
           position: absolute;
           top: 8px;
           right: 8px;
-          background: rgba(0, 0, 0, 0.6);
+          background: rgba(0, 0, 0, 0.65);
           color: white;
           border: none;
           border-radius: 50%;
-          width: 24px;
-          height: 24px;
+          width: 26px;
+          height: 26px;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          font-size: 0.75rem;
+          transition: background 0.2s;
+        }
+
+        .btn-delete-slot:hover {
+          background: #ef4444;
         }
 
         .fake-more-overlay {
@@ -1024,6 +1244,27 @@ const FbDarkPost: NextPage = () => {
           align-items: center;
           justify-content: center;
           pointer-events: none;
+        }
+
+        .video-play-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+        }
+
+        .play-circle {
+          width: 70px;
+          height: 70px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.9);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #0f1117;
         }
 
         .display-url-strip {
@@ -1044,7 +1285,7 @@ const FbDarkPost: NextPage = () => {
           background: #ffffff;
           border-radius: 16px;
           padding: 20px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
           border: 1px solid #e2e8f0;
         }
 
@@ -1100,6 +1341,9 @@ const FbDarkPost: NextPage = () => {
           font-size: 0.88rem;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
           z-index: 9999;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         .dark-toast.success { background: #22c55e; }
@@ -1108,6 +1352,11 @@ const FbDarkPost: NextPage = () => {
         @media (max-width: 900px) {
           .dark-post-container {
             grid-template-columns: 1fr;
+          }
+          .page-title-banner {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
           }
         }
       `}</style>
