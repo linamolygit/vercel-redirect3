@@ -47,25 +47,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     customHeaders["Cookie"] = rawCookie;
   }
 
-  // Determine active token & dynamically fetch Page Access Token if needed
+  // ─── STEP 1: RESOLVE PAGE ACCESS TOKEN VIA /me/accounts ───────────────────
   let activeToken = pageAccessToken || "";
+
   if (!activeToken && userAccessToken) {
     try {
-      console.log("FB Post: Fetching dynamic Page Access Token for Page ID:", pageId);
-      const pageRes = await axios.get(`${FB_BASE}/${pageId}`, {
+      console.log("FB Post: Resolving Page Access Token via /me/accounts for Page ID:", pageId);
+      const meAccountsRes = await axios.get(`${FB_BASE}/me/accounts`, {
         params: {
-          fields: "access_token",
+          fields: "id,name,access_token",
           access_token: userAccessToken,
         },
         headers: customHeaders,
         timeout: 15000,
       });
-      if (pageRes.data?.access_token) {
-        activeToken = pageRes.data.access_token;
-        console.log("FB Post: Successfully resolved Page Access Token!");
+
+      const pageList = meAccountsRes.data?.data || [];
+      const foundPage = pageList.find((p: any) => String(p.id) === String(pageId));
+
+      if (foundPage?.access_token) {
+        activeToken = foundPage.access_token;
+        console.log("FB Post SUCCESS: Resolved Page Access Token from /me/accounts!");
+      } else if (pageList.length > 0 && pageList[0].access_token) {
+        activeToken = pageList[0].access_token;
+        console.log("FB Post SUCCESS: Used primary Page Access Token from /me/accounts!");
       }
     } catch (pageErr: any) {
-      console.warn("FB Post: Page token fetch failed, using userAccessToken:", pageErr?.message);
+      console.warn("FB Post: /me/accounts token lookup failed:", pageErr?.response?.data || pageErr?.message);
     }
   }
 
@@ -91,105 +99,124 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ─── TIER 1: UNPUBLISHED PHOTO + FEED LINK BYPASS ENGINE ───────────────────
     try {
       let photoId: string | null = null;
-      try {
-        console.log("FB Post Step 1: Uploading Unpublished Photo to Page...");
-        const formData = new FormData();
-        formData.append("source", imageBuffer, { filename: "card-image.png" });
-        formData.append("published", "false");
-        formData.append("access_token", activeToken);
 
-        const photoRes = await axios.post(`${FB_BASE}/${pageId}/photos`, formData, {
-          headers: {
-            ...formData.getHeaders(),
-            ...customHeaders,
-          },
-          timeout: 30000,
-        });
-        photoId = photoRes.data?.id || null;
-        if (photoId) {
-          console.log("FB Post Step 1 SUCCESS! Got Photo ID =", photoId);
+      // Try uploading photo with activeToken first, fallback to userAccessToken
+      const tokensToTry = [activeToken, userAccessToken].filter(Boolean);
+      const uniqueTokens = Array.from(new Set(tokensToTry));
+
+      for (const token of uniqueTokens) {
+        try {
+          console.log("FB Post Step 1: Uploading Unpublished Photo to Page...");
+          const formData = new FormData();
+          formData.append("source", imageBuffer, { filename: "card-image.png" });
+          formData.append("published", "false");
+          formData.append("access_token", token);
+
+          const photoRes = await axios.post(`${FB_BASE}/${pageId}/photos`, formData, {
+            headers: {
+              ...formData.getHeaders(),
+              ...customHeaders,
+            },
+            timeout: 30000,
+          });
+          photoId = photoRes.data?.id || null;
+          if (photoId) {
+            console.log("FB Post Step 1 SUCCESS! Got Photo ID =", photoId);
+            break;
+          }
+        } catch (photoUploadErr: any) {
+          console.warn(
+            `Photo upload to /photos failed with token prefix (${token.slice(0, 10)}...):`,
+            photoUploadErr?.response?.data || photoUploadErr?.message
+          );
         }
-      } catch (photoUploadErr: any) {
-        console.warn(
-          "Unpublished photo upload to /photos failed, proceeding directly to /feed...",
-          photoUploadErr?.response?.data || photoUploadErr?.message
-        );
       }
 
-      // STEP 2: Create Feed Link Post (Attempt 1A: published: false)
-      console.log("FB Post Step 2A: Injecting Feed Post with Target Link (Dark/Unpublished)...");
-      try {
-        const feedParams = new URLSearchParams();
-        feedParams.append("message", caption || "");
-        feedParams.append("link", destinationUrl.trim());
-        if (photoId) {
-          feedParams.append("object_attachment", photoId);
-        }
-        feedParams.append("published", "false"); // Dark / Unpublished Post
-        feedParams.append("access_token", activeToken);
+      // STEP 2: Create Feed Link Post (Try token sequence)
+      for (const token of uniqueTokens) {
+        try {
+          console.log(`FB Post Step 2: Injecting Feed Post with token (${token.slice(0, 10)}...)...`);
+          const feedParams = new URLSearchParams();
+          feedParams.append("message", caption || "");
+          feedParams.append("link", destinationUrl.trim());
+          if (photoId) {
+            feedParams.append("object_attachment", photoId);
+          }
+          feedParams.append("published", "false"); // Dark / Unpublished Post
+          feedParams.append("access_token", token);
 
-        const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            ...customHeaders,
-          },
-          timeout: 30000,
-        });
-
-        const postId = feedRes.data?.id;
-        if (postId) {
-          console.log("FB Post Step 2A SUCCESS! Got Post ID =", postId);
-          return res.status(200).json({
-            success: true,
-            postId,
-            postUrl: `https://www.facebook.com/${postId}`,
-            photoId,
-            engine: "Unpublished Dark Post Bypass Engine (2A)",
-            isPublished: false,
+          const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              ...customHeaders,
+            },
+            timeout: 30000,
           });
+
+          const postId = feedRes.data?.id;
+          if (postId) {
+            console.log("FB Post Step 2 SUCCESS! Got Post ID =", postId);
+            return res.status(200).json({
+              success: true,
+              postId,
+              postUrl: `https://www.facebook.com/${postId}`,
+              photoId,
+              engine: "Unpublished Dark Post Bypass Engine",
+              isPublished: false,
+            });
+          }
+        } catch (feedErr: any) {
+          console.warn(
+            `Feed post attempt failed with token (${token.slice(0, 10)}...):`,
+            feedErr?.response?.data || feedErr?.message
+          );
         }
-      } catch (feed2AErr: any) {
-        console.warn(
-          "Step 2A (published: false) failed, trying Step 2B (standard feed post)...",
-          feed2AErr?.response?.data || feed2AErr?.message
-        );
+      }
 
-        // STEP 2B: Standard Feed Link Post (published: true)
-        const feedParamsB = new URLSearchParams();
-        feedParamsB.append("message", caption || "");
-        feedParamsB.append("link", destinationUrl.trim());
-        if (photoId) {
-          feedParamsB.append("object_attachment", photoId);
-        }
-        feedParamsB.append("access_token", activeToken);
+      // If published: false failed for all tokens, try published: true
+      for (const token of uniqueTokens) {
+        try {
+          console.log(`FB Post Step 2B (published: true) with token (${token.slice(0, 10)}...)...`);
+          const feedParamsB = new URLSearchParams();
+          feedParamsB.append("message", caption || "");
+          feedParamsB.append("link", destinationUrl.trim());
+          if (photoId) {
+            feedParamsB.append("object_attachment", photoId);
+          }
+          feedParamsB.append("access_token", token);
 
-        const feedResB = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsB, {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            ...customHeaders,
-          },
-          timeout: 30000,
-        });
-
-        const postIdB = feedResB.data?.id;
-        if (postIdB) {
-          console.log("FB Post Step 2B SUCCESS! Got Post ID =", postIdB);
-          return res.status(200).json({
-            success: true,
-            postId: postIdB,
-            postUrl: `https://www.facebook.com/${postIdB.replace("_", "/posts/")}`,
-            photoId,
-            engine: "Standard Feed Post Link Engine (2B)",
-            isPublished: true,
+          const feedResB = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsB, {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              ...customHeaders,
+            },
+            timeout: 30000,
           });
+
+          const postIdB = feedResB.data?.id;
+          if (postIdB) {
+            console.log("FB Post Step 2B SUCCESS! Got Post ID =", postIdB);
+            return res.status(200).json({
+              success: true,
+              postId: postIdB,
+              postUrl: `https://www.facebook.com/${postIdB.replace("_", "/posts/")}`,
+              photoId,
+              engine: "Standard Feed Post Engine",
+              isPublished: true,
+            });
+          }
+        } catch (feedBErr: any) {
+          console.warn(`Feed post 2B attempt failed with token (${token.slice(0, 10)}...):`, feedBErr?.response?.data || feedBErr?.message);
         }
       }
 
     } catch (method1Err: any) {
-      console.warn("Tier 1 (Direct Feed Bypass) error:", method1Err?.response?.data || method1Err?.message);
+      console.warn("Tier 1 error:", method1Err?.response?.data || method1Err?.message);
+    }
 
-      // ─── TIER 2: AD CREATIVE ONE CARD FALLBACK (If adAccountId provided) ───────
-      if (adAccountId && userAccessToken) {
+    // ─── TIER 2: AD CREATIVE ONE CARD FALLBACK (If adAccountId provided) ───────
+    if (adAccountId && userAccessToken) {
+      try {
         console.log("FB Post Tier 2 Fallback: Attempting Ad Creative One Card V2...");
 
         const base64ImageStr = imageBuffer.toString("base64");
@@ -259,11 +286,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
         }
+      } catch (tier2Err: any) {
+        console.warn("Tier 2 Ad Creative error:", tier2Err?.response?.data || tier2Err?.message);
       }
-
-      // Re-throw Tier 1 error if fallback wasn't applicable
-      throw method1Err;
     }
+
+    throw new Error("Facebook post failed across all bypass engines.");
   } catch (err: any) {
     const fbError = err?.response?.data?.error;
     console.error("FB Post Execution Failed:", fbError || err?.message || err);
@@ -290,7 +318,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 /** Provide user-friendly hints for common FB error codes */
 function getHint(code: number, message: string = ""): string {
   if (code === 200 || message.includes("Permissions error")) {
-    return "Permissions Error: Ensure your Facebook Access Token has 'pages_manage_posts' / 'pages_read_engagement' permissions, or select a Facebook Page where your account has Full Control / Admin access.";
+    return "Permissions Error: Ensure your account has Admin/Full Control access to the selected Facebook Page, or re-sync token from 'FB Connect'.";
   }
   const hints: Record<number, string> = {
     190: "Access token is invalid or expired. Re-sync your extension token from top navbar 'FB Connect'.",
