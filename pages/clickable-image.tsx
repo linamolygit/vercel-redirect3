@@ -266,24 +266,34 @@ export default function ClickableImage() {
         window.postMessage({ type: "FBVIRALL_FETCH_TOKEN", requestId: "auto_init" }, "*");
       }
 
-      if (type === "FBVIRALL_EXTENSION_RESPONSE" && data?.accessToken) {
-        setFbToken(data.accessToken);
-        if (data.user) setExtFbUser(data.user);
-        // Automatically load pages and ad accounts using extracted token
-        fetch(`/api/fb-accounts?token=${encodeURIComponent(data.accessToken)}`)
-          .then((res) => res.json())
-          .then((accData) => {
-            if (accData.pages?.length > 0) {
-              setFbPages(accData.pages);
-              setFbSelectedPage(accData.pages[0].id);
-              setFbSelectedPageToken(accData.pages[0].access_token);
-            }
-            if (accData.adAccounts?.length > 0) {
-              setFbAdAccounts(accData.adAccounts);
-              setFbSelectedAd(accData.adAccounts[0].id);
-            }
-          })
-          .catch((e) => console.warn("Extension auto-fetch accounts error:", e));
+      if (type === "FBVIRALL_EXTENSION_RESPONSE") {
+        setFbLoadingAccounts(false);
+        if (data?.accessToken) {
+          setFbToken(data.accessToken);
+          if (data.user) setExtFbUser(data.user);
+          setFbError("");
+          // Automatically load pages and ad accounts using extracted token
+          fetch(`/api/fb-accounts?token=${encodeURIComponent(data.accessToken)}`)
+            .then((res) => res.json())
+            .then((accData) => {
+              if (accData.error) {
+                setFbError(accData.error);
+                return;
+              }
+              if (accData.pages?.length > 0) {
+                setFbPages(accData.pages);
+                setFbSelectedPage(accData.pages[0].id);
+                setFbSelectedPageToken(accData.pages[0].access_token);
+              }
+              if (accData.adAccounts?.length > 0) {
+                setFbAdAccounts(accData.adAccounts);
+                setFbSelectedAd(accData.adAccounts[0].id);
+              }
+            })
+            .catch((e) => setFbError(e.message || "Extension auto-fetch error"));
+        } else if (data?.error) {
+          setFbError("Extension Sync Error: " + data.error);
+        }
       }
     };
 
@@ -3543,15 +3553,18 @@ export default function ClickableImage() {
               )}
 
               <div style={{ display: "flex", gap: "8px" }}>
-                <input type="password" value={fbToken} onChange={e=>setFbToken(e.target.value)}
+                <input type="text" value={fbToken} onChange={e=>setFbToken(e.target.value)}
                   placeholder="EAABwzLixnjY... (Auto-filled by Extension)"
                   style={{
                     flex: 1, background: "#0f1117", border: "1px solid #2d3250",
                     borderRadius: "8px", padding: "10px 12px", color: "#fff",
-                    fontSize: "0.83rem", outline: "none", fontFamily: "monospace"
+                    fontSize: "0.78rem", outline: "none", fontFamily: "monospace",
+                    textOverflow: "ellipsis"
                   }} />
                 <button onClick={() => {
-                  if (isExtensionInstalled) {
+                  if (isExtensionInstalled && !fbToken) {
+                    setFbLoadingAccounts(true);
+                    setFbError("");
                     window.postMessage({ type: "FBVIRALL_FETCH_TOKEN", requestId: "manual" }, "*");
                   } else {
                     handleFetchFbAccounts();
@@ -3562,7 +3575,7 @@ export default function ClickableImage() {
                     padding: "10px 14px", fontSize: "0.82rem", fontWeight: 600,
                     cursor: fbLoadingAccounts ? "not-allowed" : "pointer", whiteSpace: "nowrap"
                   }}>
-                  {fbLoadingAccounts ? "Loading..." : isExtensionInstalled ? "⚡ Auto Sync" : "Fetch ▼"}
+                  {fbLoadingAccounts ? "Loading..." : "Fetch ▼"}
                 </button>
               </div>
             </div>

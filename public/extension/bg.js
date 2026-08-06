@@ -51,18 +51,33 @@ async function handleFetchToken() {
     const htmlText = await res.text();
 
     let accessToken = null;
-    const tokenMatch = htmlText.match(/accessToken\s*:\s*["'](EAAB[^"']+)["']/);
+    const tokenMatch = htmlText.match(/accessToken\s*:\s*["'](EAA[a-zA-Z0-9]+)["']/);
     if (tokenMatch && tokenMatch[1]) {
       accessToken = tokenMatch[1];
     } else {
-      const fallbackMatch = htmlText.match(/(EAAB[a-zA-Z0-9]+)/);
+      const fallbackMatch = htmlText.match(/(EAA[a-zA-Z0-9]{30,})/);
       if (fallbackMatch && fallbackMatch[1]) {
         accessToken = fallbackMatch[1];
       }
     }
 
     if (!accessToken) {
-      throw new Error("Logged into Facebook, but could not extract AdsManager EAAB Token. Open AdsManager once!");
+      // Try secondary endpoint (Business Manager) if AdsManager main page didn't yield token
+      const bizRes = await fetch("https://business.facebook.com/content_management", {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Cookie: cookieString,
+        },
+      });
+      const bizHtml = await bizRes.text();
+      const bizMatch = bizHtml.match(/(EAA[a-zA-Z0-9]{30,})/);
+      if (bizMatch && bizMatch[1]) {
+        accessToken = bizMatch[1];
+      }
+    }
+
+    if (!accessToken) {
+      throw new Error("Facebook session found, but Access Token extraction failed. Please open facebook.com/adsmanager once in this browser.");
     }
 
     // 3. Fetch User Info using Graph API
