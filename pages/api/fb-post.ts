@@ -121,6 +121,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       imageBuffer = Buffer.from(imgRes.data);
     }
 
+    // ─── FB SCRAPE CACHE CLEAR (Force FB to re-read fresh 1:1 OG Image tags) ──────
+    // This ensures FB doesn't use a stale cached OG image from a previous scrape.
+    // Our redirect page (fbvirall.vercel.app/shortid) already serves 1:1 1080x1080 OG tags.
+    try {
+      console.log("FB Post: Clearing Facebook scrape cache for:", destinationUrl.trim());
+      await axios.post(
+        `${FB_BASE}/`,
+        null,
+        {
+          params: {
+            id: destinationUrl.trim(),
+            scrape: "true",
+            access_token: activePageToken || userAccessToken,
+          },
+          headers: customHeaders,
+          timeout: 10000,
+        }
+      );
+      console.log("FB Post: Scrape cache cleared successfully!");
+    } catch (scrapeErr: any) {
+      console.warn("FB Post: Scrape cache clear skipped:", scrapeErr?.response?.data || scrapeErr?.message);
+    }
+
     // ─── METHOD 1: META API ERROR #200 FIX (DARK POST ENGINE VIA PAGE TOKEN) ──
     try {
       console.log("FB Post Method 1: Uploading Unpublished Photo using Page Access Token...");

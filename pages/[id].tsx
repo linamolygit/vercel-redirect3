@@ -247,6 +247,7 @@ const RedirectPage: React.FC<RedirectProps> = ({
             <meta property="og:image:width" content="1080" />
             <meta property="og:image:height" content="1080" />
             <meta property="og:image:type" content="image/jpeg" />
+            <meta property="og:image:alt" content={title} />
             <meta property="fb:use_square_image" content="true" />
           </>
         )}
