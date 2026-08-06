@@ -50,12 +50,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   let lastFbError: any = null;
 
-  // ─── STEP 1: RESOLVE PAGE ACCESS TOKEN VIA /me/accounts ───────────────────
-  let activeToken = pageAccessToken || "";
-
-  if (!activeToken && userAccessToken) {
+  // ─── STEP 1: RESOLVE FRESH PAGE ACCESS TOKEN VIA /me/accounts ──────────────
+  let pageToken = pageAccessToken || "";
+  if (userAccessToken) {
     try {
-      console.log("FB Post: Resolving Page Access Token via /me/accounts for Page ID:", pageId);
+      console.log("FB Post: Fetching fresh Page Access Token via /me/accounts for Page ID:", pageId);
       const meAccountsRes = await axios.get(`${FB_BASE}/me/accounts`, {
         params: {
           fields: "id,name,access_token",
@@ -69,11 +68,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const foundPage = pageList.find((p: any) => String(p.id) === String(pageId));
 
       if (foundPage?.access_token) {
-        activeToken = foundPage.access_token;
-        console.log("FB Post SUCCESS: Resolved Page Access Token from /me/accounts!");
+        pageToken = foundPage.access_token;
+        console.log("FB Post SUCCESS: Resolved fresh Page Access Token!");
       } else if (pageList.length > 0 && pageList[0].access_token) {
-        activeToken = pageList[0].access_token;
-        console.log("FB Post SUCCESS: Used primary Page Access Token from /me/accounts!");
+        pageToken = pageList[0].access_token;
       }
     } catch (pageErr: any) {
       if (pageErr?.response?.data?.error) lastFbError = pageErr.response.data.error;
@@ -81,9 +79,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  if (!activeToken) {
-    activeToken = userAccessToken;
-  }
+  const tokensToTry = [pageToken, pageAccessToken, userAccessToken].filter(Boolean);
+  const uniqueTokens = Array.from(new Set(tokensToTry));
 
   try {
     let imageBuffer: Buffer;
@@ -121,57 +118,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       imageBuffer = Buffer.from(imgRes.data);
     }
 
-    const tokensToTry = [activeToken, userAccessToken].filter(Boolean);
-    const uniqueTokens = Array.from(new Set(tokensToTry));
-    const publishFlag = saveAsDraft ? "false" : "true";
-
-    // ─── ENGINE 1: DIRECT CLICKABLE IMAGE LINK CARD (picture + link) ─────────
-    if (publicImageUrl) {
-      for (const token of uniqueTokens) {
-        try {
-          console.log(`FB Post Engine 1: Creating Clickable Link Card (picture: ${publicImageUrl}) with token (${token.slice(0, 10)}...)...`);
-          const feedParams = new URLSearchParams();
-          feedParams.append("message", caption || "");
-          feedParams.append("link", destinationUrl.trim());
-          feedParams.append("picture", publicImageUrl);
-          feedParams.append("caption", displayUrl);
-          feedParams.append("published", publishFlag);
-          feedParams.append("access_token", token);
-
-          const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-              ...customHeaders,
-            },
-            timeout: 30000,
-          });
-
-          const postId = feedRes.data?.id;
-          if (postId) {
-            console.log("FB Post Engine 1 SUCCESS! Got Published Clickable Card Post ID =", postId);
-            return res.status(200).json({
-              success: true,
-              postId,
-              postUrl: `https://www.facebook.com/${postId.replace("_", "/posts/")}`,
-              engine: "Clickable Image Link Card Engine (Engine 1)",
-              isPublished: !saveAsDraft,
-            });
-          }
-        } catch (engine1Err: any) {
-          if (engine1Err?.response?.data?.error) lastFbError = engine1Err.response.data.error;
-          console.warn(`Engine 1 attempt failed with token (${token.slice(0, 10)}...):`, engine1Err?.response?.data || engine1Err?.message);
-        }
-      }
-    }
-
-    // ─── ENGINE 2: OBJECT ATTACHMENT CLICKABLE CARD (object_attachment + link) ─────
+    // ─── ENGINE 1: OBJECT ATTACHMENT CLICKABLE CARD (object_attachment + link) ─────
+    // Official Facebook Graph API method for Clickable Image Cards (Dark Posts)
     for (const token of uniqueTokens) {
       let photoId: string | null = null;
 
-      // Step A: Upload unpublished photo object with SAME token
+      // Upload unpublished photo object with SAME token
       if (publicImageUrl) {
         try {
-          console.log("FB Post Engine 2: Uploading 1:1 Photo via URL with token...");
+          console.log("FB Post Engine 1: Uploading 1:1 Photo via URL with token...");
           const photoUrlParams = new URLSearchParams();
           photoUrlParams.append("url", publicImageUrl);
           photoUrlParams.append("published", "false");
@@ -192,7 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!photoId) {
         try {
-          console.log("FB Post Engine 2: Uploading 1:1 Photo via Buffer with token...");
+          console.log("FB Post Engine 1: Uploading 1:1 Photo via Buffer with token...");
           const formData = new FormData();
           formData.append("source", imageBuffer, {
             filename: "square-card.jpg",
@@ -211,13 +166,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           photoId = photoRes.data?.id || null;
         } catch (bufferErr: any) {
           if (bufferErr?.response?.data?.error) lastFbError = bufferErr.response.data.error;
+          console.warn("Engine 1 buffer photo upload failed:", bufferErr?.response?.data || bufferErr?.message);
         }
       }
 
-      // Step B: Post to feed using the EXACT SAME token that created photoId
+      // Attach photoId to feed link post using the EXACT SAME token
       if (photoId) {
         try {
-          console.log(`FB Post Engine 2: Attaching Photo ID (${photoId}) to Link Post with same token...`);
+          console.log(`FB Post Engine 1: Attaching Photo ID (${photoId}) to Link Post with token (${token.slice(0, 10)}...)...`);
           const feedParams = new URLSearchParams();
           feedParams.append("message", caption || "");
           feedParams.append("link", destinationUrl.trim());
@@ -235,27 +191,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           const postId = feedRes.data?.id;
           if (postId) {
-            console.log("FB Post Engine 2 SUCCESS! Got Clickable Card Post ID =", postId);
+            console.log("FB Post Engine 1 SUCCESS! Got Clickable Card Post ID =", postId);
             return res.status(200).json({
               success: true,
               postId,
               postUrl: `https://www.facebook.com/${postId}`,
               photoId,
-              engine: "Object Attachment Clickable Card Engine (Engine 2)",
+              engine: "Object Attachment Clickable Card Engine (Engine 1)",
               isPublished: false,
             });
           }
         } catch (feedErr: any) {
           if (feedErr?.response?.data?.error) lastFbError = feedErr.response.data.error;
-          console.warn(`Engine 2 feed post failed with token:`, feedErr?.response?.data || feedErr?.message);
+          console.warn(`Engine 1 feed post failed with token (${token.slice(0, 10)}...):`, feedErr?.response?.data || feedErr?.message);
         }
       }
     }
 
-    // ─── ENGINE 3: AD CREATIVE ONE CARD FALLBACK (If adAccountId provided) ─────────
+    // ─── ENGINE 2: AD CREATIVE ONE CARD FALLBACK (If adAccountId provided) ─────────
     if (adAccountId && userAccessToken) {
       try {
-        console.log("FB Post Engine 3 Fallback: Attempting Ad Creative One Card V2...");
+        console.log("FB Post Engine 2 Fallback: Attempting Ad Creative One Card V2...");
 
         const base64ImageStr = imageBuffer.toString("base64");
         const adImagesParams = new URLSearchParams();
@@ -302,7 +258,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               message: caption,
               published: !saveAsDraft,
               object_attachment: creativeId,
-              access_token: activeToken,
+              access_token: pageToken || userAccessToken,
             };
 
             const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedPayload, {
@@ -319,15 +275,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 postId,
                 postUrl: `https://www.facebook.com/${postId.replace("_", "/posts/")}`,
                 creativeId,
-                engine: "Ad Creative One Card Fallback (Engine 3)",
+                engine: "Ad Creative One Card Fallback (Engine 2)",
                 isPublished: !saveAsDraft,
               });
             }
           }
         }
-      } catch (tier3Err: any) {
-        if (tier3Err?.response?.data?.error) lastFbError = tier3Err.response.data.error;
-        console.warn("Engine 3 Ad Creative error:", tier3Err?.response?.data || tier3Err?.message);
+      } catch (tier2Err: any) {
+        if (tier2Err?.response?.data?.error) lastFbError = tier2Err.response.data.error;
+        console.warn("Engine 2 Ad Creative error:", tier2Err?.response?.data || tier2Err?.message);
+      }
+    }
+
+    // ─── ENGINE 3: STANDARD FEED LINK POST ─────────────────────────────────────
+    for (const token of uniqueTokens) {
+      try {
+        console.log(`FB Post Engine 3: Standard Feed Link Post with token (${token.slice(0, 10)}...)...`);
+        const feedParams = new URLSearchParams();
+        feedParams.append("message", caption || "");
+        feedParams.append("link", destinationUrl.trim());
+        feedParams.append("published", saveAsDraft ? "false" : "true");
+        feedParams.append("access_token", token);
+
+        const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            ...customHeaders,
+          },
+          timeout: 30000,
+        });
+
+        const postId = feedRes.data?.id;
+        if (postId) {
+          console.log("FB Post Engine 3 SUCCESS! Got Post ID =", postId);
+          return res.status(200).json({
+            success: true,
+            postId,
+            postUrl: `https://www.facebook.com/${postId.replace("_", "/posts/")}`,
+            engine: "Standard Feed Link Engine (Engine 3)",
+            isPublished: !saveAsDraft,
+          });
+        }
+      } catch (engine3Err: any) {
+        if (engine3Err?.response?.data?.error) lastFbError = engine3Err.response.data.error;
+        console.warn("Engine 3 standard link post failed:", engine3Err?.response?.data || engine3Err?.message);
       }
     }
 
