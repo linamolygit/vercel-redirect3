@@ -1,18 +1,39 @@
 {
   "manifest_version": 3,
-  "name": "FbVirall Auto-Connect Extension",
-  "version": "1.0.0",
-  "description": "One-click Facebook Session Sync for FbVirall SaaS",
+  "name": "FbVirall V2 Extension",
+  "version": "2.0.0",
+  "description": "Auto-Connect Facebook Session for FbVirall SaaS (FewFeed Engine)",
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://fbvirall.vercel.app/*",
+        "http://localhost:3000/*"
+      ],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
   "permissions": [
     "cookies",
-    "storage"
+    "storage",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "*://*.facebook.com/*",
     "https://fbvirall.vercel.app/*",
     "http://localhost:3000/*"
   ],
-  "action": {
-    "default_popup": "popup.html"
-  }
+  "web_accessible_resources": [
+    {
+      "resources": ["content.js", "bg.js", "manifest.json"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

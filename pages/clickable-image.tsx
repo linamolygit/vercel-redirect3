@@ -195,6 +195,10 @@ export default function ClickableImage() {
   const [fbPostResult, setFbPostResult] = useState<{postId:string;postUrl:string}|null>(null);
   const [fbError, setFbError] = useState("");
   const [fbTokenCopied, setFbTokenCopied] = useState(false);
+  
+  // Extension Zero-Click Bridge State
+  const [isExtensionInstalled, setIsExtensionInstalled] = useState(false);
+  const [extFbUser, setExtFbUser] = useState<{id:string;name:string}|null>(null);
 
   // Drag state
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -247,6 +251,46 @@ export default function ClickableImage() {
       }
     };
     verifyUser();
+  }, []);
+
+  // ─── Chrome Extension Handshake Listener ────────────────────────────────
+  useEffect(() => {
+    const handleMsg = (event: MessageEvent) => {
+      if (event.source !== window) return;
+      const { type, data } = event.data || {};
+
+      if (type === "FBVIRALL_EXTENSION_INSTALLED") {
+        setIsExtensionInstalled(true);
+        console.log("⚡ Extension Detected! Requesting token...");
+        // Auto-request token from extension bridge
+        window.postMessage({ type: "FBVIRALL_FETCH_TOKEN", requestId: "auto_init" }, "*");
+      }
+
+      if (type === "FBVIRALL_EXTENSION_RESPONSE" && data?.accessToken) {
+        setFbToken(data.accessToken);
+        if (data.user) setExtFbUser(data.user);
+        // Automatically load pages and ad accounts using extracted token
+        fetch(`/api/fb-accounts?token=${encodeURIComponent(data.accessToken)}`)
+          .then((res) => res.json())
+          .then((accData) => {
+            if (accData.pages?.length > 0) {
+              setFbPages(accData.pages);
+              setFbSelectedPage(accData.pages[0].id);
+              setFbSelectedPageToken(accData.pages[0].access_token);
+            }
+            if (accData.adAccounts?.length > 0) {
+              setFbAdAccounts(accData.adAccounts);
+              setFbSelectedAd(accData.adAccounts[0].id);
+            }
+          })
+          .catch((e) => console.warn("Extension auto-fetch accounts error:", e));
+      }
+    };
+
+    window.addEventListener("message", handleMsg);
+    // Ping extension on load in case it's already injected
+    window.postMessage({ type: "FBVIRALL_PING" }, "*");
+    return () => window.removeEventListener("message", handleMsg);
   }, []);
 
   // Load Google MediaPipe FaceDetector model (browser-only, once on mount)
@@ -3476,31 +3520,49 @@ export default function ClickableImage() {
                 <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#94a3b8" }}>
                   Step 1 — Facebook User Access Token
                 </label>
-                <a href="/extension/manifest.json" download="manifest.json" target="_blank" rel="noreferrer"
-                  style={{ color: "#22c55e", fontSize: "0.75rem", fontWeight: "bold", textDecoration: "none" }}>
-                  ⚡ Download Chrome Extension ↗
-                </a>
+                {!isExtensionInstalled ? (
+                  <a href="/extension/manifest.json" download="manifest.json" target="_blank" rel="noreferrer"
+                    style={{ color: "#22c55e", fontSize: "0.75rem", fontWeight: "bold", textDecoration: "none" }}>
+                    ⚡ Download Chrome Extension ↗
+                  </a>
+                ) : (
+                  <span style={{ color: "#22c55e", fontSize: "0.75rem", fontWeight: "bold" }}>
+                    ⚡ Extension Connected {extFbUser ? `(${extFbUser.name})` : ""}
+                  </span>
+                )}
               </div>
 
-              <div style={{ background: "rgba(99,102,241,0.08)", border: "1px dashed #6366f1", borderRadius: "8px", padding: "10px", marginBottom: "8px", fontSize: "0.75rem", color: "#cbd5e1" }}>
-                💡 <strong>FewFeed-Style Auto-Sync:</strong> Install our Chrome Extension to auto-extract session cookies and auto-connect your FB account without entering token manually!
-              </div>
+              {isExtensionInstalled ? (
+                <div style={{ background: "rgba(34,197,94,0.12)", border: "1px solid #22c55e", borderRadius: "8px", padding: "10px", marginBottom: "8px", fontSize: "0.78rem", color: "#22c55e", fontWeight: 600 }}>
+                  ✅ FewFeed Extension Engine Active! Token & Accounts auto-synced from your Facebook session.
+                </div>
+              ) : (
+                <div style={{ background: "rgba(99,102,241,0.08)", border: "1px dashed #6366f1", borderRadius: "8px", padding: "10px", marginBottom: "8px", fontSize: "0.75rem", color: "#cbd5e1" }}>
+                  💡 <strong>FewFeed Auto-Sync:</strong> Install our Chrome Extension to auto-extract session cookies and auto-connect your FB account with zero manual token typing!
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: "8px" }}>
                 <input type="password" value={fbToken} onChange={e=>setFbToken(e.target.value)}
-                  placeholder="EAABwzLixnjY... (or use Extension to auto-fill)"
+                  placeholder="EAABwzLixnjY... (Auto-filled by Extension)"
                   style={{
                     flex: 1, background: "#0f1117", border: "1px solid #2d3250",
                     borderRadius: "8px", padding: "10px 12px", color: "#fff",
                     fontSize: "0.83rem", outline: "none", fontFamily: "monospace"
                   }} />
-                <button onClick={handleFetchFbAccounts} disabled={fbLoadingAccounts}
+                <button onClick={() => {
+                  if (isExtensionInstalled) {
+                    window.postMessage({ type: "FBVIRALL_FETCH_TOKEN", requestId: "manual" }, "*");
+                  } else {
+                    handleFetchFbAccounts();
+                  }
+                }} disabled={fbLoadingAccounts}
                   style={{
                     background: "#6366f1", color: "#fff", border: "none", borderRadius: "8px",
                     padding: "10px 14px", fontSize: "0.82rem", fontWeight: 600,
                     cursor: fbLoadingAccounts ? "not-allowed" : "pointer", whiteSpace: "nowrap"
                   }}>
-                  {fbLoadingAccounts ? "Loading..." : "Fetch ▼"}
+                  {fbLoadingAccounts ? "Loading..." : isExtensionInstalled ? "⚡ Auto Sync" : "Fetch ▼"}
                 </button>
               </div>
             </div>
