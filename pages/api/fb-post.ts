@@ -49,21 +49,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   let lastFbError: any = null;
 
-  // ─── STEP 1: RESOLVE DEDICATED PAGE ACCESS TOKEN (EAA...) ──────────────────
-  // Meta Error #200 Fix: Must use Page Token (EAA...), NOT User Token (EAAG...) for unpublished posts!
+  // ─── STEP 1: RESOLVE DEDICATED PAGE ACCESS TOKEN ───────────────────────────
+  // Meta Error #200: Unpublished posts MUST use the Page Access Token, not User Token.
+  // Resolution order:
+  //   1. Fresh token from GET /me/accounts (most reliable, always attempted first)
+  //   2. Fresh token from GET /{pageId}?fields=access_token
+  //   3. pageAccessToken passed from frontend (selectedPageToken)
+  //   4. userAccessToken as last resort
   let resolvedPageToken = "";
-  if (pageAccessToken && !pageAccessToken.startsWith("EAAG")) {
-    resolvedPageToken = pageAccessToken;
-  }
 
-  if (!resolvedPageToken && userAccessToken) {
+  if (userAccessToken) {
+    // Attempt 1: /me/accounts — returns all pages the user manages with their page tokens
     try {
-      console.log("FB Post: Fetching dedicated Page Access Token via /me/accounts for Page ID:", pageId);
+      console.log("FB Post: Fetching Page Access Token via /me/accounts for Page ID:", pageId);
       const meAccountsRes = await axios.get(`${FB_BASE}/me/accounts`, {
-        params: {
-          fields: "id,name,access_token",
-          access_token: userAccessToken,
-        },
+        params: { fields: "id,name,access_token", access_token: userAccessToken },
         headers: customHeaders,
         timeout: 15000,
       });
@@ -73,17 +73,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (foundPage?.access_token) {
         resolvedPageToken = foundPage.access_token;
-        console.log("FB Post SUCCESS: Resolved dedicated Page Access Token (EAA...)!");
+        console.log("FB Post SUCCESS: Resolved Page Token from /me/accounts!");
       } else if (pageList.length > 0 && pageList[0].access_token) {
         resolvedPageToken = pageList[0].access_token;
+        console.log("FB Post: Using first available Page Token from /me/accounts.");
       }
     } catch (pageErr: any) {
       if (pageErr?.response?.data?.error) lastFbError = pageErr.response.data.error;
-      console.warn("FB Post: /me/accounts page token lookup failed:", pageErr?.response?.data || pageErr?.message);
+      console.warn("FB Post: /me/accounts lookup failed:", pageErr?.response?.data || pageErr?.message);
     }
   }
 
+  // Attempt 2: GET /{pageId}?fields=access_token directly
+  if (!resolvedPageToken && userAccessToken) {
+    try {
+      console.log("FB Post: Fetching Page Token directly via GET /{pageId}?fields=access_token...");
+      const pageTokenRes = await axios.get(`${FB_BASE}/${pageId}`, {
+        params: { fields: "access_token", access_token: userAccessToken },
+        headers: customHeaders,
+        timeout: 10000,
+      });
+      if (pageTokenRes.data?.access_token) {
+        resolvedPageToken = pageTokenRes.data.access_token;
+        console.log("FB Post SUCCESS: Resolved Page Token from GET /{pageId}!");
+      }
+    } catch (e: any) {
+      console.warn("FB Post: Direct page token fetch failed:", e?.response?.data || e?.message);
+    }
+  }
+
+  // Final fallback chain: resolved → frontend pageAccessToken → userAccessToken
   const activePageToken = resolvedPageToken || pageAccessToken || userAccessToken;
+  console.log("FB Post: activePageToken resolved. First 20 chars:", activePageToken?.slice(0, 20));
+
+
 
   try {
     let imageBuffer: Buffer;
