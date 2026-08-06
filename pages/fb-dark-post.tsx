@@ -975,11 +975,12 @@ const FbDarkPost: NextPage = () => {
       <style jsx>{`
         .dark-post-wrapper {
           min-height: 100vh;
-          background: #f8fafc;
-          color: #0f1117;
+          background: var(--bg-main);
+          color: var(--text-main);
           display: flex;
           flex-direction: column;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          transition: background 0.3s, color 0.3s;
         }
 
         .main-content {
@@ -998,17 +999,19 @@ const FbDarkPost: NextPage = () => {
           justify-content: space-between;
           margin-bottom: 24px;
           padding: 20px 24px;
-          background: #ffffff;
-          border-radius: 16px;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
+          border-radius: var(--radius-lg);
+          border: 1px solid var(--glass-border);
+          box-shadow: var(--glass-shadow);
         }
 
         .main-heading {
           margin: 0;
           font-size: 1.4rem;
           font-weight: 800;
-          color: #0f1117;
+          color: var(--text-main);
           display: flex;
           align-items: center;
           gap: 10px;
@@ -1016,13 +1019,13 @@ const FbDarkPost: NextPage = () => {
         }
 
         .main-heading :global(.heading-icon) {
-          color: #1877f2;
+          color: var(--primary);
         }
 
         .sub-heading {
           margin: 4px 0 0 0;
           font-size: 0.83rem;
-          color: #64748b;
+          color: var(--text-muted);
         }
 
         .ext-badge {
@@ -1044,13 +1047,13 @@ const FbDarkPost: NextPage = () => {
         }
 
         .ext-badge.install {
-          background: rgba(24, 119, 242, 0.08);
-          color: #1877f2;
-          border: 1px solid rgba(24, 119, 242, 0.3);
+          background: rgba(0, 113, 227, 0.08);
+          color: var(--primary);
+          border: 1px solid rgba(0, 113, 227, 0.3);
         }
 
         .ext-badge.install:hover {
-          background: rgba(24, 119, 242, 0.15);
+          background: rgba(0, 113, 227, 0.15);
         }
 
         .dark-post-container {
@@ -1062,11 +1065,13 @@ const FbDarkPost: NextPage = () => {
 
         /* ─── SIDEBAR FORM ─────────────────────────────────────────────── */
         .control-sidebar {
-          background: #ffffff;
-          border-radius: 16px;
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
+          border-radius: var(--radius-lg);
           padding: 24px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-          border: 1px solid #e2e8f0;
+          box-shadow: var(--glass-shadow);
+          border: 1px solid var(--glass-border);
           display: flex;
           flex-direction: column;
           gap: 16px;
@@ -1081,7 +1086,7 @@ const FbDarkPost: NextPage = () => {
         .input-label {
           font-size: 0.82rem;
           font-weight: 700;
-          color: #475569;
+          color: var(--text-main);
           display: flex;
           align-items: center;
           gap: 6px;
@@ -1095,12 +1100,12 @@ const FbDarkPost: NextPage = () => {
         .textarea-container textarea {
           width: 100%;
           box-sizing: border-box;
-          background: #f8fafc;
-          border: 1px solid #cbd5e1;
-          border-radius: 10px;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          border-radius: var(--radius-sm);
           padding: 10px 14px;
           font-size: 0.88rem;
-          color: #0f1117;
+          color: var(--text-main);
           outline: none;
           transition: all 0.2s;
         }
@@ -1108,9 +1113,8 @@ const FbDarkPost: NextPage = () => {
         .select-wrapper select:focus,
         .form-group input:focus,
         .textarea-container textarea:focus {
-          border-color: #1877f2;
-          background: #ffffff;
-          box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.12);
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
         }
 
         .token-input-wrapper {
@@ -1143,7 +1147,7 @@ const FbDarkPost: NextPage = () => {
           bottom: 10px;
           background: none;
           border: none;
-          color: #94a3b8;
+          color: var(--text-muted);
           cursor: pointer;
           padding: 4px;
           display: flex;
@@ -1153,7 +1157,7 @@ const FbDarkPost: NextPage = () => {
         }
 
         .emoji-icon-btn:hover {
-          color: #1877f2;
+          color: var(--primary);
         }
 
         .row-group {
@@ -1196,7 +1200,7 @@ const FbDarkPost: NextPage = () => {
           position: absolute;
           cursor: pointer;
           top: 0; left: 0; right: 0; bottom: 0;
-          background-color: #cbd5e1;
+          background-color: var(--track-bg);
           transition: 0.3s;
           border-radius: 24px;
         }
@@ -1214,11 +1218,11 @@ const FbDarkPost: NextPage = () => {
         }
 
         .toggle-switch input:checked + .toggle-slider {
-          background-color: #22c55e;
+          background-color: var(--success);
         }
 
         .toggle-switch.red-toggle input:checked + .toggle-slider {
-          background-color: #ef4444;
+          background-color: var(--danger);
         }
 
         .toggle-switch input:checked + .toggle-slider:before {
@@ -1237,13 +1241,13 @@ const FbDarkPost: NextPage = () => {
           cursor: pointer;
           font-size: 0.95rem;
           font-weight: 700;
-          color: #1e293b;
+          color: var(--text-main);
         }
 
         .big-checkbox {
           width: 20px;
           height: 20px;
-          accent-color: #1877f2;
+          accent-color: var(--primary);
           cursor: pointer;
         }
 
@@ -1251,15 +1255,15 @@ const FbDarkPost: NextPage = () => {
         .btn-run-post {
           width: 100%;
           padding: 14px;
-          border-radius: 12px;
+          border-radius: var(--radius-md);
           border: none;
-          background: linear-gradient(135deg, #1877f2 0%, #1565c0 100%);
+          background: var(--primary);
           color: #ffffff;
           font-size: 1rem;
           font-weight: 700;
           letter-spacing: 0.5px;
           cursor: pointer;
-          box-shadow: 0 4px 20px rgba(24, 119, 242, 0.35);
+          box-shadow: 0 4px 20px rgba(0, 113, 227, 0.35);
           transition: transform 0.15s, opacity 0.15s;
           margin-top: 8px;
           display: flex;
@@ -1279,11 +1283,11 @@ const FbDarkPost: NextPage = () => {
         }
 
         .error-box {
-          background: #fef2f2;
-          border: 1px solid #fca5a5;
-          color: #dc2626;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #ef4444;
           padding: 10px 14px;
-          border-radius: 10px;
+          border-radius: var(--radius-sm);
           font-size: 0.82rem;
           display: flex;
           align-items: center;
@@ -1295,7 +1299,7 @@ const FbDarkPost: NextPage = () => {
           border: 1px solid #86efac;
           color: #16a34a;
           padding: 10px 14px;
-          border-radius: 10px;
+          border-radius: var(--radius-sm);
           font-size: 0.82rem;
           display: flex;
           align-items: center;
@@ -1303,7 +1307,7 @@ const FbDarkPost: NextPage = () => {
         }
 
         .success-box a {
-          color: #1877f2;
+          color: var(--primary);
           font-weight: 700;
           text-decoration: none;
           display: inline-flex;
@@ -1320,11 +1324,13 @@ const FbDarkPost: NextPage = () => {
         }
 
         .page-header-card {
-          background: #ffffff;
-          border-radius: 16px;
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
+          border-radius: var(--radius-lg);
           padding: 16px 20px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-          border: 1px solid #e2e8f0;
+          box-shadow: var(--glass-shadow);
+          border: 1px solid var(--glass-border);
           display: flex;
           align-items: center;
           gap: 14px;
@@ -1334,7 +1340,7 @@ const FbDarkPost: NextPage = () => {
           width: 44px;
           height: 44px;
           border-radius: 50%;
-          background: #1877f2;
+          background: var(--primary);
           color: white;
           font-weight: 700;
           font-size: 1.2rem;
@@ -1346,21 +1352,23 @@ const FbDarkPost: NextPage = () => {
         .page-title {
           font-weight: 700;
           font-size: 1rem;
-          color: #0f1117;
+          color: var(--text-main);
         }
 
         .page-id {
           font-size: 0.78rem;
-          color: #64748b;
+          color: var(--text-muted);
         }
 
         /* Canvas Card */
         .canvas-card {
-          background: #ffffff;
-          border-radius: 16px;
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
+          border-radius: var(--radius-lg);
           padding: 20px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-          border: 1px solid #e2e8f0;
+          box-shadow: var(--glass-shadow);
+          border: 1px solid var(--glass-border);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -1373,13 +1381,13 @@ const FbDarkPost: NextPage = () => {
           align-items: center;
           justify-content: space-between;
           padding-bottom: 12px;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid var(--glass-border);
         }
 
         .canvas-header-title {
           font-weight: 700;
           font-size: 0.92rem;
-          color: #334155;
+          color: var(--text-main);
           display: flex;
           align-items: center;
           gap: 6px;
@@ -1394,7 +1402,7 @@ const FbDarkPost: NextPage = () => {
         .mode-label {
           font-size: 0.8rem;
           font-weight: 600;
-          color: #64748b;
+          color: var(--text-muted);
         }
 
         /* Single Custom Image Canvas */
@@ -1402,8 +1410,8 @@ const FbDarkPost: NextPage = () => {
           width: 100%;
           max-width: 540px;
           height: 540px;
-          background: #f8fafc;
-          border: 2px dashed #cbd5e1;
+          background: var(--input-bg);
+          border: 2px dashed var(--input-border);
           border-radius: 8px 8px 0 0;
           position: relative;
           cursor: pointer;
@@ -1415,7 +1423,7 @@ const FbDarkPost: NextPage = () => {
         }
 
         .single-image-canvas:hover {
-          border-color: #1877f2;
+          border-color: var(--primary);
         }
 
         .single-canvas-img {
@@ -1429,7 +1437,7 @@ const FbDarkPost: NextPage = () => {
           flex-direction: column;
           align-items: center;
           gap: 10px;
-          color: #64748b;
+          color: var(--text-muted);
           text-align: center;
           padding: 20px;
         }
@@ -1437,12 +1445,12 @@ const FbDarkPost: NextPage = () => {
         .placeholder-title {
           font-weight: 700;
           font-size: 1.05rem;
-          color: #334155;
+          color: var(--text-main);
         }
 
         .placeholder-sub {
           font-size: 0.82rem;
-          color: #94a3b8;
+          color: var(--text-muted);
           max-width: 320px;
         }
 
@@ -1457,8 +1465,9 @@ const FbDarkPost: NextPage = () => {
           position: relative;
           border-radius: 8px 8px 0 0;
           overflow: hidden;
-          box-shadow: inset 0 0 0 1px #e2e8f0;
+          box-shadow: inset 0 0 0 1px var(--glass-border);
         }
+
 
         /* Layout Grid variations */
         .layout-5-photos-2-3-top {
@@ -1634,32 +1643,33 @@ const FbDarkPost: NextPage = () => {
         .display-url-strip {
           width: 100%;
           max-width: 540px;
-          background: #f1f5f9;
-          border: 1fr solid #e2e8f0;
+          background: var(--input-bg);
+          border: 1px solid var(--glass-border);
           border-top: none;
           padding: 10px 14px;
           border-radius: 0 0 8px 8px;
           font-size: 0.78rem;
-          color: #64748b;
+          color: var(--text-muted);
           text-align: left;
           box-sizing: border-box;
           margin-top: -3px;
         }
 
-
         /* Layout Picker Card */
         .layout-picker-card {
-          background: #ffffff;
-          border-radius: 16px;
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
+          border-radius: var(--radius-lg);
           padding: 20px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-          border: 1px solid #e2e8f0;
+          box-shadow: var(--glass-shadow);
+          border: 1px solid var(--glass-border);
         }
 
         .layout-picker-card h3 {
           margin: 0 0 14px 0;
           font-size: 0.95rem;
-          color: #475569;
+          color: var(--text-main);
         }
 
         .layouts-grid {
@@ -1669,9 +1679,9 @@ const FbDarkPost: NextPage = () => {
         }
 
         .layout-card {
-          background: #f8fafc;
-          border: 2px solid #e2e8f0;
-          border-radius: 12px;
+          background: var(--input-bg);
+          border: 2px solid var(--input-border);
+          border-radius: var(--radius-sm);
           padding: 12px;
           display: flex;
           flex-direction: column;
@@ -1679,16 +1689,18 @@ const FbDarkPost: NextPage = () => {
           gap: 8px;
           cursor: pointer;
           transition: all 0.2s;
+          color: var(--text-main);
         }
 
         .layout-card:hover {
-          border-color: #cbd5e1;
+          border-color: var(--primary);
         }
 
         .layout-card.active {
-          border-color: #1877f2;
-          background: rgba(24, 119, 242, 0.04);
+          border-color: var(--primary);
+          background: rgba(0, 113, 227, 0.1);
         }
+
 
         .layout-name {
           font-size: 0.75rem;

@@ -13,9 +13,13 @@ import {
   ShieldCheck,
   Layers,
   Share2,
-  Copy,
   Zap,
   HelpCircle,
+  X,
+  User,
+  Check,
+  FileText,
+  Users,
 } from "lucide-react";
 
 const GET_TOKEN_EXTENSION_URL =
@@ -34,6 +38,7 @@ const FbConnect: NextPage = () => {
   const [connectedPages, setConnectedPages] = useState<any[]>([]);
   const [connectedAdAccounts, setConnectedAdAccounts] = useState<any[]>([]);
 
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
@@ -66,7 +71,6 @@ const FbConnect: NextPage = () => {
       if (cachedSecToken) setSecondaryToken(cachedSecToken);
 
       if (cachedToken || cachedCookie) {
-        // Auto-validate existing token
         handleSave(cachedCookie || "", cachedToken || "", cachedSecToken || "", false);
       }
     }
@@ -126,6 +130,8 @@ const FbConnect: NextPage = () => {
     }
   };
 
+  const userAvatar = connectedUser?.picture?.data?.url;
+
   return (
     <div className="fb-connect-wrapper">
       <Head>
@@ -136,6 +142,7 @@ const FbConnect: NextPage = () => {
       <Header />
 
       <main className="main-content">
+        {/* Title Banner */}
         <div className="title-banner">
           <div className="banner-left">
             <h1 className="main-heading">
@@ -147,79 +154,110 @@ const FbConnect: NextPage = () => {
             </p>
           </div>
 
-          <a
-            href={GET_TOKEN_EXTENSION_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-download-ext"
-          >
-            <Download size={16} />
-            <span>Get Token Cookie Extension</span>
-            <ExternalLink size={14} />
-          </a>
+          <div className="banner-actions">
+            <button className="btn-info-guide" onClick={() => setShowGuideModal(true)} title="Extension Installation Guide">
+              <HelpCircle size={16} />
+              <span>Guide (i)</span>
+            </button>
+
+            <a
+              href={GET_TOKEN_EXTENSION_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-download-ext"
+            >
+              <Download size={16} />
+              <span>Get Token Cookie Extension</span>
+              <ExternalLink size={14} />
+            </a>
+          </div>
         </div>
 
         <div className="connect-grid">
-          {/* ─── LEFT SIDE: USER GUIDE & EXTENSION INSTRUCTIONS ─────────── */}
-          <aside className="guide-card">
+          {/* ─── LEFT SIDE: CONNECTED ACCOUNT ASSETS & PROFILE ─────────────── */}
+          <aside className="assets-card">
             <h3>
-              <HelpCircle size={18} /> How to Get Cookie & Access Token
+              <User size={18} /> Connected Facebook Profile & Assets
             </h3>
 
-            <div className="step-list">
-              <div className="step-item">
-                <span className="step-num">1</span>
-                <div className="step-text">
-                  Install the official <strong>&quot;Get Token Cookie&quot;</strong> Chrome Extension.
-                  <br />
-                  <a href={GET_TOKEN_EXTENSION_URL} target="_blank" rel="noreferrer" className="inline-link">
-                    Open Chrome Web Store ↗
-                  </a>
-                </div>
-              </div>
-
-              <div className="step-item">
-                <span className="step-num">2</span>
-                <div className="step-text">
-                  Log in to your <strong>Facebook Account</strong> in your Chrome browser.
-                </div>
-              </div>
-
-              <div className="step-item">
-                <span className="step-num">3</span>
-                <div className="step-text">
-                  Click the <strong>Get Token Cookie</strong> extension icon in your Chrome toolbar.
-                </div>
-              </div>
-
-              <div className="step-item">
-                <span className="step-num">4</span>
-                <div className="step-text">
-                  Copy the <strong>Cookie</strong> string and <strong>Access Token</strong> (EAAG... or EAAB...) and paste them in the form on the right.
-                </div>
-              </div>
-            </div>
-
-            {/* Status Preview Box */}
             {connectedUser ? (
-              <div className="status-preview connected">
-                <div className="status-header">
-                  <ShieldCheck size={20} className="status-icon" />
-                  <span>Facebook Connected</span>
-                </div>
-                <div className="user-details">
-                  <div className="user-name">{connectedUser.name || "FB User"}</div>
-                  <div className="user-id">ID: {connectedUser.id}</div>
-                  <div className="counts-row">
-                    <span>📄 {connectedPages.length} Pages</span>
-                    <span>📊 {connectedAdAccounts.length} Ad Accounts</span>
+              <div className="profile-dashboard">
+                {/* Profile Header */}
+                <div className="user-profile-header">
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="Profile" className="user-avatar-img" />
+                  ) : (
+                    <div className="user-avatar-fallback">
+                      {connectedUser.name ? connectedUser.name.charAt(0).toUpperCase() : "FB"}
+                    </div>
+                  )}
+
+                  <div className="user-header-info">
+                    <div className="user-name-title">{connectedUser.name || "Facebook User"}</div>
+                    <div className="user-id-sub">ID: {connectedUser.id}</div>
+                    <div className="status-pill-active">
+                      <ShieldCheck size={13} /> Account Active & Synced
+                    </div>
                   </div>
+                </div>
+
+                {/* Pages List */}
+                <div className="asset-section">
+                  <h4 className="asset-title">
+                    <Share2 size={15} /> Connected Pages ({connectedPages.length})
+                  </h4>
+
+                  {connectedPages.length === 0 ? (
+                    <div className="empty-asset">No Facebook Pages found.</div>
+                  ) : (
+                    <div className="pages-list">
+                      {connectedPages.map((page) => (
+                        <div key={page.id} className="page-item-card">
+                          <div className="page-item-icon">
+                            {page.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="page-item-details">
+                            <div className="page-item-name">{page.name}</div>
+                            <div className="page-item-meta">
+                              ID: {page.id} {page.category ? `• ${page.category}` : ""}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Ad Accounts List */}
+                <div className="asset-section">
+                  <h4 className="asset-title">
+                    <Layers size={15} /> Connected Ad Accounts ({connectedAdAccounts.length})
+                  </h4>
+
+                  {connectedAdAccounts.length === 0 ? (
+                    <div className="empty-asset">No Ad Accounts found.</div>
+                  ) : (
+                    <div className="ad-accounts-list">
+                      {connectedAdAccounts.map((ad) => (
+                        <div key={ad.id} className="ad-account-item">
+                          <div className="ad-item-name">{ad.name || ad.id}</div>
+                          <div className="ad-item-id">ID: {ad.id}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
-              <div className="status-preview pending">
-                <AlertCircle size={20} />
-                <span>No Facebook Account Connected Yet</span>
+              <div className="pending-connect-card">
+                <AlertCircle size={36} className="pending-icon" />
+                <h4>No Facebook Account Connected</h4>
+                <p>
+                  Paste your Facebook Cookie and Access Tokens in the form on the right to sync your Pages and Ad Accounts.
+                </p>
+                <button className="btn-open-guide" onClick={() => setShowGuideModal(true)}>
+                  <HelpCircle size={15} /> View Setup Instructions
+                </button>
               </div>
             )}
           </aside>
@@ -296,6 +334,58 @@ const FbConnect: NextPage = () => {
         </div>
       </main>
 
+      {/* ─── FLOATING EXTENSION GUIDE MODAL ───────────────────────────────── */}
+      {showGuideModal && (
+        <div className="modal-overlay" onClick={() => setShowGuideModal(false)}>
+          <div className="guide-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <HelpCircle size={18} /> Extension Setup Guide
+              </h3>
+              <button className="btn-close-modal" onClick={() => setShowGuideModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="step-list">
+                <div className="step-item">
+                  <span className="step-num">1</span>
+                  <div className="step-text">
+                    Install the official <strong>&quot;Get Token Cookie&quot;</strong> Chrome Extension.
+                    <br />
+                    <a href={GET_TOKEN_EXTENSION_URL} target="_blank" rel="noreferrer" className="inline-link">
+                      Open Chrome Web Store ↗
+                    </a>
+                  </div>
+                </div>
+
+                <div className="step-item">
+                  <span className="step-num">2</span>
+                  <div className="step-text">
+                    Log in to your <strong>Facebook Account</strong> in your Chrome browser.
+                  </div>
+                </div>
+
+                <div className="step-item">
+                  <span className="step-num">3</span>
+                  <div className="step-text">
+                    Click the <strong>Get Token Cookie</strong> extension icon in your Chrome toolbar.
+                  </div>
+                </div>
+
+                <div className="step-item">
+                  <span className="step-num">4</span>
+                  <div className="step-text">
+                    Copy the <strong>Cookie</strong> string and <strong>Access Token</strong> (EAAG... or EAAB...) and paste them in the form.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
 
       {toast && (
@@ -308,11 +398,12 @@ const FbConnect: NextPage = () => {
       <style jsx>{`
         .fb-connect-wrapper {
           min-height: 100vh;
-          background: #f8fafc;
-          color: #0f1117;
+          background: var(--bg-main);
+          color: var(--text-main);
           display: flex;
           flex-direction: column;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          transition: background 0.3s, color 0.3s;
         }
 
         .main-content {
@@ -330,30 +421,58 @@ const FbConnect: NextPage = () => {
           justify-content: space-between;
           margin-bottom: 24px;
           padding: 20px 24px;
-          background: #ffffff;
-          border-radius: 16px;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
+          border-radius: var(--radius-lg);
+          border: 1px solid var(--glass-border);
+          box-shadow: var(--glass-shadow);
         }
 
         .main-heading {
           margin: 0;
           font-size: 1.4rem;
           font-weight: 800;
-          color: #0f1117;
+          color: var(--text-main);
           display: flex;
           align-items: center;
           gap: 10px;
         }
 
         .main-heading :global(.heading-icon) {
-          color: #1877f2;
+          color: var(--primary);
         }
 
         .sub-heading {
           margin: 4px 0 0 0;
           font-size: 0.83rem;
-          color: #64748b;
+          color: var(--text-muted);
+        }
+
+        .banner-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .btn-info-guide {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 10px 14px;
+          border-radius: var(--radius-sm);
+          background: var(--btn-hover);
+          border: 1px solid var(--glass-border);
+          color: var(--text-main);
+          font-weight: 700;
+          font-size: 0.82rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-info-guide:hover {
+          border-color: var(--primary);
+          color: var(--primary);
         }
 
         .btn-download-ext {
@@ -361,128 +480,221 @@ const FbConnect: NextPage = () => {
           align-items: center;
           gap: 8px;
           padding: 10px 16px;
-          border-radius: 12px;
-          background: #1877f2;
+          border-radius: var(--radius-sm);
+          background: var(--primary);
           color: #ffffff;
           font-size: 0.85rem;
           font-weight: 700;
           text-decoration: none;
-          box-shadow: 0 4px 15px rgba(24, 119, 242, 0.25);
+          box-shadow: 0 4px 15px rgba(0, 113, 227, 0.25);
           transition: transform 0.15s, background 0.15s;
         }
 
         .btn-download-ext:hover {
-          background: #1565c0;
+          background: var(--primary-hover);
           transform: translateY(-1px);
         }
 
         .connect-grid {
           display: grid;
-          grid-template-columns: 380px 1fr;
+          grid-template-columns: 420px 1fr;
           gap: 24px;
           align-items: start;
         }
 
-        /* ─── GUIDE CARD ───────────────────────────────────────────────── */
-        .guide-card,
+        /* ─── ASSETS CARD & FORM CARD ──────────────────────────────────── */
+        .assets-card,
         .form-card {
-          background: #ffffff;
-          border-radius: 16px;
+          background: var(--glass-bg);
+          backdrop-filter: var(--blur);
+          -webkit-backdrop-filter: var(--blur);
+          border-radius: var(--radius-lg);
           padding: 24px;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+          border: 1px solid var(--glass-border);
+          box-shadow: var(--glass-shadow);
         }
 
-        .guide-card h3,
+        .assets-card h3,
         .form-card h3 {
           margin: 0 0 16px 0;
           font-size: 1.05rem;
-          color: #1e293b;
+          color: var(--text-main);
           display: flex;
           align-items: center;
           gap: 8px;
         }
 
-        .step-list {
+        /* Profile Dashboard */
+        .user-profile-header {
           display: flex;
-          flex-direction: column;
+          align-items: center;
           gap: 14px;
+          padding: 14px;
+          background: var(--input-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-md);
           margin-bottom: 20px;
         }
 
-        .step-item {
-          display: flex;
-          gap: 12px;
-          align-items: flex-start;
+        .user-avatar-img {
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid var(--primary);
         }
 
-        .step-num {
-          width: 26px;
-          height: 26px;
+        .user-avatar-fallback {
+          width: 52px;
+          height: 52px;
           border-radius: 50%;
-          background: rgba(24, 119, 242, 0.1);
-          color: #1877f2;
+          background: var(--primary);
+          color: white;
+          font-size: 1.3rem;
           font-weight: 800;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .user-name-title {
+          font-weight: 800;
+          font-size: 1rem;
+          color: var(--text-main);
+        }
+
+        .user-id-sub {
+          font-size: 0.78rem;
+          color: var(--text-muted);
+        }
+
+        .status-pill-active {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 4px;
+          font-size: 0.73rem;
+          font-weight: 700;
+          color: #16a34a;
+        }
+
+        .asset-section {
+          margin-bottom: 20px;
+        }
+
+        .asset-title {
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: var(--text-main);
+          margin: 0 0 10px 0;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .pages-list,
+        .ad-accounts-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .page-item-card {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          background: var(--input-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+        }
+
+        .page-item-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: var(--primary);
+          color: white;
+          font-weight: 700;
           font-size: 0.85rem;
           display: flex;
           align-items: center;
           justify-content: center;
-          flex-shrink: 0;
         }
 
-        .step-text {
+        .page-item-name {
           font-size: 0.85rem;
-          color: #475569;
-          line-height: 1.4;
-        }
-
-        .inline-link {
-          color: #1877f2;
           font-weight: 700;
-          text-decoration: none;
+          color: var(--text-main);
         }
 
-        .status-preview {
-          padding: 14px 16px;
-          border-radius: 12px;
-          font-size: 0.85rem;
+        .page-item-meta {
+          font-size: 0.74rem;
+          color: var(--text-muted);
+        }
+
+        .ad-account-item {
+          padding: 8px 12px;
+          background: var(--input-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+        }
+
+        .ad-item-name {
+          font-size: 0.83rem;
+          font-weight: 700;
+          color: var(--text-main);
+        }
+
+        .ad-item-id {
+          font-size: 0.73rem;
+          color: var(--text-muted);
+        }
+
+        .empty-asset {
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          font-style: italic;
+        }
+
+        .pending-connect-card {
+          text-align: center;
+          padding: 30px 20px;
           display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .status-preview.connected {
-          background: #f0fdf4;
-          border: 1px solid #86efac;
-          color: #16a34a;
           flex-direction: column;
-          align-items: flex-start;
+          align-items: center;
+          gap: 12px;
         }
 
-        .status-preview.pending {
-          background: #fffbe6;
-          border: 1px solid #ffe58f;
+        .pending-connect-card :global(.pending-icon) {
           color: #d48806;
         }
 
-        .status-header {
+        .pending-connect-card h4 {
+          margin: 0;
+          font-size: 1rem;
+          color: var(--text-main);
+        }
+
+        .pending-connect-card p {
+          margin: 0;
+          font-size: 0.82rem;
+          color: var(--text-muted);
+          line-height: 1.4;
+        }
+
+        .btn-open-guide {
+          background: var(--btn-hover);
+          border: 1px solid var(--glass-border);
+          color: var(--text-main);
+          padding: 8px 14px;
+          border-radius: var(--radius-sm);
+          font-size: 0.8rem;
+          font-weight: 700;
+          cursor: pointer;
           display: flex;
           align-items: center;
           gap: 6px;
-          font-weight: 700;
-        }
-
-        .user-details {
-          font-size: 0.8rem;
-          color: #334155;
-        }
-
-        .counts-row {
-          display: flex;
-          gap: 12px;
-          margin-top: 4px;
-          font-weight: 600;
-          color: #1877f2;
         }
 
         /* ─── FORM CARD ────────────────────────────────────────────────── */
@@ -496,7 +708,7 @@ const FbConnect: NextPage = () => {
         .form-group label {
           font-size: 0.84rem;
           font-weight: 700;
-          color: #475569;
+          color: var(--text-main);
         }
 
         .req { color: #ef4444; }
@@ -505,21 +717,20 @@ const FbConnect: NextPage = () => {
         .form-group textarea {
           width: 100%;
           box-sizing: border-box;
-          background: #f8fafc;
-          border: 1px solid #cbd5e1;
-          border-radius: 10px;
+          background: var(--input-bg);
+          border: 1px solid var(--input-border);
+          border-radius: var(--radius-sm);
           padding: 10px 14px;
           font-size: 0.88rem;
-          color: #0f1117;
+          color: var(--text-main);
           outline: none;
           font-family: inherit;
         }
 
         .form-group input:focus,
         .form-group textarea:focus {
-          border-color: #1877f2;
-          background: #ffffff;
-          box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.12);
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
         }
 
         .parsed-badge {
@@ -536,14 +747,14 @@ const FbConnect: NextPage = () => {
         .btn-save-credentials {
           width: 100%;
           padding: 14px;
-          border-radius: 12px;
+          border-radius: var(--radius-md);
           border: none;
-          background: linear-gradient(135deg, #1877f2 0%, #1565c0 100%);
+          background: var(--primary);
           color: #ffffff;
           font-size: 0.95rem;
           font-weight: 700;
           cursor: pointer;
-          box-shadow: 0 4px 20px rgba(24, 119, 242, 0.35);
+          box-shadow: 0 4px 20px rgba(0, 113, 227, 0.35);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -563,11 +774,11 @@ const FbConnect: NextPage = () => {
         }
 
         .error-box {
-          background: #fef2f2;
-          border: 1px solid #fca5a5;
-          color: #dc2626;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #ef4444;
           padding: 10px 14px;
-          border-radius: 10px;
+          border-radius: var(--radius-sm);
           font-size: 0.82rem;
           display: flex;
           align-items: center;
@@ -575,12 +786,101 @@ const FbConnect: NextPage = () => {
           margin-bottom: 12px;
         }
 
+        /* ─── MODAL DIALOG ─────────────────────────────────────────────── */
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(8px);
+          z-index: 999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+
+        .guide-modal-content {
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-lg);
+          width: 100%;
+          max-width: 480px;
+          box-shadow: var(--glass-shadow);
+          overflow: hidden;
+        }
+
+        .modal-header {
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--glass-border);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .modal-header h3 {
+          margin: 0;
+          font-size: 1.05rem;
+          color: var(--text-main);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .btn-close-modal {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+        }
+
+        .modal-body {
+          padding: 20px;
+        }
+
+        .step-list {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .step-item {
+          display: flex;
+          gap: 12px;
+          align-items: flex-start;
+        }
+
+        .step-num {
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          background: rgba(0, 113, 227, 0.12);
+          color: var(--primary);
+          font-weight: 800;
+          font-size: 0.85rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .step-text {
+          font-size: 0.85rem;
+          color: var(--text-main);
+          line-height: 1.4;
+        }
+
+        .inline-link {
+          color: var(--primary);
+          font-weight: 700;
+          text-decoration: none;
+        }
+
         .dark-toast {
           position: fixed;
           bottom: 24px;
           right: 24px;
           padding: 12px 20px;
-          border-radius: 10px;
+          border-radius: var(--radius-sm);
           color: white;
           font-weight: 600;
           font-size: 0.88rem;

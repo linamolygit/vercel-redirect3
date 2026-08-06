@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // If Access Token provided, validate with Facebook Graph API /me
     if (finalAccessToken) {
-      const meRes = await fetch(`https://graph.facebook.com/v19.0/me?access_token=${encodeURIComponent(finalAccessToken)}`);
+      const meRes = await fetch(`https://graph.facebook.com/v19.0/me?fields=id,name,picture.type(large){url}&access_token=${encodeURIComponent(finalAccessToken)}`);
       const meData = await meRes.json();
       if (meData.id) {
         fbUser = meData;
