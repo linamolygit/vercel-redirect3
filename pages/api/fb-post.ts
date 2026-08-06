@@ -4,19 +4,25 @@ import FormData from "form-data";
 
 /**
  * POST /api/fb-post
- *
- * Publishes a Clickable Image Card Post (Unpublished / Dark Post or Published)
- * using Facebook Graph API + Header & Cookie Spoofing Engine.
- *
- * Workflow:
- * 1. Upload Photo to Page as UNPUBLISHED (published = false) → get photoId
- * 2. Create Feed Post linked to Destination URL (Shopee, Blog, etc.) with object_attachment = photoId
- *    and published = !saveAsDraft (or false if dark post)
- * 3. Fallback to Ad Creative method if requested with adAccountId
+ * Executes Facebook Unpublished Dark Post (One Card V2) with direct bypass engine.
+ * Payload:
+ * {
+ *   userAccessToken: string,
+ *   pageId: string,
+ *   pageAccessToken?: string,
+ *   adAccountId?: string,
+ *   imageUrl?: string,
+ *   base64Image?: string,
+ *   destinationUrl: string,
+ *   caption?: string,
+ *   displayUrl?: string,
+ *   saveAsDraft?: boolean,
+ *   rawCookie?: string
+ * }
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed. Use POST." });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const {
@@ -42,18 +48,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const FB_BASE = "https://graph.facebook.com/v19.0";
-  const activeToken = pageAccessToken || userAccessToken;
 
   // Build custom browser headers for request spoofing
   const customHeaders: Record<string, string> = {
     "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     Origin: "https://business.facebook.com",
     Referer: "https://business.facebook.com/",
   };
 
   if (rawCookie) {
     customHeaders["Cookie"] = rawCookie;
+  }
+
+  // Determine active token & dynamically fetch Page Access Token if needed
+  let activeToken = pageAccessToken || "";
+  if (!activeToken && userAccessToken) {
+    try {
+      console.log("FB Post: Fetching dynamic Page Access Token for Page ID:", pageId);
+      const pageRes = await axios.get(`${FB_BASE}/${pageId}`, {
+        params: {
+          fields: "access_token",
+          access_token: userAccessToken,
+        },
+        headers: customHeaders,
+        timeout: 15000,
+      });
+      if (pageRes.data?.access_token) {
+        activeToken = pageRes.data.access_token;
+        console.log("FB Post: Successfully resolved Page Access Token!");
+      }
+    } catch (pageErr: any) {
+      console.warn("FB Post: Page token fetch failed, falling back to userAccessToken...", pageErr?.message);
+    }
+  }
+
+  if (!activeToken) {
+    activeToken = userAccessToken;
   }
 
   try {
@@ -71,37 +102,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       imageBuffer = Buffer.from(imgRes.data);
     }
 
-
     // ─── METHOD 1: UNPUBLISHED PHOTO + FEED LINK BYPASS ENGINE ─────────────────
     try {
-      console.log("FB Post Step 1: Uploading Unpublished Photo to Page...");
-      const formData = new FormData();
-      formData.append("source", imageBuffer, { filename: "card-image.png" });
-      formData.append("published", "false"); // Photo hidden from timeline
-      formData.append("access_token", activeToken);
+      let photoId: string | null = null;
+      try {
+        console.log("FB Post Step 1: Uploading Unpublished Photo to Page...");
+        const formData = new FormData();
+        formData.append("source", imageBuffer, { filename: "card-image.png" });
+        formData.append("published", "false"); // Photo hidden from timeline
+        formData.append("access_token", activeToken);
 
-      const photoRes = await axios.post(`${FB_BASE}/${pageId}/photos`, formData, {
-        headers: {
-          ...formData.getHeaders(),
-          ...customHeaders,
-        },
-        timeout: 30000,
-      });
-
-      const photoId = photoRes.data?.id;
-      if (!photoId) {
-        throw new Error(`Unpublished photo upload failed: ${JSON.stringify(photoRes.data)}`);
+        const photoRes = await axios.post(`${FB_BASE}/${pageId}/photos`, formData, {
+          headers: {
+            ...formData.getHeaders(),
+            ...customHeaders,
+          },
+          timeout: 30000,
+        });
+        photoId = photoRes.data?.id || null;
+        if (photoId) {
+          console.log("FB Post Step 1 SUCCESS! Got Photo ID =", photoId);
+        }
+      } catch (photoUploadErr: any) {
+        console.warn(
+          "Unpublished photo upload to /photos failed (permissions restriction), proceeding directly to /feed...",
+          photoUploadErr?.response?.data || photoUploadErr?.message
+        );
       }
 
-      console.log("FB Post Step 1 SUCCESS! Got Photo ID =", photoId);
-
-      // STEP 2: Create Feed Link Post with Attached Photo ID & Unpublished Status
-      console.log("FB Post Step 2: Injecting Feed Post with Target Link & Photo Attachment...");
-
+      // STEP 2: Create Feed Link Post
+      console.log("FB Post Step 2: Injecting Feed Post with Target Link...");
       const feedParams = new URLSearchParams();
       feedParams.append("message", caption || "");
       feedParams.append("link", destinationUrl.trim());
-      feedParams.append("object_attachment", photoId);
+      if (photoId) {
+        feedParams.append("object_attachment", photoId);
+      }
       feedParams.append("published", saveAsDraft ? "false" : "false"); // Dark / Unpublished Post
       feedParams.append("access_token", activeToken);
 
@@ -138,9 +174,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (adAccountId && userAccessToken) {
         console.log("FB Post Method 2 Fallback: Attempting Ad Creative One Card V2...");
 
-        const base64Image = imageBuffer.toString("base64");
+        const base64ImageStr = imageBuffer.toString("base64");
         const adImagesParams = new URLSearchParams();
-        adImagesParams.append("bytes", base64Image);
+        adImagesParams.append("bytes", base64ImageStr);
         adImagesParams.append("access_token", userAccessToken);
 
         const adImagesRes = await axios.post(`${FB_BASE}/${adAccountId}/adimages`, adImagesParams, {
@@ -217,7 +253,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (fbError) {
       return res.status(400).json({
         success: false,
-        error: fbError.message || "Facebook API error",
+        error: fbError.message || "Facebook API permission error",
         fb_error_code: fbError.code,
         fb_error_subcode: fbError.error_subcode,
         fb_error_type: fbError.type,
@@ -236,12 +272,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 /** Provide user-friendly hints for common FB error codes */
 function getHint(code: number): string {
   const hints: Record<number, string> = {
-    190: "Access token is invalid or expired. Open 'FB Connect' from top navbar and re-sync your extension token.",
-    100: "Invalid parameter. Ensure Page Access Token has 'pages_manage_posts' permission.",
-    200: "Missing permissions. Your token needs 'pages_manage_posts' and 'pages_read_engagement' permissions.",
-    368: "Temporarily blocked by Facebook. Try logging in again from browser extension.",
+    190: "Access token is invalid or expired. Re-sync your extension token.",
+    100: "Permission error: Make sure to select a Facebook Page from the dropdown so the Page Access Token is loaded.",
+    200: "Permission error: The selected page requires Page Admin privileges or Page Access Token.",
+    368: "Temporarily blocked by Facebook. Log in again from browser extension.",
     17: "API rate limit hit. Wait a few minutes and try again.",
     2635: "Ad account must have an active payment method on file.",
   };
-  return hints[code] || "Check Facebook Developer Dashboard for error details.";
+  return hints[code] || "Ensure you are an admin of the selected Facebook Page.";
 }
