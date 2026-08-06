@@ -26,7 +26,9 @@ import {
   Share2,
   Sliders,
   Clock,
+  Copy,
 } from "lucide-react";
+
 
 // Layout Presets
 interface LayoutOption {
@@ -761,15 +763,32 @@ const FbDarkPost: NextPage = () => {
             {/* Success Post Result */}
             {postResult && (
               <div className="success-box">
-                <CheckCircle2 size={16} />
-                <div style={{ flex: 1 }}>
-                  <div>Published Successfully!</div>
-                  <a href={postResult.postUrl} target="_blank" rel="noreferrer">
-                    View Live Post <ExternalLink size={12} />
-                  </a>
+                <CheckCircle2 size={18} className="success-icon" />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div className="success-title">✅ Unpublished Dark Post Created!</div>
+                  <div className="post-url-text">{postResult.postUrl}</div>
+                  <div className="success-actions">
+                    <button
+                      className="btn-copy-link"
+                      onClick={() => {
+                        navigator.clipboard.writeText(postResult.postUrl);
+                        showToast("Copied Dark Post Link! Paste in FB Groups for instant redirection card.", "success");
+                      }}
+                    >
+                      <Copy size={13} />
+                      <span>Copy Link</span>
+                    </button>
+                    <a href={postResult.postUrl} target="_blank" rel="noreferrer" className="btn-view-post">
+                      View Post <ExternalLink size={12} />
+                    </a>
+                  </div>
+                  <div className="share-tip">
+                    💡 <strong>Pro Tip:</strong> Paste this link in FB Groups. Meta will generate a clickable card that redirects visitors directly to your target link!
+                  </div>
                 </div>
               </div>
             )}
+
 
             {/* RUN POST Action Button */}
             <button
@@ -1304,26 +1323,83 @@ const FbDarkPost: NextPage = () => {
         }
 
         .success-box {
-          background: #f0fdf4;
-          border: 1px solid #86efac;
-          color: #16a34a;
-          padding: 10px 14px;
+          background: rgba(34, 197, 94, 0.08);
+          border: 1px solid rgba(34, 197, 94, 0.3);
+          color: var(--text-main);
+          padding: 14px;
           border-radius: var(--radius-sm);
           font-size: 0.82rem;
           display: flex;
-          align-items: center;
-          gap: 8px;
+          align-items: flex-start;
+          gap: 10px;
         }
 
-        .success-box a {
+        .success-box :global(.success-icon) {
+          color: #22c55e;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+
+        .success-title {
+          font-weight: 800;
+          font-size: 0.9rem;
+          color: #22c55e;
+        }
+
+        .post-url-text {
+          font-family: monospace;
+          font-size: 0.76rem;
+          word-break: break-all;
+          background: var(--input-bg);
+          padding: 4px 8px;
+          border-radius: 4px;
+          color: var(--text-muted);
+          border: 1px solid var(--glass-border);
+        }
+
+        .success-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 2px;
+        }
+
+        .btn-copy-link {
+          background: var(--primary);
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 6px 10px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          transition: opacity 0.2s;
+        }
+
+        .btn-copy-link:hover {
+          opacity: 0.9;
+        }
+
+        .btn-view-post {
           color: var(--primary);
           font-weight: 700;
+          font-size: 0.78rem;
           text-decoration: none;
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          margin-top: 2px;
         }
+
+        .share-tip {
+          font-size: 0.73rem;
+          color: var(--text-muted);
+          line-height: 1.35;
+          margin-top: 4px;
+        }
+
 
         /* ─── PREVIEW MAIN ─────────────────────────────────────────────── */
         .preview-main {

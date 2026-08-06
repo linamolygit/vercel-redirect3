@@ -112,18 +112,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       console.log("FB Post Step 2 SUCCESS! Got Post ID =", postId);
 
-      const formattedPostUrl = postId.includes("_")
-        ? `https://www.facebook.com/${postId.replace("_", "/posts/")}`
-        : `https://www.facebook.com/${pageId}/posts/${postId}`;
+      const postUrl = `https://www.facebook.com/${postId}`;
 
       return res.status(200).json({
         success: true,
         postId,
-        postUrl: formattedPostUrl,
+        postUrl,
         photoId,
-        engine: "Unpublished Post Direct Bypass",
-        isPublished: !saveAsDraft,
+        engine: "Unpublished Post Direct Bypass Engine",
+        isPublished: false,
       });
+
     } catch (method1Err: any) {
       console.warn("Method 1 (Direct Feed Bypass) error:", method1Err?.response?.data || method1Err?.message);
 
