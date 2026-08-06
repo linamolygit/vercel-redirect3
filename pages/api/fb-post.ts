@@ -86,10 +86,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     let imageBuffer: Buffer;
+    let publicImageUrl = imageUrl || "";
+
     if (base64Image) {
       console.log("FB Post: Processing direct base64 image data...");
       const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
       imageBuffer = Buffer.from(cleanBase64, "base64");
+
+      // Server-side ImgBB upload for picture URL if missing
+      if (!publicImageUrl) {
+        try {
+          const imgFormData = new FormData();
+          imgFormData.append("image", cleanBase64);
+          const imgbbRes = await axios.post(
+            "https://api.imgbb.com/1/upload?key=369527ad0caec6bb3e52adfbcc28b2be",
+            imgFormData,
+            { headers: imgFormData.getHeaders(), timeout: 10000 }
+          );
+          if (imgbbRes.data?.data?.url) {
+            publicImageUrl = imgbbRes.data.data.url;
+          }
+        } catch (imgbbErr: any) {
+          console.warn("Server-side ImgBB upload fallback skipped:", imgbbErr?.message);
+        }
+      }
     } else {
       console.log("FB Post: Downloading image from:", imageUrl);
       const imgRes = await axios.get(imageUrl, {
@@ -99,7 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       imageBuffer = Buffer.from(imgRes.data);
     }
 
-    // ─── TIER 1: UNPUBLISHED PHOTO + FEED LINK BYPASS ENGINE ───────────────────
+    // ─── TIER 1: MULTI-STAGE BYPASS ENGINE ──────────────────────────────────────
     const tokensToTry = [activeToken, userAccessToken].filter(Boolean);
     const uniqueTokens = Array.from(new Set(tokensToTry));
 
@@ -135,97 +155,92 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // STEP 2A: Create Dark Feed Link Post (published: false)
-    for (const token of uniqueTokens) {
-      try {
-        console.log(`FB Post Step 2A: Injecting Dark Feed Post with token (${token.slice(0, 10)}...)...`);
-        const feedParams = new URLSearchParams();
-        feedParams.append("message", caption || "");
-        feedParams.append("link", destinationUrl.trim());
-        if (photoId) {
+    // STEP 2A: Create Dark Feed Link Post (published: false + object_attachment)
+    if (photoId) {
+      for (const token of uniqueTokens) {
+        try {
+          console.log(`FB Post Step 2A: Injecting Dark Feed Post (photoId) with token (${token.slice(0, 10)}...)...`);
+          const feedParams = new URLSearchParams();
+          feedParams.append("message", caption || "");
+          feedParams.append("link", destinationUrl.trim());
           feedParams.append("object_attachment", photoId);
-        }
-        feedParams.append("published", "false");
-        feedParams.append("access_token", token);
+          feedParams.append("published", "false");
+          feedParams.append("access_token", token);
 
-        const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            ...customHeaders,
-          },
-          timeout: 30000,
-        });
-
-        const postId = feedRes.data?.id;
-        if (postId) {
-          console.log("FB Post Step 2A SUCCESS! Got Post ID =", postId);
-          return res.status(200).json({
-            success: true,
-            postId,
-            postUrl: `https://www.facebook.com/${postId}`,
-            photoId,
-            engine: "Unpublished Dark Post Bypass Engine (2A)",
-            isPublished: false,
+          const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              ...customHeaders,
+            },
+            timeout: 30000,
           });
+
+          const postId = feedRes.data?.id;
+          if (postId) {
+            console.log("FB Post Step 2A SUCCESS! Got Post ID =", postId);
+            return res.status(200).json({
+              success: true,
+              postId,
+              postUrl: `https://www.facebook.com/${postId}`,
+              photoId,
+              engine: "Unpublished Dark Post Bypass Engine (2A)",
+              isPublished: false,
+            });
+          }
+        } catch (feedErr: any) {
+          if (feedErr?.response?.data?.error) lastFbError = feedErr.response.data.error;
+          console.warn(`Feed post 2A attempt failed:`, feedErr?.response?.data || feedErr?.message);
         }
-      } catch (feedErr: any) {
-        if (feedErr?.response?.data?.error) lastFbError = feedErr.response.data.error;
-        console.warn(
-          `Feed post 2A attempt failed with token (${token.slice(0, 10)}...):`,
-          feedErr?.response?.data || feedErr?.message
-        );
       }
     }
 
-    // STEP 2B: Try published=0 as alternative URLSearchParam flag
-    for (const token of uniqueTokens) {
-      try {
-        console.log(`FB Post Step 2B: Injecting Dark Feed Post (published=0)...`);
-        const feedParams = new URLSearchParams();
-        feedParams.append("message", caption || "");
-        feedParams.append("link", destinationUrl.trim());
-        if (photoId) {
-          feedParams.append("object_attachment", photoId);
-        }
-        feedParams.append("published", "0");
-        feedParams.append("access_token", token);
+    // STEP 2B: Direct Picture Link Post (published: false + picture URL)
+    if (publicImageUrl) {
+      for (const token of uniqueTokens) {
+        try {
+          console.log(`FB Post Step 2B: Direct Picture Link Dark Post with token (${token.slice(0, 10)}...)...`);
+          const feedParamsB = new URLSearchParams();
+          feedParamsB.append("message", caption || "");
+          feedParamsB.append("link", destinationUrl.trim());
+          feedParamsB.append("picture", publicImageUrl);
+          feedParamsB.append("caption", displayUrl);
+          feedParamsB.append("published", "false");
+          feedParamsB.append("access_token", token);
 
-        const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            ...customHeaders,
-          },
-          timeout: 30000,
-        });
-
-        const postId = feedRes.data?.id;
-        if (postId) {
-          console.log("FB Post Step 2B SUCCESS! Got Post ID =", postId);
-          return res.status(200).json({
-            success: true,
-            postId,
-            postUrl: `https://www.facebook.com/${postId}`,
-            photoId,
-            engine: "Unpublished Dark Post Bypass Engine (2B)",
-            isPublished: false,
+          const feedResB = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsB, {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              ...customHeaders,
+            },
+            timeout: 30000,
           });
+
+          const postIdB = feedResB.data?.id;
+          if (postIdB) {
+            console.log("FB Post Step 2B SUCCESS! Got Post ID =", postIdB);
+            return res.status(200).json({
+              success: true,
+              postId: postIdB,
+              postUrl: `https://www.facebook.com/${postIdB}`,
+              engine: "Direct Picture Link Dark Post Engine (2B)",
+              isPublished: false,
+            });
+          }
+        } catch (feedBErr: any) {
+          if (feedBErr?.response?.data?.error) lastFbError = feedBErr.response.data.error;
+          console.warn(`Feed post 2B attempt failed:`, feedBErr?.response?.data || feedBErr?.message);
         }
-      } catch (feedBErr: any) {
-        if (feedBErr?.response?.data?.error) lastFbError = feedBErr.response.data.error;
-        console.warn(`Feed post 2B attempt failed:`, feedBErr?.response?.data || feedBErr?.message);
       }
     }
 
-    // STEP 2C: Standard Feed Link Post (published: true)
+    // STEP 2C: Clean Link Post (published: false)
     for (const token of uniqueTokens) {
       try {
-        console.log(`FB Post Step 2C (published: true) with token (${token.slice(0, 10)}...)...`);
+        console.log(`FB Post Step 2C: Clean Link Dark Post (published: false)...`);
         const feedParamsC = new URLSearchParams();
         feedParamsC.append("message", caption || "");
         feedParamsC.append("link", destinationUrl.trim());
-        if (photoId) {
-          feedParamsC.append("object_attachment", photoId);
-        }
+        feedParamsC.append("published", "false");
         feedParamsC.append("access_token", token);
 
         const feedResC = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsC, {
@@ -242,15 +257,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(200).json({
             success: true,
             postId: postIdC,
-            postUrl: `https://www.facebook.com/${postIdC.replace("_", "/posts/")}`,
-            photoId,
-            engine: "Standard Feed Post Engine (2C)",
-            isPublished: true,
+            postUrl: `https://www.facebook.com/${postIdC}`,
+            engine: "Clean Link Dark Post Engine (2C)",
+            isPublished: false,
           });
         }
       } catch (feedCErr: any) {
         if (feedCErr?.response?.data?.error) lastFbError = feedCErr.response.data.error;
         console.warn(`Feed post 2C attempt failed:`, feedCErr?.response?.data || feedCErr?.message);
+      }
+    }
+
+    // STEP 2D: Standard Feed Link Post (published: true / omitted)
+    for (const token of uniqueTokens) {
+      try {
+        console.log(`FB Post Step 2D (Standard Feed Post)...`);
+        const feedParamsD = new URLSearchParams();
+        feedParamsD.append("message", caption || "");
+        feedParamsD.append("link", destinationUrl.trim());
+        if (publicImageUrl) feedParamsD.append("picture", publicImageUrl);
+        feedParamsD.append("access_token", token);
+
+        const feedResD = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParamsD, {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            ...customHeaders,
+          },
+          timeout: 30000,
+        });
+
+        const postIdD = feedResD.data?.id;
+        if (postIdD) {
+          console.log("FB Post Step 2D SUCCESS! Got Post ID =", postIdD);
+          return res.status(200).json({
+            success: true,
+            postId: postIdD,
+            postUrl: `https://www.facebook.com/${postIdD.replace("_", "/posts/")}`,
+            engine: "Standard Feed Link Engine (2D)",
+            isPublished: true,
+          });
+        }
+      } catch (feedDErr: any) {
+        if (feedDErr?.response?.data?.error) lastFbError = feedDErr.response.data.error;
+        console.warn(`Feed post 2D attempt failed:`, feedDErr?.response?.data || feedDErr?.message);
       }
     }
 
