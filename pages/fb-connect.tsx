@@ -170,7 +170,7 @@ const FbConnect: NextPage = () => {
               <div className="step-item">
                 <span className="step-num">1</span>
                 <div className="step-text">
-                  Install the official <strong>"Get Token Cookie"</strong> Chrome Extension.
+                  Install the official <strong>&quot;Get Token Cookie&quot;</strong> Chrome Extension.
                   <br />
                   <a href={GET_TOKEN_EXTENSION_URL} target="_blank" rel="noreferrer" className="inline-link">
                     Open Chrome Web Store ↗
