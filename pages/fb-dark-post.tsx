@@ -479,6 +479,8 @@ const FbDarkPost: NextPage = () => {
 
       const imageUrl = imgbbData.data.url;
 
+      const rawCookie = typeof window !== "undefined" ? localStorage.getItem("fb_raw_cookie") || "" : "";
+
       const postRes = await fetch("/api/fb-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -493,8 +495,10 @@ const FbDarkPost: NextPage = () => {
           displayUrl: displayUrl.trim() || "facebook.com",
           scheduledTime: schedule ? scheduledTime : undefined,
           saveAsDraft,
+          rawCookie,
         }),
       });
+
 
       const postData = await postRes.json();
       if (!postRes.ok || !postData.success) {

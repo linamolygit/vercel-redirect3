@@ -1,27 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import axios from "axios";
+import FormData from "form-data";
 
 /**
  * POST /api/fb-post
  *
- * Publishes a Square 1080x1080 image to a Facebook Page using the
- * Facebook Marketing API — exactly like FewFeed's "One Card V2".
+ * Publishes a Clickable Image Card Post (Unpublished / Dark Post or Published)
+ * using Facebook Graph API + Header & Cookie Spoofing Engine.
  *
- * STEP A: Upload image to FB Ad Images library → get image_hash
- * STEP B: Create Ad Creative → get creative_id (image + destination URL click target)
- * STEP C: Publish creative as Page Story to the Facebook Page Feed
- *
- * Body (JSON):
- * {
- *   userAccessToken: string,   // User's FB Access Token
- *   pageId:          string,   // Facebook Page ID (e.g. "105550589064990")
- *   pageAccessToken: string,   // Page-level Access Token (from fb-accounts)
- *   adAccountId:     string,   // Ad Account ID (e.g. "act_621181569724674")
- *   imageUrl:        string,   // 1080x1080 ImgBB URL
- *   destinationUrl:  string,   // Where to redirect on click (short link)
- *   caption:         string,   // Post caption/message
- *   displayUrl?:     string,   // Display URL shown in post (default: "facebook.com")
- * }
+ * Workflow:
+ * 1. Upload Photo to Page as UNPUBLISHED (published = false) → get photoId
+ * 2. Create Feed Post linked to Destination URL (Shopee, Blog, etc.) with object_attachment = photoId
+ *    and published = !saveAsDraft (or false if dark post)
+ * 3. Fallback to Ad Creative method if requested with adAccountId
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -37,125 +28,184 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     destinationUrl,
     caption,
     displayUrl = "facebook.com",
+    saveAsDraft = false,
+    rawCookie = "",
   } = req.body;
 
   // Validate required fields
-  if (!userAccessToken || !pageId || !pageAccessToken || !adAccountId || !imageUrl || !destinationUrl || !caption) {
+  if ((!userAccessToken && !pageAccessToken) || !pageId || !imageUrl || !destinationUrl) {
     return res.status(400).json({
       error: "Missing required fields",
-      required: ["userAccessToken", "pageId", "pageAccessToken", "adAccountId", "imageUrl", "destinationUrl", "caption"],
+      required: ["pageId", "imageUrl", "destinationUrl"],
     });
   }
 
   const FB_BASE = "https://graph.facebook.com/v19.0";
+  const activeToken = pageAccessToken || userAccessToken;
+
+  // Build custom browser headers for request spoofing
+  const customHeaders: Record<string, string> = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    Origin: "https://business.facebook.com",
+    Referer: "https://business.facebook.com/",
+  };
+
+  if (rawCookie) {
+    customHeaders["Cookie"] = rawCookie;
+  }
 
   try {
-    // ─── STEP A: Download image buffer and upload to Facebook Ad Images ────────────
-    console.log("FB Post Step A: Downloading image from:", imageUrl);
+    console.log("FB Post: Downloading image from:", imageUrl);
     const imgRes = await axios.get(imageUrl, {
       responseType: "arraybuffer",
-      timeout: 20000,
+      timeout: 25000,
     });
 
     const imageBuffer = Buffer.from(imgRes.data);
-    const base64Image = imageBuffer.toString("base64");
 
-    console.log("FB Post Step A: Uploading to Facebook Ad Images Library...");
-    const adImagesFormData = new URLSearchParams();
-    adImagesFormData.append("bytes", base64Image);
-    adImagesFormData.append("access_token", userAccessToken);
+    // ─── METHOD 1: UNPUBLISHED PHOTO + FEED LINK BYPASS ENGINE ─────────────────
+    try {
+      console.log("FB Post Step 1: Uploading Unpublished Photo to Page...");
+      const formData = new FormData();
+      formData.append("source", imageBuffer, { filename: "card-image.png" });
+      formData.append("published", "false"); // Photo hidden from timeline
+      formData.append("access_token", activeToken);
 
-    const adImagesRes = await axios.post(
-      `${FB_BASE}/${adAccountId}/adimages`,
-      adImagesFormData,
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-    );
-
-    // Extract image_hash from response
-    const imagesData = adImagesRes.data?.images;
-    if (!imagesData) {
-      throw new Error(`Facebook adimages upload failed: ${JSON.stringify(adImagesRes.data)}`);
-    }
-
-    // The hash is keyed by filename — get first key
-    const imageHashKey = Object.keys(imagesData)[0];
-    const imageHash = imagesData[imageHashKey]?.hash;
-    if (!imageHash) {
-      throw new Error(`Could not extract image_hash from response: ${JSON.stringify(imagesData)}`);
-    }
-
-    console.log("FB Post Step A: Got image_hash =", imageHash);
-
-    // ─── STEP B: Create Ad Creative with the image_hash + destination link ─────────
-    console.log("FB Post Step B: Creating Ad Creative...");
-    const creativePayload = {
-      name: `OneCard_${Date.now()}`,
-      object_story_spec: {
-        page_id: pageId,
-        link_data: {
-          image_hash: imageHash,
-          link: destinationUrl,
-          message: caption,
-          call_to_action: { type: "LEARN_MORE" },
-          caption: displayUrl,
+      const photoRes = await axios.post(`${FB_BASE}/${pageId}/photos`, formData, {
+        headers: {
+          ...formData.getHeaders(),
+          ...customHeaders,
         },
-      },
-      access_token: userAccessToken,
-    };
+        timeout: 30000,
+      });
 
-    const creativeRes = await axios.post(
-      `${FB_BASE}/${adAccountId}/adcreatives`,
-      creativePayload,
-      { headers: { "Content-Type": "application/json" } }
-    );
+      const photoId = photoRes.data?.id;
+      if (!photoId) {
+        throw new Error(`Unpublished photo upload failed: ${JSON.stringify(photoRes.data)}`);
+      }
 
-    const creativeId = creativeRes.data?.id;
-    if (!creativeId) {
-      throw new Error(`Ad Creative creation failed: ${JSON.stringify(creativeRes.data)}`);
+      console.log("FB Post Step 1 SUCCESS! Got Photo ID =", photoId);
+
+      // STEP 2: Create Feed Link Post with Attached Photo ID & Unpublished Status
+      console.log("FB Post Step 2: Injecting Feed Post with Target Link & Photo Attachment...");
+
+      const feedParams = new URLSearchParams();
+      feedParams.append("message", caption || "");
+      feedParams.append("link", destinationUrl.trim());
+      feedParams.append("object_attachment", photoId);
+      feedParams.append("published", saveAsDraft ? "false" : "false"); // Dark / Unpublished Post
+      feedParams.append("access_token", activeToken);
+
+      const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          ...customHeaders,
+        },
+        timeout: 30000,
+      });
+
+      const postId = feedRes.data?.id;
+      if (!postId) {
+        throw new Error(`Page feed publish failed: ${JSON.stringify(feedRes.data)}`);
+      }
+
+      console.log("FB Post Step 2 SUCCESS! Got Post ID =", postId);
+
+      const formattedPostUrl = postId.includes("_")
+        ? `https://www.facebook.com/${postId.replace("_", "/posts/")}`
+        : `https://www.facebook.com/${pageId}/posts/${postId}`;
+
+      return res.status(200).json({
+        success: true,
+        postId,
+        postUrl: formattedPostUrl,
+        photoId,
+        engine: "Unpublished Post Direct Bypass",
+        isPublished: !saveAsDraft,
+      });
+    } catch (method1Err: any) {
+      console.warn("Method 1 (Direct Feed Bypass) error:", method1Err?.response?.data || method1Err?.message);
+
+      // ─── METHOD 2: AD CREATIVE ONE CARD FALLBACK (If adAccountId provided) ─────
+      if (adAccountId && userAccessToken) {
+        console.log("FB Post Method 2 Fallback: Attempting Ad Creative One Card V2...");
+
+        const base64Image = imageBuffer.toString("base64");
+        const adImagesParams = new URLSearchParams();
+        adImagesParams.append("bytes", base64Image);
+        adImagesParams.append("access_token", userAccessToken);
+
+        const adImagesRes = await axios.post(`${FB_BASE}/${adAccountId}/adimages`, adImagesParams, {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            ...customHeaders,
+          },
+        });
+
+        const imagesData = adImagesRes.data?.images;
+        const imageHashKey = imagesData ? Object.keys(imagesData)[0] : null;
+        const imageHash = imageHashKey ? imagesData[imageHashKey]?.hash : null;
+
+        if (imageHash) {
+          const creativePayload = {
+            name: `OneCard_${Date.now()}`,
+            object_story_spec: {
+              page_id: pageId,
+              link_data: {
+                image_hash: imageHash,
+                link: destinationUrl.trim(),
+                message: caption,
+                call_to_action: { type: "LEARN_MORE" },
+                caption: displayUrl,
+              },
+            },
+            access_token: userAccessToken,
+          };
+
+          const creativeRes = await axios.post(`${FB_BASE}/${adAccountId}/adcreatives`, creativePayload, {
+            headers: {
+              "Content-Type": "application/json",
+              ...customHeaders,
+            },
+          });
+
+          const creativeId = creativeRes.data?.id;
+          if (creativeId) {
+            const feedPayload = {
+              message: caption,
+              published: !saveAsDraft,
+              object_attachment: creativeId,
+              access_token: activeToken,
+            };
+
+            const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedPayload, {
+              headers: {
+                "Content-Type": "application/json",
+                ...customHeaders,
+              },
+            });
+
+            if (feedRes.data?.id) {
+              const postId = feedRes.data.id;
+              return res.status(200).json({
+                success: true,
+                postId,
+                postUrl: `https://www.facebook.com/${postId.replace("_", "/posts/")}`,
+                creativeId,
+                engine: "Ad Creative One Card Fallback",
+              });
+            }
+          }
+        }
+      }
+
+      // Re-throw Method 1 error if fallback wasn't applicable
+      throw method1Err;
     }
-
-    console.log("FB Post Step B: Got creative_id =", creativeId);
-
-    // ─── STEP C: Publish the creative as a Page Story (Dark Post → Real Feed Post) ──
-    console.log("FB Post Step C: Publishing to Facebook Page Feed...");
-    const feedPayload = {
-      message: caption,
-      published: true,
-      object_attachment: creativeId,
-      access_token: pageAccessToken,
-    };
-
-    const feedRes = await axios.post(
-      `${FB_BASE}/${pageId}/feed`,
-      feedPayload,
-      { headers: { "Content-Type": "application/json" } }
-    );
-
-    const postId = feedRes.data?.id;
-    if (!postId) {
-      throw new Error(`Page feed publish failed: ${JSON.stringify(feedRes.data)}`);
-    }
-
-    console.log("FB Post Step C: SUCCESS! Post ID =", postId);
-
-    // Build the post URL (format: pageId_postId)
-    const postUrl = `https://www.facebook.com/${postId.replace("_", "/posts/")}`;
-
-    return res.status(200).json({
-      success: true,
-      postId,
-      postUrl,
-      imageHash,
-      creativeId,
-      steps: {
-        adImageUpload: "✅ Success",
-        adCreativeCreate: "✅ Success",
-        pagePublish: "✅ Success",
-      },
-    });
   } catch (err: any) {
     const fbError = err?.response?.data?.error;
-    console.error("FB Post failed:", fbError || err?.message || err);
+    console.error("FB Post Execution Failed:", fbError || err?.message || err);
 
     if (fbError) {
       return res.status(400).json({
@@ -179,12 +229,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 /** Provide user-friendly hints for common FB error codes */
 function getHint(code: number): string {
   const hints: Record<number, string> = {
-    190: "Access token is invalid or expired. Please generate a new one from Facebook Graph API Explorer.",
-    100: "Invalid parameter. Make sure your Ad Account ID format is 'act_XXXXXXXX'.",
-    200: "Missing permissions. Your token needs 'ads_management' and 'pages_manage_posts' permissions.",
-    368: "Temporarily blocked. This token may have been flagged by Facebook. Try a fresh token.",
+    190: "Access token is invalid or expired. Open 'FB Connect' from top navbar and re-sync your extension token.",
+    100: "Invalid parameter. Ensure Page Access Token has 'pages_manage_posts' permission.",
+    200: "Missing permissions. Your token needs 'pages_manage_posts' and 'pages_read_engagement' permissions.",
+    368: "Temporarily blocked by Facebook. Try logging in again from browser extension.",
     17: "API rate limit hit. Wait a few minutes and try again.",
     2635: "Ad account must have an active payment method on file.",
   };
-  return hints[code] || "Check the Facebook Developer Dashboard for error details.";
+  return hints[code] || "Check Facebook Developer Dashboard for error details.";
 }
