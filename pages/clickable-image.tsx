@@ -253,16 +253,16 @@ export default function ClickableImage() {
     verifyUser();
   }, []);
 
-  // ─── Chrome Extension Handshake Listener ────────────────────────────────
+  // ─── Chrome Extension Handshake Listener (FewFeed Metus Engine) ───────────
   useEffect(() => {
     const handleMsg = (event: MessageEvent) => {
       if (event.source !== window) return;
       const { type, data } = event.data || {};
 
-      if (type === "FBVIRALL_EXTENSION_INSTALLED") {
+      // 1. Standard PostMessage Bridge
+      if (type === "FBVIRALL_EXTENSION_INSTALLED" || event.data?.metus === true) {
         setIsExtensionInstalled(true);
-        console.log("⚡ Extension Detected! Requesting token...");
-        // Auto-request token from extension bridge
+        console.log("⚡ Extension Detected! Requesting session...");
         window.postMessage({ type: "FBVIRALL_FETCH_TOKEN", requestId: "auto_init" }, "*");
       }
 
@@ -272,7 +272,6 @@ export default function ClickableImage() {
           setFbToken(data.accessToken);
           if (data.user) setExtFbUser(data.user);
           setFbError("");
-          // Automatically load pages and ad accounts using extracted token
           fetch(`/api/fb-accounts?token=${encodeURIComponent(data.accessToken)}`)
             .then((res) => res.json())
             .then((accData) => {
@@ -297,10 +296,61 @@ export default function ClickableImage() {
       }
     };
 
+    // 2. FewFeed CustomEvent Listener for Metus Bridge
+    const handleMetusEvent = (e: any) => {
+      setIsExtensionInstalled(true);
+      if (e.detail?.cookie || e.detail?.main_cookie) {
+        const rawCookie = e.detail.cookie || e.detail.main_cookie;
+        const cUserMatch = rawCookie.match(/c_user=([0-9]+)/);
+        const xsMatch = rawCookie.match(/xs=([^;]+)/);
+        if (cUserMatch && xsMatch) {
+          setFbLoadingAccounts(true);
+          fetch("/api/auth/fb-cookie", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ c_user: cUserMatch[1], xs: xsMatch[1] }),
+          })
+            .then((r) => r.json())
+            .then((resData) => {
+              if (resData.access_token) {
+                setFbToken(resData.access_token);
+                if (resData.fbUser) setExtFbUser(resData.fbUser);
+                return fetch(`/api/fb-accounts?token=${encodeURIComponent(resData.access_token)}`);
+              } else {
+                throw new Error(resData.error || "Cookie conversion failed");
+              }
+            })
+            .then((r) => r && r.json())
+            .then((accData) => {
+              if (accData) {
+                if (accData.pages?.length > 0) {
+                  setFbPages(accData.pages);
+                  setFbSelectedPage(accData.pages[0].id);
+                  setFbSelectedPageToken(accData.pages[0].access_token);
+                }
+                if (accData.adAccounts?.length > 0) {
+                  setFbAdAccounts(accData.adAccounts);
+                  setFbSelectedAd(accData.adAccounts[0].id);
+                }
+              }
+            })
+            .catch((err) => setFbError(err.message))
+            .finally(() => setFbLoadingAccounts(false));
+        }
+      }
+    };
+
     window.addEventListener("message", handleMsg);
-    // Ping extension on load in case it's already injected
+    window.addEventListener("metus:need-login-facebook", handleMetusEvent);
+    window.addEventListener("metus:fanpage-mode-changed", handleMetusEvent);
+
+    // Initial ping
     window.postMessage({ type: "FBVIRALL_PING" }, "*");
-    return () => window.removeEventListener("message", handleMsg);
+    return () => {
+      window.removeEventListener("message", handleMsg);
+      window.removeEventListener("metus:need-login-facebook", handleMetusEvent);
+      window.removeEventListener("metus:fanpage-mode-changed", handleMetusEvent);
+    };
   }, []);
 
   // Load Google MediaPipe FaceDetector model (browser-only, once on mount)
