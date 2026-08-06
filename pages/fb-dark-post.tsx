@@ -448,10 +448,11 @@ const FbDarkPost: NextPage = () => {
       setErrorMessage("Please enter your Facebook Access Token or install the Extension.");
       return;
     }
-    if (!selectedPageId || !selectedAdAccountId) {
-      setErrorMessage("Please select a Facebook Page and Ad Account.");
+    if (!selectedPageId) {
+      setErrorMessage("Please select a Facebook Page.");
       return;
     }
+
     if (!destinationUrl.trim()) {
       setErrorMessage("Please enter a Destination URL.");
       return;
