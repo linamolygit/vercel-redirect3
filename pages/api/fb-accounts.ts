@@ -87,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       id: p.id,
       name: p.name,
       picture: p.picture?.data?.url || "",
-      access_token: p.access_token || accessToken,
+      access_token: p.access_token || "",
       category: p.category || "",
       fan_count: p.fan_count || 0,
     }));
@@ -108,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id: p.id,
             name: p.name,
             picture: p.picture?.data?.url || "",
-            access_token: p.access_token || accessToken,
+            access_token: p.access_token || "",
             category: p.category || "",
             fan_count: p.fan_count || 0,
           }));
@@ -117,6 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.warn("Direct /me/accounts fetch error:", pagesErr?.message);
       }
     }
+
 
     let adAccounts: any[] = (meData.adaccounts?.data || []).map((a: any) => ({
       id: a.id,
