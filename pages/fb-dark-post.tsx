@@ -896,23 +896,15 @@ const FbDarkPost: NextPage = () => {
                           {activeLayout === "video-card" && (
                             <div className="video-card-overlay">
                               <div className="video-bottom-gradient"></div>
-                              <div
-                                className="play-button"
-                                id="playButtonUI"
-                                style={{
-                                  width: 65,
-                                  height: 65,
-                                  backgroundColor: "rgba(0, 0, 0, 0.1)",
-                                }}
-                              >
-                                <svg viewBox="0 0 24 24" style={{ transform: "translateX(-2%)" }}>
+                              <div className="play-button" id="playButtonUI">
+                                <svg viewBox="0 0 24 24">
                                   <path
                                     d="M7 4v16c0 1.5 1.6 2.5 3 1.7l12-8c1.3-.9 1.3-2.6 0-3.5l-12-8C8.6 1.4 7 2.4 7 4z"
                                     fill="currentColor"
                                     stroke="currentColor"
                                     strokeWidth="2"
                                     strokeLinejoin="round"
-                                  ></path>
+                                  />
                                 </svg>
                               </div>
                             </div>
@@ -923,9 +915,10 @@ const FbDarkPost: NextPage = () => {
                 </div>
               )}
 
-              {/* Bottom Display URL strip */}
+              {/* Bottom Display URL strip attached directly */}
               <div className="display-url-strip">{displayUrl || "facebook.com"}</div>
             </div>
+
 
             {/* Grid Layouts Selector Card (Hidden in Single Image Mode) */}
             {!singleImageMode && (
@@ -1391,7 +1384,7 @@ const FbDarkPost: NextPage = () => {
           height: 540px;
           background: #f8fafc;
           border: 2px dashed #cbd5e1;
-          border-radius: 12px;
+          border-radius: 8px 8px 0 0;
           position: relative;
           cursor: pointer;
           display: flex;
@@ -1442,7 +1435,7 @@ const FbDarkPost: NextPage = () => {
           display: grid;
           gap: 2px;
           position: relative;
-          border-radius: 8px;
+          border-radius: 8px 8px 0 0;
           overflow: hidden;
           box-shadow: inset 0 0 0 1px #e2e8f0;
         }
@@ -1589,34 +1582,50 @@ const FbDarkPost: NextPage = () => {
         }
 
         .play-button {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 65px;
+          height: 65px;
+          background: rgba(0, 0, 0, 0.1);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 3px solid rgba(255, 255, 255, 0.9);
           border-radius: 50%;
           display: flex;
-          align-items: center;
           justify-content: center;
-          color: #ffffff;
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
-          backdrop-filter: blur(2px);
-          position: relative;
-          z-index: 2;
+          align-items: center;
+          z-index: 10;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          transition: all 0.2s;
         }
 
         .play-button svg {
-          width: 32px;
-          height: 32px;
+          width: 45%;
+          height: 45%;
+          color: white;
+          fill: white;
+          transition: fill 0.2s, transform 0.2s;
+          transform: translateX(-2%);
+          overflow: visible;
         }
 
         .display-url-strip {
           width: 100%;
           max-width: 540px;
           background: #f1f5f9;
-          border: 1px solid #e2e8f0;
-          padding: 8px 14px;
+          border: 1fr solid #e2e8f0;
+          border-top: none;
+          padding: 10px 14px;
           border-radius: 0 0 8px 8px;
           font-size: 0.78rem;
           color: #64748b;
           text-align: left;
           box-sizing: border-box;
+          margin-top: -3px;
         }
+
 
         /* Layout Picker Card */
         .layout-picker-card {
