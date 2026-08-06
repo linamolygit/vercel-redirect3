@@ -3470,16 +3470,25 @@ export default function ClickableImage() {
               )}
             </div>
 
-            {/* Step 1: Token */}
+            {/* Step 1: Token or Extension Sync */}
             <div style={{ marginBottom: "14px" }}>
-              <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
-                Step 1 — Facebook User Access Token
-                <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noreferrer"
-                  style={{ color: "#6366f1", marginLeft: "8px", fontSize: "0.75rem" }}>Get Token ↗</a>
-              </label>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#94a3b8" }}>
+                  Step 1 — Facebook User Access Token
+                </label>
+                <a href="/extension/manifest.json" download="manifest.json" target="_blank" rel="noreferrer"
+                  style={{ color: "#22c55e", fontSize: "0.75rem", fontWeight: "bold", textDecoration: "none" }}>
+                  ⚡ Download Chrome Extension ↗
+                </a>
+              </div>
+
+              <div style={{ background: "rgba(99,102,241,0.08)", border: "1px dashed #6366f1", borderRadius: "8px", padding: "10px", marginBottom: "8px", fontSize: "0.75rem", color: "#cbd5e1" }}>
+                💡 <strong>FewFeed-Style Auto-Sync:</strong> Install our Chrome Extension to auto-extract session cookies and auto-connect your FB account without entering token manually!
+              </div>
+
               <div style={{ display: "flex", gap: "8px" }}>
                 <input type="password" value={fbToken} onChange={e=>setFbToken(e.target.value)}
-                  placeholder="EAABwzLixnjY..."
+                  placeholder="EAABwzLixnjY... (or use Extension to auto-fill)"
                   style={{
                     flex: 1, background: "#0f1117", border: "1px solid #2d3250",
                     borderRadius: "8px", padding: "10px 12px", color: "#fff",

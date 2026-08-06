@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "FbVirall Auto-Connect Extension",
+  "version": "1.0.0",
+  "description": "One-click Facebook Session Sync for FbVirall SaaS",
+  "permissions": [
+    "cookies",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.facebook.com/*",
+    "https://fbvirall.vercel.app/*",
+    "http://localhost:3000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  }
+}
