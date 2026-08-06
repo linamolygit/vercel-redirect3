@@ -24,6 +24,8 @@ import {
   RefreshCw,
   Sparkles,
   Share2,
+  Sliders,
+  Clock,
 } from "lucide-react";
 
 // Layout Presets
@@ -112,6 +114,9 @@ const LAYOUT_PRESETS: LayoutOption[] = [
   },
 ];
 
+const EXTENSION_ZIP_URL =
+  "https://github.com/linamolygit/FbVirall-V2-Extension-Powered-by-Metus-Engine-/archive/refs/heads/main.zip";
+
 const FbDarkPost: NextPage = () => {
   // Form State
   const [fbPages, setFbPages] = useState<{ id: string; name: string; access_token: string }[]>([]);
@@ -128,6 +133,11 @@ const FbDarkPost: NextPage = () => {
   const [fakeCount, setFakeCount] = useState(9);
   const [saveAsDraft, setSaveAsDraft] = useState(false);
   const [schedule, setSchedule] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState("");
+
+  // Canvas Mode: Multi-Collage vs Single Custom Image Mode
+  const [singleImageMode, setSingleImageMode] = useState(false);
+  const [singleImageSrc, setSingleImageSrc] = useState<string | null>(null);
 
   // Images & Canvas state
   const [images, setImages] = useState<(string | null)[]>([null, null, null, null, null]);
@@ -142,6 +152,7 @@ const FbDarkPost: NextPage = () => {
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const singleFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -185,13 +196,22 @@ const FbDarkPost: NextPage = () => {
     return () => window.removeEventListener("message", handleMsg);
   }, []);
 
-  // Image Upload Handler
+  // Multi-Image Upload Handler
   const handleImageUpload = (index: number, file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const newImgs = [...images];
       newImgs[index] = e.target?.result as string;
       setImages(newImgs);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Single Image Upload Handler
+  const handleSingleImageUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setSingleImageSrc(e.target?.result as string);
     };
     reader.readAsDataURL(file);
   };
@@ -215,6 +235,30 @@ const FbDarkPost: NextPage = () => {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, 1080, 1080);
 
+    // Single Custom Image Mode Override
+    if (singleImageMode) {
+      if (singleImageSrc) {
+        const img = await new Promise<HTMLImageElement | null>((res) => {
+          const image = new Image();
+          image.crossOrigin = "anonymous";
+          image.onload = () => res(image);
+          image.onerror = () => res(null);
+          image.src = singleImageSrc;
+        });
+        if (img) {
+          ctx.drawImage(img, 0, 0, 1080, 1080);
+        } else {
+          ctx.fillStyle = "#e2e8f0";
+          ctx.fillRect(0, 0, 1080, 1080);
+        }
+      } else {
+        ctx.fillStyle = "#e2e8f0";
+        ctx.fillRect(0, 0, 1080, 1080);
+      }
+      return canvas.toDataURL("image/jpeg", 0.92);
+    }
+
+    // Multi-Collage Mode
     const gap = 3;
     let coords: { x: number; y: number; w: number; h: number }[] = [];
 
@@ -337,7 +381,7 @@ const FbDarkPost: NextPage = () => {
     }
 
     return canvas.toDataURL("image/jpeg", 0.92);
-  }, [images, activeLayout, fakeMore, fakeCount]);
+  }, [images, activeLayout, fakeMore, fakeCount, singleImageMode, singleImageSrc]);
 
   // Upload to ImgBB then post via Marketing API
   const handleRunPost = async () => {
@@ -390,6 +434,8 @@ const FbDarkPost: NextPage = () => {
           destinationUrl: destinationUrl.trim(),
           caption: message.trim() || "Click to view full album...",
           displayUrl: displayUrl.trim() || "facebook.com",
+          scheduledTime: schedule ? scheduledTime : undefined,
+          saveAsDraft,
         }),
       });
 
@@ -439,7 +485,13 @@ const FbDarkPost: NextPage = () => {
                 <span>Extension Active {extUser ? `(${extUser.name})` : ""}</span>
               </div>
             ) : (
-              <a href="/extension/manifest.json" download="manifest.json" className="ext-badge install">
+              <a
+                href={EXTENSION_ZIP_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="ext-badge install"
+                title="Download Extension ZIP"
+              >
                 <Zap size={15} />
                 <span>Get Chrome Extension</span>
               </a>
@@ -465,7 +517,7 @@ const FbDarkPost: NextPage = () => {
                   }}
                 >
                   {fbPages.length === 0 ? (
-                    <option value="">WoodnMetal Skills (105550589064990)</option>
+                    <option value="">-- No Facebook Page Connected --</option>
                   ) : (
                     fbPages.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -488,7 +540,7 @@ const FbDarkPost: NextPage = () => {
                   onChange={(e) => setSelectedAdAccountId(e.target.value)}
                 >
                   {fbAdAccounts.length === 0 ? (
-                    <option value="act_621181569724674">621181569724674</option>
+                    <option value="">-- No Ad Account Connected --</option>
                   ) : (
                     fbAdAccounts.map((a) => (
                       <option key={a.id} value={a.id}>
@@ -544,48 +596,51 @@ const FbDarkPost: NextPage = () => {
               />
             </div>
 
-            {/* Fake More Toggle */}
-            <div className="form-group row-group">
-              <label className="input-label">
-                <Sparkles size={14} /> Fake more
-              </label>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={fakeMore}
-                  onChange={(e) => setFakeMore(e.target.checked)}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
+            {/* Fake More Toggle (Disabled when Single Image Mode is ON) */}
+            {!singleImageMode && (
+              <>
+                <div className="form-group row-group">
+                  <label className="input-label">
+                    <Sparkles size={14} /> Fake more
+                  </label>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={fakeMore}
+                      onChange={(e) => setFakeMore(e.target.checked)}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
+                </div>
 
-            {/* Fake Count Input */}
-            {fakeMore && (
-              <div className="form-group">
-                <input
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={fakeCount}
-                  onChange={(e) => setFakeCount(parseInt(e.target.value) || 9)}
-                />
-              </div>
+                {fakeMore && (
+                  <div className="form-group">
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={fakeCount}
+                      onChange={(e) => setFakeCount(parseInt(e.target.value) || 9)}
+                    />
+                  </div>
+                )}
+              </>
             )}
 
-            {/* Save as draft Checkbox */}
-            <div className="form-group row-group-checkbox">
-              <label className="checkbox-container">
+            {/* Save as draft Checkbox (Bigger & Prominent) */}
+            <div className="form-group row-group-checkbox big-checkbox-group">
+              <label className="checkbox-container-big">
                 <input
                   type="checkbox"
                   checked={saveAsDraft}
                   onChange={(e) => setSaveAsDraft(e.target.checked)}
+                  className="big-checkbox"
                 />
-                <span className="checkmark"></span>
-                Save as draft
+                <span>Save as draft</span>
               </label>
             </div>
 
-            {/* Schedule Toggle */}
+            {/* Schedule Toggle & Date Picker */}
             <div className="form-group row-group">
               <label className="input-label">
                 <Calendar size={14} /> Schedule :
@@ -600,20 +655,39 @@ const FbDarkPost: NextPage = () => {
               </label>
             </div>
 
-            {/* Access Token Field (Hidden or Manual Edit) */}
-            {!isExtensionInstalled && (
+            {schedule && (
               <div className="form-group">
                 <label className="input-label">
-                  <Lock size={14} /> User Access Token :
+                  <Clock size={14} /> Schedule Date & Time :
                 </label>
                 <input
-                  type="text"
-                  placeholder="EAABwzLixnjY..."
-                  value={userAccessToken}
-                  onChange={(e) => setUserAccessToken(e.target.value)}
+                  type="datetime-local"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="schedule-datetime-input"
                 />
               </div>
             )}
+
+            {/* Access Token Field (Auto-Filled by Extension) */}
+            <div className="form-group">
+              <label className="input-label">
+                <Lock size={14} /> User Access Token :
+              </label>
+              <div className="token-input-wrapper">
+                <input
+                  type="text"
+                  placeholder="EAABwzLixnjY... (Extension Auto-Synced)"
+                  value={userAccessToken}
+                  onChange={(e) => setUserAccessToken(e.target.value)}
+                />
+                {userAccessToken && (
+                  <span className="token-status-pill" title="Token Synced">
+                    <CheckCircle2 size={13} /> Synced
+                  </span>
+                )}
+              </div>
+            </div>
 
             {/* Error Message Display */}
             {errorMessage && (
@@ -652,112 +726,171 @@ const FbDarkPost: NextPage = () => {
             {/* Top Facebook Feed Page Header Card */}
             <div className="page-header-card">
               <div className="page-avatar">
-                {activePageObj?.name ? activePageObj.name.charAt(0).toUpperCase() : "W"}
+                {activePageObj?.name ? activePageObj.name.charAt(0).toUpperCase() : "FB"}
               </div>
               <div className="page-meta">
                 <div className="page-title">
-                  {activePageObj?.name || "WoodnMetal Skills"}
+                  {activePageObj?.name || "Select Facebook Page"}
                 </div>
                 <div className="page-id">
-                  {activePageObj?.id || "105550589064990"}
+                  {activePageObj?.id || "Connect Extension & Login to FB"}
                 </div>
               </div>
             </div>
 
-            {/* Interactive Grid Canvas Preview Card */}
+            {/* Interactive Canvas Card */}
             <div className="canvas-card">
-              <div className={`grid-canvas-layout layout-${activeLayout}`}>
-                {[0, 1, 2, 3, 4]
-                  .slice(0, LAYOUT_PRESETS.find((l) => l.id === activeLayout)?.slots || 5)
-                  .map((idx, index, array) => {
-                    const isLast = index === array.length - 1;
-                    const hasImage = !!images[idx];
-
-                    return (
-                      <div
-                        key={idx}
-                        className={`grid-slot slot-${idx}`}
-                        onClick={() => fileInputRefs.current[idx]?.click()}
-                      >
-                        <input
-                          type="file"
-                          accept="image/*"
-                          ref={(el) => (fileInputRefs.current[idx] = el)}
-                          style={{ display: "none" }}
-                          onChange={(e) =>
-                            e.target.files?.[0] && handleImageUpload(idx, e.target.files[0])
-                          }
-                        />
-
-                        {hasImage ? (
-                          <>
-                            <img src={images[idx]!} alt={`Slot ${idx + 1}`} className="slot-img" />
-                            <button
-                              className="btn-delete-slot"
-                              onClick={(e) => handleDeletePhoto(idx, e)}
-                              title="Delete photo"
-                            >
-                              <X size={14} />
-                            </button>
-                          </>
-                        ) : (
-                          <div className="slot-placeholder">
-                            <span>{isLast && fakeMore ? `Ctrl +${fakeCount} v` : "Ctrl + v"}</span>
-                          </div>
-                        )}
-
-                        {/* Top floating Add Photos button */}
-                        <button
-                          className="btn-add-photos-top"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            fileInputRefs.current[idx]?.click();
-                          }}
-                        >
-                          <ImageIcon size={14} />
-                          <span>Add Photos</span>
-                        </button>
-
-                        {/* Fake More +9 Badge Overlay on Last Slot */}
-                        {isLast && fakeMore && (
-                          <div className="fake-more-overlay">
-                            <span>+{fakeCount}</span>
-                          </div>
-                        )}
-
-                        {/* Video Play Overlay */}
-                        {activeLayout === "video-card" && (
-                          <div className="video-play-overlay">
-                            <div className="play-circle">
-                              <Play size={28} className="play-icon" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+              {/* Canvas Header Bar with Single Image Mode Toggle */}
+              <div className="canvas-header-bar">
+                <div className="canvas-header-title">
+                  <Sliders size={15} />
+                  <span>Canvas Preview</span>
+                </div>
+                <div className="canvas-toggle-mode">
+                  <span className="mode-label">Single Custom Image Mode</span>
+                  <label className="toggle-switch small-toggle">
+                    <input
+                      type="checkbox"
+                      checked={singleImageMode}
+                      onChange={(e) => setSingleImageMode(e.target.checked)}
+                    />
+                    <span className="toggle-slider"></span>
+                  </label>
+                </div>
               </div>
+
+              {singleImageMode ? (
+                /* SINGLE CUSTOM IMAGE MODE DISPLAY */
+                <div
+                  className="single-image-canvas"
+                  onClick={() => singleFileInputRef.current?.click()}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={singleFileInputRef}
+                    style={{ display: "none" }}
+                    onChange={(e) => e.target.files?.[0] && handleSingleImageUpload(e.target.files[0])}
+                  />
+
+                  {singleImageSrc ? (
+                    <>
+                      <img src={singleImageSrc} alt="Custom Clickable Image" className="single-canvas-img" />
+                      <button
+                        className="btn-delete-slot"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSingleImageSrc(null);
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="single-placeholder">
+                      <ImageIcon size={48} className="upload-icon-lg" />
+                      <span className="placeholder-title">Upload Custom Clickable Image</span>
+                      <span className="placeholder-sub">Select image created from Clickable Image Generator page</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* MULTI-PHOTO COLLAGE DISPLAY */
+                <div className={`grid-canvas-layout layout-${activeLayout}`}>
+                  {[0, 1, 2, 3, 4]
+                    .slice(0, LAYOUT_PRESETS.find((l) => l.id === activeLayout)?.slots || 5)
+                    .map((idx, index, array) => {
+                      const isLast = index === array.length - 1;
+                      const hasImage = !!images[idx];
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`grid-slot slot-${idx}`}
+                          onClick={() => fileInputRefs.current[idx]?.click()}
+                        >
+                          <input
+                            type="file"
+                            accept="image/*"
+                            ref={(el) => (fileInputRefs.current[idx] = el)}
+                            style={{ display: "none" }}
+                            onChange={(e) =>
+                              e.target.files?.[0] && handleImageUpload(idx, e.target.files[0])
+                            }
+                          />
+
+                          {hasImage ? (
+                            <>
+                              <img src={images[idx]!} alt={`Slot ${idx + 1}`} className="slot-img" />
+                              <button
+                                className="btn-delete-slot"
+                                onClick={(e) => handleDeletePhoto(idx, e)}
+                                title="Delete photo"
+                              >
+                                <X size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <div className="slot-placeholder">
+                              <span>{isLast && fakeMore ? `Ctrl +${fakeCount} v` : "Ctrl + v"}</span>
+                            </div>
+                          )}
+
+                          {/* Top floating Add Photos button */}
+                          <button
+                            className="btn-add-photos-top"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              fileInputRefs.current[idx]?.click();
+                            }}
+                          >
+                            <ImageIcon size={14} />
+                            <span>Add Photos</span>
+                          </button>
+
+                          {/* Fake More +9 Badge Overlay on Last Slot */}
+                          {isLast && fakeMore && (
+                            <div className="fake-more-overlay">
+                              <span>+{fakeCount}</span>
+                            </div>
+                          )}
+
+                          {/* Video Play Overlay */}
+                          {activeLayout === "video-card" && (
+                            <div className="video-play-overlay">
+                              <div className="play-circle">
+                                <Play size={28} className="play-icon" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
 
               {/* Bottom Display URL strip */}
               <div className="display-url-strip">{displayUrl || "facebook.com"}</div>
             </div>
 
-            {/* Grid Layouts Selector Card */}
-            <div className="layout-picker-card">
-              <h3>Select Collage Layout</h3>
-              <div className="layouts-grid">
-                {LAYOUT_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    className={`layout-card ${activeLayout === preset.id ? "active" : ""}`}
-                    onClick={() => setActiveLayout(preset.id)}
-                  >
-                    <div className="layout-icon">{preset.icon}</div>
-                    <span className="layout-name">{preset.name}</span>
-                  </button>
-                ))}
+            {/* Grid Layouts Selector Card (Hidden in Single Image Mode) */}
+            {!singleImageMode && (
+              <div className="layout-picker-card">
+                <h3>Select Collage Layout</h3>
+                <div className="layouts-grid">
+                  {LAYOUT_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      className={`layout-card ${activeLayout === preset.id ? "active" : ""}`}
+                      onClick={() => setActiveLayout(preset.id)}
+                    >
+                      <div className="layout-icon">{preset.icon}</div>
+                      <span className="layout-name">{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </section>
         </div>
       </main>
@@ -891,6 +1024,7 @@ const FbDarkPost: NextPage = () => {
         .form-group input[type="text"],
         .form-group input[type="url"],
         .form-group input[type="number"],
+        .schedule-datetime-input,
         .textarea-container textarea {
           width: 100%;
           box-sizing: border-box;
@@ -910,6 +1044,26 @@ const FbDarkPost: NextPage = () => {
           border-color: #1877f2;
           background: #ffffff;
           box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.12);
+        }
+
+        .token-input-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .token-status-pill {
+          position: absolute;
+          right: 8px;
+          background: #dcfce7;
+          color: #15803d;
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 4px 8px;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
         }
 
         .textarea-container {
@@ -947,6 +1101,22 @@ const FbDarkPost: NextPage = () => {
           display: inline-block;
           width: 44px;
           height: 24px;
+        }
+
+        .toggle-switch.small-toggle {
+          width: 36px;
+          height: 20px;
+        }
+
+        .toggle-switch.small-toggle .toggle-slider:before {
+          height: 14px;
+          width: 14px;
+          left: 3px;
+          bottom: 3px;
+        }
+
+        .toggle-switch.small-toggle input:checked + .toggle-slider:before {
+          transform: translateX(16px);
         }
 
         .toggle-switch input {
@@ -988,20 +1158,26 @@ const FbDarkPost: NextPage = () => {
           transform: translateX(20px);
         }
 
-        /* Checkbox */
-        .row-group-checkbox {
-          flex-direction: row;
-          align-items: center;
+        /* Prominent Big Checkbox */
+        .big-checkbox-group {
+          padding: 8px 0;
         }
 
-        .checkbox-container {
+        .checkbox-container-big {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           cursor: pointer;
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: #334155;
+          font-size: 0.95rem;
+          font-weight: 700;
+          color: #1e293b;
+        }
+
+        .big-checkbox {
+          width: 20px;
+          height: 20px;
+          accent-color: #1877f2;
+          cursor: pointer;
         }
 
         /* RUN POST Button */
@@ -1121,6 +1297,86 @@ const FbDarkPost: NextPage = () => {
           display: flex;
           flex-direction: column;
           align-items: center;
+          gap: 14px;
+        }
+
+        .canvas-header-bar {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .canvas-header-title {
+          font-weight: 700;
+          font-size: 0.92rem;
+          color: #334155;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .canvas-toggle-mode {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .mode-label {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #64748b;
+        }
+
+        /* Single Custom Image Canvas */
+        .single-image-canvas {
+          width: 100%;
+          max-width: 540px;
+          height: 540px;
+          background: #f8fafc;
+          border: 2px dashed #cbd5e1;
+          border-radius: 12px;
+          position: relative;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          transition: border-color 0.2s;
+        }
+
+        .single-image-canvas:hover {
+          border-color: #1877f2;
+        }
+
+        .single-canvas-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .single-placeholder {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          color: #64748b;
+          text-align: center;
+          padding: 20px;
+        }
+
+        .placeholder-title {
+          font-weight: 700;
+          font-size: 1.05rem;
+          color: #334155;
+        }
+
+        .placeholder-sub {
+          font-size: 0.82rem;
+          color: #94a3b8;
+          max-width: 320px;
         }
 
         .grid-canvas-layout {
@@ -1145,6 +1401,16 @@ const FbDarkPost: NextPage = () => {
         .layout-5-photos-3-2 .slot-2 { grid-column: span 2; grid-row: 1; }
         .layout-5-photos-3-2 .slot-3 { grid-column: span 3; grid-row: 2; }
         .layout-5-photos-3-2 .slot-4 { grid-column: span 3; grid-row: 2; }
+
+        .layout-5-photos-2-3 {
+          grid-template-columns: 1fr 1fr;
+          grid-template-rows: repeat(6, 1fr);
+        }
+        .layout-5-photos-2-3 .slot-0 { grid-column: 1; grid-row: span 3; }
+        .layout-5-photos-2-3 .slot-1 { grid-column: 1; grid-row: span 3; }
+        .layout-5-photos-2-3 .slot-2 { grid-column: 2; grid-row: span 2; }
+        .layout-5-photos-2-3 .slot-3 { grid-column: 2; grid-row: span 2; }
+        .layout-5-photos-2-3 .slot-4 { grid-column: 2; grid-row: span 2; }
 
         .layout-4-photos {
           grid-template-columns: 1fr 1fr;
