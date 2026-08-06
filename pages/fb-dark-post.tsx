@@ -489,11 +489,14 @@ const FbDarkPost: NextPage = () => {
       if (imgUrl) {
         const img = await new Promise<HTMLImageElement | null>((res) => {
           const image = new Image();
-          image.crossOrigin = "anonymous";
+          if (imgUrl.startsWith("http")) {
+            image.crossOrigin = "anonymous";
+          }
           image.onload = () => res(image);
           image.onerror = () => res(null);
           image.src = imgUrl;
         });
+
         if (img) {
           const imgAspect = img.width / img.height;
           const slotAspect = c.w / c.h;

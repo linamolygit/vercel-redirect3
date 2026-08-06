@@ -156,7 +156,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         console.log("FB Post Step 1 (Buffer Method): Uploading 1:1 Unpublished Photo via Buffer...");
         const formData = new FormData();
-        formData.append("source", imageBuffer, { filename: "square-card.png" });
+        formData.append("source", imageBuffer, {
+          filename: "square-card.jpg",
+          contentType: "image/jpeg",
+        });
         formData.append("published", "false");
         formData.append("access_token", token);
 
@@ -173,6 +176,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           break;
         }
       } catch (photoUploadErr: any) {
+
         if (photoUploadErr?.response?.data?.error) lastFbError = photoUploadErr.response.data.error;
         console.warn(
           `Photo upload via Buffer failed with token (${token.slice(0, 10)}...):`,
