@@ -163,6 +163,23 @@ const FbDarkPost: NextPage = () => {
   const [isBatchFilling, setIsBatchFilling] = useState<boolean>(false);
   const [activeFillingSlot, setActiveFillingSlot] = useState<number | null>(null);
 
+  // Drag-and-Drop Slot Swap States
+  const [draggedSlotIndex, setDraggedSlotIndex] = useState<number | null>(null);
+  const [dragOverSlotIndex, setDragOverSlotIndex] = useState<number | null>(null);
+
+  const handleSwapSlots = (fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx || isNaN(fromIdx) || isNaN(toIdx)) return;
+    setImages((prev) => {
+      const copy = [...prev];
+      const temp = copy[fromIdx];
+      copy[fromIdx] = copy[toIdx];
+      copy[toIdx] = temp;
+      return copy;
+    });
+    showToast(`Swapped photo Slot ${fromIdx + 1} ↔ Slot ${toIdx + 1}!`, "success");
+  };
+
+
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -1055,10 +1072,33 @@ const FbDarkPost: NextPage = () => {
                       return (
                         <div
                           key={idx}
-                          className={`grid-slot slot-${idx} ${isAnimatingSlot ? "filling-active-pulse" : ""}`}
-
+                          draggable={hasImage}
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData("text/plain", idx.toString());
+                            setDraggedSlotIndex(idx);
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                          }}
+                          onDragEnter={(e) => {
+                            e.preventDefault();
+                            setDragOverSlotIndex(idx);
+                          }}
+                          onDragLeave={() => setDragOverSlotIndex(null)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const sourceIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+                            handleSwapSlots(sourceIdx, idx);
+                            setDraggedSlotIndex(null);
+                            setDragOverSlotIndex(null);
+                          }}
+                          className={`grid-slot slot-${idx} ${isAnimatingSlot ? "filling-active-pulse" : ""} ${
+                            draggedSlotIndex === idx ? "dragging-source" : ""
+                          } ${dragOverSlotIndex === idx && draggedSlotIndex !== idx ? "drag-target-over" : ""}`}
                           onClick={() => fileInputRefs.current[idx]?.click()}
                         >
+
                           <input
                             type="file"
                             accept="image/*"
@@ -1858,10 +1898,24 @@ const FbDarkPost: NextPage = () => {
           animation: slotPulse 0.4s infinite alternate;
         }
 
+        /* Drag and Drop Slot Swap Styles */
+        .grid-slot.dragging-source {
+          opacity: 0.4;
+          transform: scale(0.96);
+          border: 2px dashed var(--primary);
+        }
+
+        .grid-slot.drag-target-over {
+          box-shadow: 0 0 0 3px #22c55e, 0 0 20px rgba(34, 197, 94, 0.6);
+          transform: scale(1.02);
+          z-index: 20;
+        }
+
         @keyframes slotPulse {
           0% { opacity: 0.7; transform: scale(0.98); }
           100% { opacity: 1; transform: scale(1); }
         }
+
 
 
         .canvas-toggle-mode {
