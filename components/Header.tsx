@@ -58,6 +58,9 @@ export default function Header() {
         <Link href="/">
           <a className={`nav-item ${router.pathname === "/" ? "active" : ""}`}>Dashboard</a>
         </Link>
+        <Link href="/fb-dark-post">
+          <a className={`nav-item ${router.pathname === "/fb-dark-post" ? "active" : ""}`}>🚀 FB Dark Post</a>
+        </Link>
         <Link href="/clickable-image">
           <a className={`nav-item ${router.pathname === "/clickable-image" ? "active" : ""}`}>Mockup Gen</a>
         </Link>
