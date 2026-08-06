@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import jwt from "jsonwebtoken";
 import { query, initDb } from "../../../lib/db";
+import axios from "axios";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key_linkpika_2026";
 
@@ -27,13 +28,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let finalAccessToken = accessToken ? accessToken.trim() : "";
     let fbUser: any = null;
+    let pages: any[] = [];
+    let adAccounts: any[] = [];
 
-    // If Access Token provided, validate with Facebook Graph API /me
+    // If Access Token provided, fetch profile + pages + ad accounts via single nested Graph API query
     if (finalAccessToken) {
-      const meRes = await fetch(`https://graph.facebook.com/v19.0/me?fields=id,name,picture.type(large){url}&access_token=${encodeURIComponent(finalAccessToken)}`);
-      const meData = await meRes.json();
-      if (meData.id) {
-        fbUser = meData;
+      try {
+        const meRes = await axios.get("https://graph.facebook.com/v19.0/me", {
+          params: {
+            fields: "id,name,picture.type(large),accounts{id,name,picture.type(small),access_token,category,fan_count},adaccounts{id,account_id,name,account_status,currency}",
+            access_token: finalAccessToken,
+          },
+        });
+
+        const data = meRes.data || {};
+        fbUser = {
+          id: data.id,
+          name: data.name,
+          profilePic: data.picture?.data?.url,
+        };
+
+        pages = (data.accounts?.data || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          picture: p.picture?.data?.url || "",
+          access_token: p.access_token,
+          category: p.category || "",
+          fan_count: p.fan_count || 0,
+        }));
+
+        adAccounts = (data.adaccounts?.data || []).map((a: any) => ({
+          id: a.id,
+          accountId: a.account_id || a.id,
+          name: a.name || a.id,
+          status: a.account_status,
+          currency: a.currency || "",
+        }));
+      } catch (err: any) {
+        console.warn("FB Token validation error:", err.message);
       }
     }
 
@@ -62,21 +94,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
       } catch (err) {
         console.warn("JWT Verification failed during FB credentials save:", err);
-      }
-    }
-
-    // Fetch FB Pages & Ad Accounts if token exists
-    let pages: any[] = [];
-    let adAccounts: any[] = [];
-
-    if (finalAccessToken) {
-      try {
-        const accRes = await fetch(`${req.headers.origin || "http://localhost:3000"}/api/fb-accounts?token=${encodeURIComponent(finalAccessToken)}`);
-        const accData = await accRes.json();
-        if (accData.pages) pages = accData.pages;
-        if (accData.adAccounts) adAccounts = accData.adAccounts;
-      } catch (err) {
-        console.warn("FB Accounts fetch error:", err);
       }
     }
 

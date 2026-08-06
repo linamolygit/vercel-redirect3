@@ -119,7 +119,7 @@ const EXTENSION_ZIP_URL =
 
 const FbDarkPost: NextPage = () => {
   // Form State
-  const [fbPages, setFbPages] = useState<{ id: string; name: string; access_token: string }[]>([]);
+  const [fbPages, setFbPages] = useState<{ id: string; name: string; access_token: string; picture?: string }[]>([]);
   const [fbAdAccounts, setFbAdAccounts] = useState<{ id: string; name: string }[]>([]);
   const [selectedPageId, setSelectedPageId] = useState("");
   const [selectedPageToken, setSelectedPageToken] = useState("");
@@ -782,9 +782,13 @@ const FbDarkPost: NextPage = () => {
           <section className="preview-main">
             {/* Top Facebook Feed Page Header Card */}
             <div className="page-header-card">
-              <div className="page-avatar">
-                {activePageObj?.name ? activePageObj.name.charAt(0).toUpperCase() : "FB"}
-              </div>
+              {activePageObj?.picture ? (
+                <img src={activePageObj.picture} alt={activePageObj.name} className="page-avatar-img" />
+              ) : (
+                <div className="page-avatar">
+                  {activePageObj?.name ? activePageObj.name.charAt(0).toUpperCase() : "FB"}
+                </div>
+              )}
               <div className="page-meta">
                 <div className="page-title">
                   {activePageObj?.name || "Select Facebook Page"}
@@ -794,6 +798,7 @@ const FbDarkPost: NextPage = () => {
                 </div>
               </div>
             </div>
+
 
             {/* Interactive Canvas Card */}
             <div className="canvas-card">
@@ -1336,6 +1341,14 @@ const FbDarkPost: NextPage = () => {
           gap: 14px;
         }
 
+        .page-avatar-img {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid var(--primary);
+        }
+
         .page-avatar {
           width: 44px;
           height: 44px;
@@ -1348,6 +1361,7 @@ const FbDarkPost: NextPage = () => {
           align-items: center;
           justify-content: center;
         }
+
 
         .page-title {
           font-weight: 700;

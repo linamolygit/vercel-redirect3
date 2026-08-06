@@ -213,9 +213,13 @@ const FbConnect: NextPage = () => {
                     <div className="pages-list">
                       {connectedPages.map((page) => (
                         <div key={page.id} className="page-item-card">
-                          <div className="page-item-icon">
-                            {page.name.charAt(0).toUpperCase()}
-                          </div>
+                          {page.picture ? (
+                            <img src={page.picture} alt={page.name} className="page-item-img" />
+                          ) : (
+                            <div className="page-item-icon">
+                              {page.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                           <div className="page-item-details">
                             <div className="page-item-name">{page.name}</div>
                             <div className="page-item-meta">
@@ -607,6 +611,14 @@ const FbConnect: NextPage = () => {
           background: var(--input-bg);
           border: 1px solid var(--glass-border);
           border-radius: var(--radius-sm);
+        }
+
+        .page-item-img {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 1px solid var(--glass-border);
         }
 
         .page-item-icon {
