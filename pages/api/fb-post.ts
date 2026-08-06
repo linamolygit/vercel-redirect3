@@ -125,12 +125,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let photoId: string | null = null;
 
-    // Try uploading photo with token sequence
+    // Try uploading photo with token sequence (URL method first, then multipart source buffer)
     for (const token of uniqueTokens) {
+      if (publicImageUrl) {
+        try {
+          console.log("FB Post Step 1 (URL Method): Uploading 1:1 Unpublished Photo via URL...");
+          const photoUrlParams = new URLSearchParams();
+          photoUrlParams.append("url", publicImageUrl);
+          photoUrlParams.append("published", "false");
+          photoUrlParams.append("access_token", token);
+
+          const photoRes = await axios.post(`${FB_BASE}/${pageId}/photos`, photoUrlParams, {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              ...customHeaders,
+            },
+            timeout: 30000,
+          });
+          photoId = photoRes.data?.id || null;
+          if (photoId) {
+            console.log("FB Post Step 1 (URL Method) SUCCESS! Got 1:1 Photo ID =", photoId);
+            break;
+          }
+        } catch (urlErr: any) {
+          if (urlErr?.response?.data?.error) lastFbError = urlErr.response.data.error;
+          console.warn("Photo upload via URL parameter failed, trying multipart buffer...", urlErr?.response?.data || urlErr?.message);
+        }
+      }
+
       try {
-        console.log("FB Post Step 1: Uploading Unpublished Photo to Page...");
+        console.log("FB Post Step 1 (Buffer Method): Uploading 1:1 Unpublished Photo via Buffer...");
         const formData = new FormData();
-        formData.append("source", imageBuffer, { filename: "card-image.png" });
+        formData.append("source", imageBuffer, { filename: "square-card.png" });
         formData.append("published", "false");
         formData.append("access_token", token);
 
@@ -143,17 +169,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         photoId = photoRes.data?.id || null;
         if (photoId) {
-          console.log("FB Post Step 1 SUCCESS! Got Photo ID =", photoId);
+          console.log("FB Post Step 1 (Buffer Method) SUCCESS! Got 1:1 Photo ID =", photoId);
           break;
         }
       } catch (photoUploadErr: any) {
         if (photoUploadErr?.response?.data?.error) lastFbError = photoUploadErr.response.data.error;
         console.warn(
-          `Photo upload to /photos failed with token prefix (${token.slice(0, 10)}...):`,
+          `Photo upload via Buffer failed with token (${token.slice(0, 10)}...):`,
           photoUploadErr?.response?.data || photoUploadErr?.message
         );
       }
     }
+
 
     // STEP 2A: Create Dark Feed Link Post (published: false + object_attachment)
     if (photoId) {
