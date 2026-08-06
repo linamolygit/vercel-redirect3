@@ -180,6 +180,22 @@ export default function ClickableImage() {
   const [isDraggingCustomImg, setIsDraggingCustomImg] = useState(false);
   const [uploadingCustomImg, setUploadingCustomImg] = useState(false);
 
+  // ─── FB One Card Auto-Poster state ────────────────────────────────────────
+  const [showFbModal, setShowFbModal] = useState(false);
+  const [fbToken, setFbToken] = useState("");
+  const [fbPages, setFbPages] = useState<{id:string;name:string;access_token:string}[]>([]);
+  const [fbAdAccounts, setFbAdAccounts] = useState<{id:string;name:string}[]>([]);
+  const [fbSelectedPage, setFbSelectedPage] = useState("");
+  const [fbSelectedPageToken, setFbSelectedPageToken] = useState("");
+  const [fbSelectedAd, setFbSelectedAd] = useState("");
+  const [fbCaption, setFbCaption] = useState("");
+  const [fbDestUrl, setFbDestUrl] = useState("");
+  const [fbLoadingAccounts, setFbLoadingAccounts] = useState(false);
+  const [fbPosting, setFbPosting] = useState(false);
+  const [fbPostResult, setFbPostResult] = useState<{postId:string;postUrl:string}|null>(null);
+  const [fbError, setFbError] = useState("");
+  const [fbTokenCopied, setFbTokenCopied] = useState(false);
+
   // Drag state
   const [dragOver, setDragOver] = useState<number | null>(null);
 
@@ -816,6 +832,70 @@ export default function ClickableImage() {
     setTimeout(() => setCopiedImgUrl(false), 2000);
   };
 
+  // ─── FB One Card: Fetch FB Pages + Ad Accounts ──────────────────────────
+  const handleFetchFbAccounts = async () => {
+    if (!fbToken.trim()) {
+      setFbError("Please enter your Facebook Access Token first.");
+      return;
+    }
+    setFbLoadingAccounts(true);
+    setFbError("");
+    try {
+      const res = await fetch(`/api/fb-accounts?token=${encodeURIComponent(fbToken.trim())}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch FB accounts");
+      setFbPages(data.pages || []);
+      setFbAdAccounts(data.adAccounts || []);
+      if (data.pages?.length > 0) {
+        setFbSelectedPage(data.pages[0].id);
+        setFbSelectedPageToken(data.pages[0].access_token);
+      }
+      if (data.adAccounts?.length > 0) setFbSelectedAd(data.adAccounts[0].id);
+    } catch (err: any) {
+      setFbError(err.message || "Could not load FB accounts");
+    } finally {
+      setFbLoadingAccounts(false);
+    }
+  };
+
+  // ─── FB One Card: Post to Facebook ──────────────────────────────────────
+  const handleFbPost = async () => {
+    if (!collageImageUrl) {
+      setFbError("Please upload your image to ImgBB first (use the Upload button above).");
+      return;
+    }
+    if (!fbToken.trim() || !fbSelectedPage || !fbSelectedAd || !fbDestUrl.trim() || !fbCaption.trim()) {
+      setFbError("Please fill all fields and fetch your FB accounts first.");
+      return;
+    }
+    setFbPosting(true);
+    setFbError("");
+    setFbPostResult(null);
+    try {
+      const res = await fetch("/api/fb-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userAccessToken: fbToken.trim(),
+          pageId: fbSelectedPage,
+          pageAccessToken: fbSelectedPageToken,
+          adAccountId: fbSelectedAd,
+          imageUrl: collageImageUrl,
+          destinationUrl: fbDestUrl.trim(),
+          caption: fbCaption.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "FB Post failed");
+      setFbPostResult({ postId: data.postId, postUrl: data.postUrl });
+      showFaceToast("✅ Posted to Facebook successfully!", "success");
+    } catch (err: any) {
+      setFbError(err.message || "Post failed");
+    } finally {
+      setFbPosting(false);
+    }
+  };
+
   // Convert: upload collage to ImgBB then create redirect
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1397,6 +1477,38 @@ export default function ClickableImage() {
                 </div>
               </div>
             )}
+
+            {/* 🚀 FB One Card Auto-Post Trigger */}
+            <div style={{ marginTop: "8px", marginBottom: "4px" }}>
+              <button
+                type="button"
+                onClick={() => { setShowFbModal(true); setFbError(""); setFbPostResult(null); }}
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: "linear-gradient(135deg, #1877f2 0%, #1565c0 100%)",
+                  color: "#fff",
+                  fontSize: "0.92rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  boxShadow: "0 4px 20px rgba(24,119,242,0.35)",
+                  transition: "transform 0.15s, opacity 0.15s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
+                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                🚀 Post to Facebook (One Card V2)
+              </button>
+            </div>
 
             {/* Redirect Form - Dashboard Style */}
             <div className="redirect-form-card">
@@ -3319,6 +3431,178 @@ export default function ClickableImage() {
           opacity: 0.9;
         }
       `}</style>
+
+      {/* ─── FB One Card Auto-Poster Modal ─────────────────────────────────── */}
+      {showFbModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+        }} onClick={(e) => { if (e.target === e.currentTarget) setShowFbModal(false); }}>
+          <div style={{
+            background: "#1a1d2e", borderRadius: "16px", padding: "28px",
+            width: "100%", maxWidth: "540px", maxHeight: "90vh", overflowY: "auto",
+            border: "1px solid #2d3250", boxShadow: "0 24px 60px rgba(0,0,0,0.6)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+              <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+                <span>🚀</span> Post to Facebook
+              </h2>
+              <button onClick={() => setShowFbModal(false)}
+                style={{ background: "none", border: "none", color: "#aaa", fontSize: "1.4rem", cursor: "pointer", lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Image Ready Banner */}
+            <div style={{
+              background: collageImageUrl ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+              border: `1px solid ${collageImageUrl ? "#22c55e" : "#ef4444"}`,
+              borderRadius: "10px", padding: "10px 14px", marginBottom: "18px",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
+            }}>
+              <span style={{ color: collageImageUrl ? "#22c55e" : "#ef4444", fontSize: "0.83rem", wordBreak: "break-all" }}>
+                {collageImageUrl ? `✅ Image Ready: ${collageImageUrl.substring(0, 50)}...` : "❌ No image uploaded yet. Use the Upload ↑ button first."}
+              </span>
+              {collageImageUrl && (
+                <button onClick={() => { navigator.clipboard.writeText(collageImageUrl); setFbTokenCopied(true); setTimeout(()=>setFbTokenCopied(false),1500); }}
+                  style={{ background: "#22c55e", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+                  {fbTokenCopied ? "Copied!" : "Copy"}
+                </button>
+              )}
+            </div>
+
+            {/* Step 1: Token */}
+            <div style={{ marginBottom: "14px" }}>
+              <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>
+                Step 1 — Facebook User Access Token
+                <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noreferrer"
+                  style={{ color: "#6366f1", marginLeft: "8px", fontSize: "0.75rem" }}>Get Token ↗</a>
+              </label>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input type="password" value={fbToken} onChange={e=>setFbToken(e.target.value)}
+                  placeholder="EAABwzLixnjY..."
+                  style={{
+                    flex: 1, background: "#0f1117", border: "1px solid #2d3250",
+                    borderRadius: "8px", padding: "10px 12px", color: "#fff",
+                    fontSize: "0.83rem", outline: "none", fontFamily: "monospace"
+                  }} />
+                <button onClick={handleFetchFbAccounts} disabled={fbLoadingAccounts}
+                  style={{
+                    background: "#6366f1", color: "#fff", border: "none", borderRadius: "8px",
+                    padding: "10px 14px", fontSize: "0.82rem", fontWeight: 600,
+                    cursor: fbLoadingAccounts ? "not-allowed" : "pointer", whiteSpace: "nowrap"
+                  }}>
+                  {fbLoadingAccounts ? "Loading..." : "Fetch ▼"}
+                </button>
+              </div>
+            </div>
+
+            {/* Step 2: Page + Ad Account */}
+            {fbPages.length > 0 && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>Facebook Page</label>
+                    <select value={fbSelectedPage}
+                      onChange={e => {
+                        setFbSelectedPage(e.target.value);
+                        const pg = fbPages.find(p=>p.id===e.target.value);
+                        if (pg) setFbSelectedPageToken(pg.access_token);
+                      }}
+                      style={{
+                        width: "100%", background: "#0f1117", border: "1px solid #2d3250",
+                        borderRadius: "8px", padding: "10px 12px", color: "#fff", fontSize: "0.83rem"
+                      }}>
+                      {fbPages.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>Ad Account</label>
+                    <select value={fbSelectedAd} onChange={e=>setFbSelectedAd(e.target.value)}
+                      style={{
+                        width: "100%", background: "#0f1117", border: "1px solid #2d3250",
+                        borderRadius: "8px", padding: "10px 12px", color: "#fff", fontSize: "0.83rem"
+                      }}>
+                      {fbAdAccounts.map(a=><option key={a.id} value={a.id}>{a.name || a.id}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Destination URL */}
+                <div style={{ marginBottom: "14px" }}>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>Destination URL (click target)</label>
+                  <input type="url" value={fbDestUrl} onChange={e=>setFbDestUrl(e.target.value)}
+                    placeholder={resultUrl || "https://fbvirall.vercel.app/abc123"}
+                    style={{
+                      width: "100%", boxSizing: "border-box", background: "#0f1117",
+                      border: "1px solid #2d3250", borderRadius: "8px", padding: "10px 12px",
+                      color: "#fff", fontSize: "0.83rem", outline: "none"
+                    }} />
+                  {resultUrl && <div style={{ fontSize: "0.75rem", color: "#6366f1", marginTop: "4px", cursor: "pointer" }}
+                    onClick={() => setFbDestUrl(resultUrl)}>↑ Auto-fill: {resultUrl}</div>}
+                </div>
+
+                {/* Caption */}
+                <div style={{ marginBottom: "18px" }}>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#94a3b8", marginBottom: "6px" }}>Post Caption / Message</label>
+                  <textarea value={fbCaption} onChange={e=>setFbCaption(e.target.value)} rows={3}
+                    placeholder={customTitle || "🔥 Amazing tips for wood crafting! Click to see all photos..."}
+                    style={{
+                      width: "100%", boxSizing: "border-box", background: "#0f1117",
+                      border: "1px solid #2d3250", borderRadius: "8px", padding: "10px 12px",
+                      color: "#fff", fontSize: "0.83rem", resize: "vertical", outline: "none",
+                      fontFamily: "inherit"
+                    }} />
+                  {customTitle && <div style={{ fontSize: "0.75rem", color: "#6366f1", marginTop: "4px", cursor: "pointer" }}
+                    onClick={() => setFbCaption(customTitle)}>↑ Auto-fill from title: "{customTitle.substring(0,60)}..."</div>}
+                </div>
+
+                {/* Error */}
+                {fbError && <div style={{
+                  background: "rgba(239,68,68,0.12)", border: "1px solid #ef4444",
+                  borderRadius: "8px", padding: "10px 14px", marginBottom: "14px",
+                  color: "#ef4444", fontSize: "0.82rem"
+                }}>{fbError}</div>}
+
+                {/* Success */}
+                {fbPostResult && <div style={{
+                  background: "rgba(34,197,94,0.12)", border: "1px solid #22c55e",
+                  borderRadius: "8px", padding: "12px 14px", marginBottom: "14px",
+                }}>
+                  <div style={{ color: "#22c55e", fontWeight: 700, marginBottom: "6px" }}>✅ Posted Successfully!</div>
+                  <a href={fbPostResult.postUrl} target="_blank" rel="noreferrer"
+                    style={{ color: "#6366f1", fontSize: "0.83rem", wordBreak: "break-all" }}>
+                    {fbPostResult.postUrl}
+                  </a>
+                </div>}
+
+                {/* Post Button */}
+                <button onClick={handleFbPost} disabled={fbPosting}
+                  style={{
+                    width: "100%", padding: "14px", borderRadius: "10px", border: "none",
+                    background: fbPosting ? "#3a3d60" : "linear-gradient(135deg, #1877f2, #1565c0)",
+                    color: "#fff", fontSize: "1rem", fontWeight: 700, cursor: fbPosting ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                    transition: "opacity 0.2s",
+                  }}>
+                  {fbPosting ? (
+                    <><span style={{ display: "inline-block", width: "16px", height: "16px", border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                    Posting to Facebook...</>
+                  ) : (
+                    <>🚀 POST TO FACEBOOK NOW</>
+                  )}
+                </button>
+              </>
+            )}
+
+            {/* If no accounts fetched yet */}
+            {fbPages.length === 0 && !fbLoadingAccounts && (
+              <div style={{ color: "#64748b", fontSize: "0.83rem", textAlign: "center", padding: "16px 0" }}>
+                Enter your access token above and click <strong style={{ color: "#fff" }}>Fetch ▼</strong> to load your Pages & Ad Accounts.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

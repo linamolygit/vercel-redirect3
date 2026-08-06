@@ -38,6 +38,9 @@ export async function initDb() {
       password_hash VARCHAR(255) NOT NULL,
       reset_token VARCHAR(255) NULL,
       reset_token_expiry TIMESTAMP NULL,
+      fb_access_token TEXT NULL,
+      fb_page_id VARCHAR(50) NULL,
+      fb_ad_account_id VARCHAR(50) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
@@ -86,6 +89,15 @@ export async function initDb() {
     } catch (e) {}
     try {
       await query("ALTER TABLE users ADD COLUMN username VARCHAR(255) NULL UNIQUE");
+    } catch (e) {}
+    try {
+      await query("ALTER TABLE users ADD COLUMN fb_access_token TEXT NULL");
+    } catch (e) {}
+    try {
+      await query("ALTER TABLE users ADD COLUMN fb_page_id VARCHAR(50) NULL");
+    } catch (e) {}
+    try {
+      await query("ALTER TABLE users ADD COLUMN fb_ad_account_id VARCHAR(50) NULL");
     } catch (e) {}
     
     // 2. Create redirects table (depends on users table)
