@@ -3553,7 +3553,7 @@ export default function ClickableImage() {
                       fontFamily: "inherit"
                     }} />
                   {customTitle && <div style={{ fontSize: "0.75rem", color: "#6366f1", marginTop: "4px", cursor: "pointer" }}
-                    onClick={() => setFbCaption(customTitle)}>↑ Auto-fill from title: "{customTitle.substring(0,60)}..."</div>}
+                    onClick={() => setFbCaption(customTitle)}>↑ Auto-fill from title: &quot;{customTitle.substring(0,60)}...&quot;</div>}
                 </div>
 
                 {/* Error */}
