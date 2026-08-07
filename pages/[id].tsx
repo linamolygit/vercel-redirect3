@@ -79,7 +79,10 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   // For real users (non-crawlers), we want the redirect to fire as fast as
   // possible. We still need the destination URL from DB, but we skip initDb()
   // on hot paths by using the dbReady flag.
-  const crawlerDetected = isCrawler(userAgent) || isFacebookReferer(referer) || !!fbclid;
+  // Strictly check if request User-Agent is an OpenGraph crawler bot.
+  // Real humans from Facebook (with referer or fbclid) are NOT crawlers and must get instant 302 redirect!
+  const crawlerDetected = isCrawler(userAgent);
+
 
   try {
     // Only run initDb() once per lambda cold-start

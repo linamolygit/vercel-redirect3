@@ -661,7 +661,7 @@ const FbDarkPost: NextPage = () => {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 originalUrl: destinationUrl.trim(),
-                // No customImage here — we'll set it via update-redirect-og below
+                customImage: imageUrl,
               }),
             });
             const createData = await createRes.json();
