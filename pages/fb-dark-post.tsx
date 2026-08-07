@@ -622,33 +622,68 @@ const FbDarkPost: NextPage = () => {
       }
 
       // ── Step 2: Metus Bridge Link Architecture ───────────────────────────────
-      // If destinationUrl is a SaaS bridge link (fbvirall.vercel.app/shortId),
-      // update its og_image_processed_url to our canvas image BEFORE posting.
-      // This makes Facebook scraper see the 1:1 canvas image and create a
-      // pure clickable square card (exactly like Metus.vn One Card V2).
+      // Goal: Post to Facebook with a bridge link whose og:image = our canvas.
+      // Case A: destinationUrl is already a SaaS bridge link → just update OG image.
+      // Case B: destinationUrl is an external URL → auto-create a bridge link first.
+      // In both cases, Engine 0 in fb-post.ts posts link: bridgeLink so Facebook
+      // scrapes our canvas image and creates a pure 1:1 clickable square card.
+      let effectiveBridgeLink = destinationUrl.trim();
+      let effectiveDisplayUrl = displayUrl.trim() || "facebook.com";
+
       if (imageUrl) {
         try {
           const parsedUrl = new URL(destinationUrl.trim());
           const pathParts = parsedUrl.pathname.replace(/^\//, "").split("/");
-          const shortId = pathParts[0]; // e.g. "6hxkt1"
+          const shortId = pathParts[0];
 
-          // Only update if it's a bridge link on our own domain (not an external affiliate)
-          const isBridgeLink =
+          const isSaasBridgeLink =
             parsedUrl.hostname.includes("fbvirall") ||
             parsedUrl.hostname.includes("vercel.app") ||
             parsedUrl.hostname === window.location.hostname;
 
-          if (shortId && isBridgeLink) {
-            console.log(`Bridge Link: Updating OG image for shortId=${shortId}...`);
+          if (shortId && isSaasBridgeLink) {
+            // ── Case A: Already a bridge link — just update its OG image ──────
+            console.log(`Bridge Link [A]: Updating OG image for existing shortId=${shortId}...`);
             await fetch("/api/update-redirect-og", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ shortId, ogImageUrl: imageUrl }),
             });
-            console.log("Bridge Link: OG image updated to canvas image!");
+            console.log("Bridge Link [A]: OG image updated to canvas image!");
+            // effectiveBridgeLink stays as destinationUrl (the bridge link)
+          } else {
+            // ── Case B: External URL — auto-create a bridge link ─────────────
+            console.log("Bridge Link [B]: Creating new bridge link for external URL:", destinationUrl.trim());
+            effectiveDisplayUrl = parsedUrl.hostname.replace("www.", ""); // e.g. "blog.pixelplayzone.online"
+
+            const createRes = await fetch("/api/create-redirect", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                originalUrl: destinationUrl.trim(),
+                // No customImage here — we'll set it via update-redirect-og below
+              }),
+            });
+            const createData = await createRes.json();
+
+            if (createData.shortLink && createData.shortId) {
+              effectiveBridgeLink = createData.shortLink; // e.g. https://fbvirall.vercel.app/abc123
+              console.log("Bridge Link [B]: Created bridge link:", effectiveBridgeLink);
+
+              // Now set the canvas image as this bridge link's OG image
+              await fetch("/api/update-redirect-og", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ shortId: createData.shortId, ogImageUrl: imageUrl }),
+              });
+              console.log("Bridge Link [B]: OG image set to canvas image for shortId:", createData.shortId);
+            } else {
+              console.warn("Bridge Link [B]: Failed to create bridge link, using original URL.");
+              // Falls back to original external URL — Engine 1-4 in fb-post will handle it
+            }
           }
         } catch (parseErr) {
-          console.warn("Bridge Link: Could not parse destinationUrl, skipping OG update.", parseErr);
+          console.warn("Bridge Link: URL parse error, using original destinationUrl.", parseErr);
         }
       }
 
@@ -663,9 +698,9 @@ const FbDarkPost: NextPage = () => {
           adAccountId: selectedAdAccountId,
           base64Image: dataUrl,
           imageUrl,
-          destinationUrl: destinationUrl.trim(),
+          destinationUrl: effectiveBridgeLink, // Bridge link (may differ from original URL)
           caption: message.trim() || "Click to view full album...",
-          displayUrl: displayUrl.trim() || "facebook.com",
+          displayUrl: effectiveDisplayUrl,
           scheduledTime: schedule ? scheduledTime : undefined,
           saveAsDraft,
           rawCookie,
@@ -693,6 +728,7 @@ const FbDarkPost: NextPage = () => {
     }
 
   };
+
 
   const activePageObj = fbPages.find((p) => p.id === selectedPageId);
 
