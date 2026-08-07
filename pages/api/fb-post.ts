@@ -4,11 +4,8 @@ import FormData from "form-data";
 
 /**
  * POST /api/fb-post
- * 4-Engine Facebook Publisher — Tries every viable method in order.
- * Engine 1: Page Token + Dark Post (published:false) — ideal clickable card
- * Engine 2: Any Token + Published Post (published:true) — bypasses #200 restriction
- * Engine 3: Ad Creative (adimages + adcreatives) — works with user token only
- * Engine 4: Simple Feed Link Post — last resort
+ * Primary Engine: Meta Ad Creative One Card V2 Engine
+ * Creates exact Facebook Ad-style Clickable 1:1 Image Cards with custom image_hash + destination link.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -48,12 +45,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   let lastFbError: any = null;
 
-  // ─── TOKEN RESOLUTION: Always resolve fresh Page Token ─────────────────────
+  // ─── TOKEN RESOLUTION: Page Token + User Token ───────────────────────────────
   let resolvedPageToken = "";
   const primaryToken = userAccessToken || pageAccessToken;
 
   if (primaryToken) {
-    // Attempt 1: /me/accounts — most reliable source for Page Access Token
     try {
       const meAccRes = await axios.get(`${FB_BASE}/me/accounts`, {
         params: { fields: "id,name,access_token", access_token: primaryToken },
@@ -67,13 +63,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log("Token: Resolved Page Token from /me/accounts for page", pageId);
       } else if (pageList.length > 0 && pageList[0].access_token) {
         resolvedPageToken = pageList[0].access_token;
-        console.log("Token: Using first page token from /me/accounts");
       }
     } catch (e: any) {
       console.warn("Token: /me/accounts failed:", e?.response?.data?.error?.message || e?.message);
     }
 
-    // Attempt 2: GET /{pageId}?fields=access_token
     if (!resolvedPageToken) {
       try {
         const pageRes = await axios.get(`${FB_BASE}/${pageId}`, {
@@ -83,7 +77,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         if (pageRes.data?.access_token) {
           resolvedPageToken = pageRes.data.access_token;
-          console.log("Token: Resolved Page Token from GET /{pageId}!");
         }
       } catch (e: any) {
         console.warn("Token: Direct page token fetch failed:", e?.response?.data?.error?.message || e?.message);
@@ -91,11 +84,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  // Token priority: resolved page token > frontend pageAccessToken > userAccessToken
   const pageToken = resolvedPageToken || pageAccessToken || userAccessToken;
   const userToken = userAccessToken || pageAccessToken;
-
-  console.log("Token: pageToken prefix:", pageToken?.slice(0, 15));
 
   try {
     // ─── IMAGE PREPARATION ────────────────────────────────────────────────────
@@ -117,7 +107,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           );
           if (imgbbRes.data?.data?.url) {
             publicImageUrl = imgbbRes.data.data.url;
-            console.log("ImgBB: Uploaded public URL =", publicImageUrl);
           }
         } catch (e: any) {
           console.warn("ImgBB upload skipped:", e?.message);
@@ -128,21 +117,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       imageBuffer = Buffer.from(imgRes.data);
     }
 
-    // ─── FB SCRAPE CACHE CLEAR ────────────────────────────────────────────────
-    try {
-      await axios.post(`${FB_BASE}/`, null, {
-        params: { id: destinationUrl.trim(), scrape: "true", access_token: pageToken },
-        headers: customHeaders,
-        timeout: 10000,
-      });
-      console.log("Scrape: Cache cleared for", destinationUrl.trim());
-    } catch (e: any) {
-      console.warn("Scrape: Cache clear skipped:", e?.response?.data?.error?.message || e?.message);
-    }
-
     // ─── HELPER: Upload photo to page ────────────────────────────────────────
     const uploadPhoto = async (token: string, published: "false" | "true"): Promise<string | null> => {
-      // Try URL upload first (faster)
       if (publicImageUrl) {
         try {
           const params = new URLSearchParams({
@@ -159,7 +135,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (e?.response?.data?.error) lastFbError = e.response.data.error;
         }
       }
-      // Fallback: buffer multipart upload
       try {
         const fd = new FormData();
         fd.append("source", imageBuffer, { filename: "card.jpg", contentType: "image/jpeg" });
@@ -199,99 +174,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     // ════════════════════════════════════════════════════════════════════════════
-    // ENGINE 0: METUS BRIDGE LINK ENGINE (Pure link post — no photo upload!)
-    // After updating the bridge link's OG image (done in frontend),
-    // post just link: destinationUrl to /{page_id}/feed.
-    // Facebook scrapes our bridge link, reads the 1:1 square OG canvas image,
-    // and creates a pure clickable square card. No permission errors. No photo APIs.
-    // Works with ANY valid admin token (user token OR page token).
-    // ════════════════════════════════════════════════════════════════════════════
-    const bridgeLinkTokens = Array.from(new Set([pageToken, userToken].filter(Boolean)));
-    for (const token of bridgeLinkTokens) {
-      try {
-        console.log(`Engine 0 (Bridge Link): Posting link-only to /${pageId}/feed with token (${token.slice(0, 12)}...)...`);
-        const params = new URLSearchParams({ link: destinationUrl.trim(), access_token: token });
-        if (caption) params.append("message", caption);
-        params.append("published", saveAsDraft ? "false" : "true");
-
-        const r = await axios.post(`${FB_BASE}/${pageId}/feed`, params.toString(), {
-          headers: { "Content-Type": "application/x-www-form-urlencoded", ...customHeaders },
-          timeout: 30000,
-        });
-        if (r.data?.id) {
-          console.log("Engine 0 (Bridge Link) SUCCESS! postId =", r.data.id);
-          return res.status(200).json({
-            success: true,
-            postId: r.data.id,
-            postUrl: `https://www.facebook.com/${r.data.id.replace("_", "/posts/")}`,
-            engine: "Metus Bridge Link Engine (Engine 0)",
-            isPublished: !saveAsDraft,
-          });
-        }
-      } catch (e: any) {
-        if (e?.response?.data?.error) lastFbError = e.response.data.error;
-        console.warn(`Engine 0 failed (token ${token.slice(0, 12)}...):`, e?.response?.data?.error?.message || e?.message);
-      }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // ENGINE 1: Page Token + published:false (Dark Post — ideal clickable card)
-    // ════════════════════════════════════════════════════════════════════════════
-
-    if (resolvedPageToken) {
-      console.log("Engine 1: Dark Post with resolved Page Token...");
-      const photoId = await uploadPhoto(resolvedPageToken, "false");
-      if (photoId) {
-        console.log("Engine 1: Photo uploaded, photoId =", photoId);
-        const postId = await postFeed(resolvedPageToken, photoId, "false");
-        if (postId) {
-          console.log("Engine 1 SUCCESS! postId =", postId);
-          return res.status(200).json({
-            success: true,
-            postId,
-            postUrl: `https://www.facebook.com/${postId}`,
-            photoId,
-            engine: "Dark Post Clickable Card Engine (Engine 1)",
-            isPublished: false,
-          });
-        }
-      }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // ENGINE 2: Any token + published:true (Direct Published — bypasses #200)
-    // This is the permanent fix for Permissions Error #200.
-    // published:true doesn't require "page as itself" — works with user token.
-    // ════════════════════════════════════════════════════════════════════════════
-    const tokensToTry = [pageToken, userToken].filter(Boolean);
-    const uniqueTokens = Array.from(new Set(tokensToTry));
-
-    for (const token of uniqueTokens) {
-      console.log(`Engine 2: Published Post with token (${token.slice(0, 12)}...)...`);
-      const photoId = await uploadPhoto(token, "true");
-      if (photoId) {
-        console.log("Engine 2: Photo uploaded, photoId =", photoId);
-        const postId = await postFeed(token, photoId, "true");
-        if (postId) {
-          console.log("Engine 2 SUCCESS! postId =", postId);
-          return res.status(200).json({
-            success: true,
-            postId,
-            postUrl: `https://www.facebook.com/${postId}`,
-            photoId,
-            engine: "Published Clickable Card Engine (Engine 2)",
-            isPublished: true,
-          });
-        }
-      }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // ENGINE 3: Ad Creative (Works with User Token only — no page token needed)
+    // ENGINE 1 (PRIMARY): META AD CREATIVE ONE CARD V2 ENGINE
+    // Creates exact Facebook Ad-style Clickable 1:1 Image Cards with image_hash.
     // ════════════════════════════════════════════════════════════════════════════
     let activeAdAccountId = adAccountId || "";
     if (!activeAdAccountId && userToken) {
       try {
+        console.log("Engine 1: Auto-resolving Ad Account ID via /me/adaccounts...");
         const adAccRes = await axios.get(`${FB_BASE}/me/adaccounts`, {
           params: { fields: "id,account_id", access_token: userToken },
           headers: customHeaders,
@@ -300,20 +189,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const adList = adAccRes.data?.data || [];
         if (adList.length > 0 && adList[0].id) {
           activeAdAccountId = adList[0].id;
-          console.log("Engine 3: Auto-resolved Ad Account =", activeAdAccountId);
+          console.log("Engine 1: Resolved Ad Account ID =", activeAdAccountId);
         }
       } catch (e: any) {
-        console.warn("Engine 3: Ad account lookup failed:", e?.message);
+        console.warn("Engine 1: Ad account lookup failed:", e?.message);
       }
     }
 
     if (activeAdAccountId && userToken) {
       try {
-        console.log(`Engine 3 (Ad Creative): Uploading to Ad Account (${activeAdAccountId})...`);
+        console.log(`Engine 1 (Ad Creative): Uploading canvas image to Ad Account (${activeAdAccountId})...`);
+        const base64ImageStr = imageBuffer.toString("base64");
         const adImagesParams = new URLSearchParams({
-          bytes: imageBuffer.toString("base64"),
+          bytes: base64ImageStr,
           access_token: userToken,
         });
+
         const adImgRes = await axios.post(`${FB_BASE}/${activeAdAccountId}/adimages`, adImagesParams, {
           headers: { "Content-Type": "application/x-www-form-urlencoded", ...customHeaders },
           timeout: 30000,
@@ -324,6 +215,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const imageHash = hashKey ? imagesData[hashKey]?.hash : null;
 
         if (imageHash) {
+          console.log("Engine 1: Got Ad Image Hash =", imageHash);
+
           const creativeRes = await axios.post(
             `${FB_BASE}/${activeAdAccountId}/adcreatives`,
             {
@@ -345,43 +238,124 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           const creativeId = creativeRes.data?.id;
           if (creativeId) {
-            const storyRes = await axios.get(`${FB_BASE}/${creativeId}`, {
-              params: { fields: "effective_object_story_id,object_story_id", access_token: userToken },
-              headers: customHeaders,
-              timeout: 15000,
-            });
-            const storyId = storyRes.data?.effective_object_story_id || storyRes.data?.object_story_id;
-            if (storyId) {
-              console.log("Engine 3 SUCCESS! storyId =", storyId);
-              return res.status(200).json({
-                success: true,
-                postId: storyId,
-                postUrl: `https://www.facebook.com/${storyId.replace("_", "/posts/")}`,
-                creativeId,
-                engine: "Ad Creative Square Card Engine (Engine 3)",
-                isPublished: true,
+            console.log("Engine 1: Created Ad Creative ID =", creativeId);
+
+            // Fetch effective_object_story_id directly from the Ad Creative
+            try {
+              const storyRes = await axios.get(`${FB_BASE}/${creativeId}`, {
+                params: { fields: "effective_object_story_id,object_story_id", access_token: userToken },
+                headers: customHeaders,
+                timeout: 15000,
               });
+              const storyId = storyRes.data?.effective_object_story_id || storyRes.data?.object_story_id;
+              if (storyId) {
+                console.log("Engine 1 SUCCESS! Direct Ad Story Post ID =", storyId);
+                return res.status(200).json({
+                  success: true,
+                  postId: storyId,
+                  postUrl: `https://www.facebook.com/${storyId.replace("_", "/posts/")}`,
+                  creativeId,
+                  engine: "Meta Ad Creative One Card Engine (Engine 1)",
+                  isPublished: true,
+                });
+              }
+            } catch (storyErr: any) {
+              console.warn("Engine 1 storyId fetch skipped:", storyErr?.message);
+            }
+
+            // Publish creative object_attachment to page feed
+            try {
+              const feedParams = new URLSearchParams({
+                message: caption || "",
+                object_attachment: creativeId,
+                published: saveAsDraft ? "false" : "true",
+                access_token: pageToken || userToken,
+              });
+              const feedRes = await axios.post(`${FB_BASE}/${pageId}/feed`, feedParams.toString(), {
+                headers: { "Content-Type": "application/x-www-form-urlencoded", ...customHeaders },
+                timeout: 30000,
+              });
+              if (feedRes.data?.id) {
+                const postId = feedRes.data.id;
+                console.log("Engine 1 Feed SUCCESS! Got Post ID =", postId);
+                return res.status(200).json({
+                  success: true,
+                  postId,
+                  postUrl: `https://www.facebook.com/${postId.replace("_", "/posts/")}`,
+                  creativeId,
+                  engine: "Published Ad Creative Feed Engine (Engine 1)",
+                  isPublished: !saveAsDraft,
+                });
+              }
+            } catch (feedErr: any) {
+              if (feedErr?.response?.data?.error) lastFbError = feedErr.response.data.error;
+              console.warn("Engine 1 feed post skipped:", feedErr?.response?.data?.error?.message || feedErr?.message);
             }
           }
         }
-      } catch (e: any) {
-        if (e?.response?.data?.error) lastFbError = e.response.data.error;
-        console.warn("Engine 3 Ad Creative failed:", e?.response?.data?.error?.message || e?.message);
+      } catch (adCreativeErr: any) {
+        if (adCreativeErr?.response?.data?.error) lastFbError = adCreativeErr.response.data.error;
+        console.warn("Engine 1 Ad Creative failed:", adCreativeErr?.response?.data?.error?.message || adCreativeErr?.message);
       }
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // ENGINE 4: Simple Feed Link Post (last resort — no custom image, but works)
+    // ENGINE 2: OBJECT ATTACHMENT DARK POST (Unpublished Photo Attachment)
+    // ════════════════════════════════════════════════════════════════════════════
+    if (resolvedPageToken) {
+      console.log("Engine 2: Dark Post with resolved Page Token...");
+      const photoId = await uploadPhoto(resolvedPageToken, "false");
+      if (photoId) {
+        const postId = await postFeed(resolvedPageToken, photoId, "false");
+        if (postId) {
+          console.log("Engine 2 SUCCESS! Dark Post ID =", postId);
+          return res.status(200).json({
+            success: true,
+            postId,
+            postUrl: `https://www.facebook.com/${postId}`,
+            photoId,
+            engine: "Dark Post Clickable Card Engine (Engine 2)",
+            isPublished: false,
+          });
+        }
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // ENGINE 3: PUBLISHED OBJECT ATTACHMENT CARD
+    // ════════════════════════════════════════════════════════════════════════════
+    const tokensToTry = [pageToken, userToken].filter(Boolean);
+    const uniqueTokens = Array.from(new Set(tokensToTry));
+
+    for (const token of uniqueTokens) {
+      console.log(`Engine 3: Published Post with token (${token.slice(0, 12)}...)...`);
+      const photoId = await uploadPhoto(token, "true");
+      if (photoId) {
+        const postId = await postFeed(token, photoId, "true");
+        if (postId) {
+          console.log("Engine 3 SUCCESS! Post ID =", postId);
+          return res.status(200).json({
+            success: true,
+            postId,
+            postUrl: `https://www.facebook.com/${postId}`,
+            photoId,
+            engine: "Published Clickable Card Engine (Engine 3)",
+            isPublished: true,
+          });
+        }
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // ENGINE 4: METUS BRIDGE LINK FALLBACK
     // ════════════════════════════════════════════════════════════════════════════
     for (const token of uniqueTokens) {
       try {
-        console.log(`Engine 4: Simple Feed Link Post with token (${token.slice(0, 12)}...)...`);
-        const params = new URLSearchParams({
-          link: destinationUrl.trim(),
-          published: "true",
-          access_token: token,
-        });
+        console.log(`Engine 4 (Bridge Link): Posting link-only to /${pageId}/feed...`);
+        const params = new URLSearchParams({ link: destinationUrl.trim(), access_token: token });
         if (caption) params.append("message", caption);
+        params.append("published", saveAsDraft ? "false" : "true");
+
         const r = await axios.post(`${FB_BASE}/${pageId}/feed`, params.toString(), {
           headers: { "Content-Type": "application/x-www-form-urlencoded", ...customHeaders },
           timeout: 30000,
@@ -392,17 +366,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             success: true,
             postId: r.data.id,
             postUrl: `https://www.facebook.com/${r.data.id.replace("_", "/posts/")}`,
-            engine: "Simple Feed Link Engine (Engine 4)",
-            isPublished: true,
+            engine: "Metus Bridge Link Engine (Engine 4)",
+            isPublished: !saveAsDraft,
           });
         }
       } catch (e: any) {
         if (e?.response?.data?.error) lastFbError = e.response.data.error;
-        console.warn("Engine 4 simple feed failed:", e?.response?.data?.error?.message || e?.message);
       }
     }
 
-    // All engines exhausted
     if (lastFbError) {
       return res.status(400).json({
         success: false,
@@ -417,7 +389,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(400).json({
       success: false,
-      error: "All publishing engines exhausted. Ensure your token is active and you are Admin of the selected Page.",
+      error: "All publishing engines failed. Ensure your Facebook account has Admin access to the selected Page.",
     });
 
   } catch (err: any) {
@@ -439,12 +411,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 function getHint(code: number, message: string = ""): string {
   if (code === 200) {
-    return "Meta Permissions Error: Your token may lack 'pages_manage_posts' permission. Re-sync from 'FB Connect', or ensure you are Page Admin.";
+    return "Meta Permissions Error: Your account must have Admin / Full Control access to the selected Facebook Page, or re-sync token from 'FB Connect'.";
   }
   const hints: Record<number, string> = {
-    190: "Access token invalid/expired. Re-sync from 'FB Connect'.",
+    190: "Access token invalid or expired. Re-sync from 'FB Connect'.",
     100: "Invalid parameter. Ensure a valid Facebook Page is selected.",
-    368: "Account temporarily blocked. Log in to Facebook and try again.",
+    368: "Account temporarily blocked by Facebook. Log in to Facebook and try again.",
     17: "API rate limit hit. Wait a few minutes and retry.",
     2635: "Ad account requires an active payment method.",
   };

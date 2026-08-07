@@ -248,27 +248,52 @@ const FbDarkPost: NextPage = () => {
 
       if (cachedMsg) setMessage(cachedMsg);
       if (cachedDest) setDestinationUrl(cachedDest);
-      if (cachedDisp) setDisplayUrl(cachedDisp);      if (cachedToken) {
+      if (cachedDisp) setDisplayUrl(cachedDisp);
+
+      // FAST PATH: Instant hydration from localStorage browser cache (0ms wait)
+      const cachedAccStr = localStorage.getItem("fb_cached_accounts");
+      if (cachedAccStr) {
+        try {
+          const accData = JSON.parse(cachedAccStr);
+          if (accData.fbUser) setExtUser(accData.fbUser);
+          if (accData.pages?.length > 0) {
+            setFbPages(accData.pages);
+            setSelectedPageId(accData.pages[0].id);
+            setSelectedPageToken(accData.pages[0].access_token);
+          }
+          if (accData.adAccounts?.length > 0) {
+            setFbAdAccounts(accData.adAccounts);
+            setSelectedAdAccountId(accData.adAccounts[0].id);
+          }
+          console.log("FB Dark Post: Loaded accounts INSTANTLY from browser localStorage!");
+        } catch (e) {
+          console.warn("Failed to parse cached accounts:", e);
+        }
+      }
+
+      if (cachedToken) {
         setUserAccessToken(cachedToken);
         const cachedCookie = localStorage.getItem("fb_raw_cookie") || "";
+        
+        // Background sync to refresh cached accounts
         fetch(`/api/fb-accounts?token=${encodeURIComponent(cachedToken)}&cookie=${encodeURIComponent(cachedCookie)}`)
           .then((r) => r.json())
           .then((accData) => {
-            if (!accData.success && accData.error) {
-              setErrorMessage(`FB Accounts Error: ${accData.error}`);
-            }
-            if (accData.fbUser) setExtUser(accData.fbUser);
-            if (accData.pages?.length > 0) {
-              setFbPages(accData.pages);
-              setSelectedPageId(accData.pages[0].id);
-              setSelectedPageToken(accData.pages[0].access_token);
-            }
-            if (accData.adAccounts?.length > 0) {
-              setFbAdAccounts(accData.adAccounts);
-              setSelectedAdAccountId(accData.adAccounts[0].id);
+            if (accData.success) {
+              localStorage.setItem("fb_cached_accounts", JSON.stringify(accData));
+              if (accData.fbUser) setExtUser(accData.fbUser);
+              if (accData.pages?.length > 0) {
+                setFbPages(accData.pages);
+                setSelectedPageId((prev) => prev || accData.pages[0].id);
+                setSelectedPageToken((prev) => prev || accData.pages[0].access_token);
+              }
+              if (accData.adAccounts?.length > 0) {
+                setFbAdAccounts(accData.adAccounts);
+                setSelectedAdAccountId((prev) => prev || accData.adAccounts[0].id);
+              }
             }
           })
-          .catch((err) => console.warn("FB Accounts fetch error:", err));
+          .catch((err) => console.warn("FB Accounts background sync error:", err));
       } else {
         // Fallback: check logged-in DB user
         fetch("/api/auth/user")
@@ -284,18 +309,18 @@ const FbDarkPost: NextPage = () => {
               fetch(`/api/fb-accounts?token=${encodeURIComponent(dbToken)}&cookie=${encodeURIComponent(dbCookie || "")}`)
                 .then((r) => r.json())
                 .then((accData) => {
-                  if (!accData.success && accData.error) {
-                    setErrorMessage(`FB Accounts Error: ${accData.error}`);
-                  }
-                  if (accData.fbUser) setExtUser(accData.fbUser);
-                  if (accData.pages?.length > 0) {
-                    setFbPages(accData.pages);
-                    setSelectedPageId(accData.pages[0].id);
-                    setSelectedPageToken(accData.pages[0].access_token);
-                  }
-                  if (accData.adAccounts?.length > 0) {
-                    setFbAdAccounts(accData.adAccounts);
-                    setSelectedAdAccountId(accData.adAccounts[0].id);
+                  if (accData.success) {
+                    localStorage.setItem("fb_cached_accounts", JSON.stringify(accData));
+                    if (accData.fbUser) setExtUser(accData.fbUser);
+                    if (accData.pages?.length > 0) {
+                      setFbPages(accData.pages);
+                      setSelectedPageId((prev) => prev || accData.pages[0].id);
+                      setSelectedPageToken((prev) => prev || accData.pages[0].access_token);
+                    }
+                    if (accData.adAccounts?.length > 0) {
+                      setFbAdAccounts(accData.adAccounts);
+                      setSelectedAdAccountId((prev) => prev || accData.adAccounts[0].id);
+                    }
                   }
                 })
                 .catch((err) => console.warn("DB FB Accounts fetch error:", err));
