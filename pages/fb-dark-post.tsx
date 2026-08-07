@@ -600,6 +600,7 @@ const FbDarkPost: NextPage = () => {
       const dataUrl = await generateCollage();
       const rawCookie = typeof window !== "undefined" ? localStorage.getItem("fb_raw_cookie") || "" : "";
 
+      // ── Step 1: Upload canvas collage to ImgBB to get a public URL ───────────
       let imageUrl = "";
       try {
         const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
@@ -620,6 +621,38 @@ const FbDarkPost: NextPage = () => {
         console.warn("ImgBB upload failed, falling back to direct base64 image data...", imgbbErr);
       }
 
+      // ── Step 2: Metus Bridge Link Architecture ───────────────────────────────
+      // If destinationUrl is a SaaS bridge link (fbvirall.vercel.app/shortId),
+      // update its og_image_processed_url to our canvas image BEFORE posting.
+      // This makes Facebook scraper see the 1:1 canvas image and create a
+      // pure clickable square card (exactly like Metus.vn One Card V2).
+      if (imageUrl) {
+        try {
+          const parsedUrl = new URL(destinationUrl.trim());
+          const pathParts = parsedUrl.pathname.replace(/^\//, "").split("/");
+          const shortId = pathParts[0]; // e.g. "6hxkt1"
+
+          // Only update if it's a bridge link on our own domain (not an external affiliate)
+          const isBridgeLink =
+            parsedUrl.hostname.includes("fbvirall") ||
+            parsedUrl.hostname.includes("vercel.app") ||
+            parsedUrl.hostname === window.location.hostname;
+
+          if (shortId && isBridgeLink) {
+            console.log(`Bridge Link: Updating OG image for shortId=${shortId}...`);
+            await fetch("/api/update-redirect-og", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ shortId, ogImageUrl: imageUrl }),
+            });
+            console.log("Bridge Link: OG image updated to canvas image!");
+          }
+        } catch (parseErr) {
+          console.warn("Bridge Link: Could not parse destinationUrl, skipping OG update.", parseErr);
+        }
+      }
+
+      // ── Step 3: Post to Facebook ─────────────────────────────────────────────
       const postRes = await fetch("/api/fb-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -658,6 +691,7 @@ const FbDarkPost: NextPage = () => {
     } finally {
       setPosting(false);
     }
+
   };
 
   const activePageObj = fbPages.find((p) => p.id === selectedPageId);

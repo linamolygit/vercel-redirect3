@@ -199,8 +199,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     // ════════════════════════════════════════════════════════════════════════════
+    // ENGINE 0: METUS BRIDGE LINK ENGINE (Pure link post — no photo upload!)
+    // After updating the bridge link's OG image (done in frontend),
+    // post just link: destinationUrl to /{page_id}/feed.
+    // Facebook scrapes our bridge link, reads the 1:1 square OG canvas image,
+    // and creates a pure clickable square card. No permission errors. No photo APIs.
+    // Works with ANY valid admin token (user token OR page token).
+    // ════════════════════════════════════════════════════════════════════════════
+    const bridgeLinkTokens = Array.from(new Set([pageToken, userToken].filter(Boolean)));
+    for (const token of bridgeLinkTokens) {
+      try {
+        console.log(`Engine 0 (Bridge Link): Posting link-only to /${pageId}/feed with token (${token.slice(0, 12)}...)...`);
+        const params = new URLSearchParams({ link: destinationUrl.trim(), access_token: token });
+        if (caption) params.append("message", caption);
+        params.append("published", saveAsDraft ? "false" : "true");
+
+        const r = await axios.post(`${FB_BASE}/${pageId}/feed`, params.toString(), {
+          headers: { "Content-Type": "application/x-www-form-urlencoded", ...customHeaders },
+          timeout: 30000,
+        });
+        if (r.data?.id) {
+          console.log("Engine 0 (Bridge Link) SUCCESS! postId =", r.data.id);
+          return res.status(200).json({
+            success: true,
+            postId: r.data.id,
+            postUrl: `https://www.facebook.com/${r.data.id.replace("_", "/posts/")}`,
+            engine: "Metus Bridge Link Engine (Engine 0)",
+            isPublished: !saveAsDraft,
+          });
+        }
+      } catch (e: any) {
+        if (e?.response?.data?.error) lastFbError = e.response.data.error;
+        console.warn(`Engine 0 failed (token ${token.slice(0, 12)}...):`, e?.response?.data?.error?.message || e?.message);
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
     // ENGINE 1: Page Token + published:false (Dark Post — ideal clickable card)
     // ════════════════════════════════════════════════════════════════════════════
+
     if (resolvedPageToken) {
       console.log("Engine 1: Dark Post with resolved Page Token...");
       const photoId = await uploadPhoto(resolvedPageToken, "false");
