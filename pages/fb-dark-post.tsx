@@ -373,17 +373,18 @@ const FbDarkPost: NextPage = () => {
             if (!accData.success && accData.error) {
               setErrorMessage(`FB Accounts Error: ${accData.error}`);
             }
-            if (accData.fbUser) {
-              setExtUser(accData.fbUser);
-            }
-            if (accData.pages?.length > 0) {
-              setFbPages(accData.pages);
-              setSelectedPageId(accData.pages[0].id);
-              setSelectedPageToken(accData.pages[0].access_token);
-            }
-            if (accData.adAccounts?.length > 0) {
-              setFbAdAccounts(accData.adAccounts);
-              setSelectedAdAccountId(accData.adAccounts[0].id);
+            if (accData.success) {
+              localStorage.setItem("fb_cached_accounts", JSON.stringify(accData));
+              if (accData.fbUser) setExtUser(accData.fbUser);
+              if (accData.pages?.length > 0) {
+                setFbPages(accData.pages);
+                setSelectedPageId((prev) => prev || accData.pages[0].id);
+                setSelectedPageToken((prev) => prev || accData.pages[0].access_token);
+              }
+              if (accData.adAccounts?.length > 0) {
+                setFbAdAccounts(accData.adAccounts);
+                setSelectedAdAccountId((prev) => prev || accData.adAccounts[0].id);
+              }
             }
           })
           .catch((err) => console.warn("FB Accounts fetch error:", err));
