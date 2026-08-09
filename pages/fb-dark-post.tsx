@@ -708,6 +708,18 @@ const FbDarkPost: NextPage = () => {
               // Falls back to original external URL — Engine 1-4 in fb-post will handle it
             }
           }
+          // ── Force Facebook Scrape on the Effective Bridge Link ─────────────
+          try {
+            console.log("Bridge Link: Forcing Facebook OG scrape for:", effectiveBridgeLink);
+            await fetch("/api/force-fb-scrape", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url: effectiveBridgeLink, token: userAccessToken }),
+            });
+            console.log("Bridge Link: Facebook scrape triggered successfully!");
+          } catch (scrapeErr) {
+            console.warn("Bridge Link: Force scrape call skipped/failed:", scrapeErr);
+          }
         } catch (parseErr) {
           console.warn("Bridge Link: URL parse error, using original destinationUrl.", parseErr);
         }
