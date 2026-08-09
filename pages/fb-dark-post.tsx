@@ -695,16 +695,32 @@ const FbDarkPost: NextPage = () => {
             if (createData.shortLink && createData.shortId) {
               effectiveBridgeLink = createData.shortLink; // e.g. https://fbvirall.vercel.app/abc123
               console.log("Bridge Link [B]: Created bridge link:", effectiveBridgeLink);
+
+              // Now set the canvas image as this bridge link's OG image
+              await fetch("/api/update-redirect-og", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ shortId: createData.shortId, ogImageUrl: imageUrl }),
+              });
+              console.log("Bridge Link [B]: OG image set to canvas image for shortId:", createData.shortId);
             } else {
               console.warn("Bridge Link [B]: Failed to create bridge link, using original URL.");
+              // Falls back to original external URL — Engine 1-4 in fb-post will handle it
             }
           }
-          // ── Non-blocking Facebook Scrape Trigger ─────────────
-          fetch("/api/force-fb-scrape", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: effectiveBridgeLink, token: userAccessToken }),
-          }).catch((scrapeErr) => console.warn("Bridge Link: Force scrape call skipped:", scrapeErr));
+          // ── Fire-and-forget scrape (don't block fb-post) ───────────────────
+          try {
+            console.log("Bridge Link: Firing Facebook OG scrape (non-blocking) for:", effectiveBridgeLink);
+            fetch("/api/force-fb-scrape", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url: effectiveBridgeLink, token: userAccessToken }),
+            }).catch((scrapeErr: any) => {
+              console.warn("Bridge Link: Force scrape failed (non-blocking):", scrapeErr);
+            });
+          } catch (scrapeErr) {
+            // non-blocking — ignore
+          }
         } catch (parseErr) {
           console.warn("Bridge Link: URL parse error, using original destinationUrl.", parseErr);
         }

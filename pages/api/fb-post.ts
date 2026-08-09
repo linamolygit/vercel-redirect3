@@ -52,16 +52,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let lastFbError: any = null;
 
   // ─── TOKEN RESOLUTION ──────────────────────────────────────────────────────
-  let resolvedPageToken = pageAccessToken || "";
+  let resolvedPageToken = "";
   const primaryToken = userAccessToken || pageAccessToken;
 
-  // Only resolve via Graph API if pageAccessToken was not provided directly
-  if (!resolvedPageToken && primaryToken) {
+  if (primaryToken) {
     try {
       const meAccRes = await axios.get(`${FB_BASE}/me/accounts`, {
         params: { fields: "id,name,access_token", access_token: primaryToken },
         headers: customHeaders,
-        timeout: 10000,
+        timeout: 15000,
       });
       const pageList = meAccRes.data?.data || [];
       const found = pageList.find((p: any) => String(p.id) === String(pageId));
@@ -74,6 +73,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (e: any) {
       console.warn("Token: /me/accounts failed:", e?.response?.data?.error?.message || e?.message);
     }
+
+    if (!resolvedPageToken) {
+      try {
+        const pageRes = await axios.get(`${FB_BASE}/${pageId}`, {
+          params: { fields: "access_token", access_token: primaryToken },
+          headers: customHeaders,
+          timeout: 10000,
+        });
+        if (pageRes.data?.access_token) {
+          resolvedPageToken = pageRes.data.access_token;
+          console.log("Token: Resolved page token via GET /{pageId}");
+        }
+      } catch (e: any) {
+        console.warn("Token: Direct page token fetch failed:", e?.response?.data?.error?.message || e?.message);
+      }
+    }
   }
 
   const pageToken = resolvedPageToken || pageAccessToken || userAccessToken;
@@ -81,6 +96,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // ─── IMAGE PREPARATION ────────────────────────────────────────────────────
+    // NOTE: Frontend already uploads to ImgBB and passes imageUrl.
+    // Only upload here if imageUrl was NOT provided (safety fallback).
     let imageBuffer: Buffer;
     let publicImageUrl = imageUrl || "";
 
@@ -88,14 +105,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
       imageBuffer = Buffer.from(cleanBase64, "base64");
 
+      // ✅ Skip ImgBB upload if frontend already provided a public URL
       if (!publicImageUrl) {
+        console.log("ImgBB: No imageUrl from frontend — uploading now (fallback)...");
         try {
           const imgFormData = new FormData();
           imgFormData.append("image", cleanBase64);
           const imgbbRes = await axios.post(
             "https://api.imgbb.com/1/upload?key=7acb2b5955d0a1e35ba91e981a8d1da8",
             imgFormData,
-            { headers: imgFormData.getHeaders(), timeout: 15000 }
+            { headers: imgFormData.getHeaders(), timeout: 20000 }
           );
           if (imgbbRes.data?.data?.url) {
             publicImageUrl = imgbbRes.data.data.url;
@@ -104,17 +123,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } catch (e: any) {
           console.warn("ImgBB upload skipped:", e?.message);
         }
+      } else {
+        console.log("ImgBB: Skipping upload — frontend already provided imageUrl:", publicImageUrl);
       }
     } else {
-      const imgRes = await axios.get(imageUrl, { responseType: "arraybuffer", timeout: 20000 });
+      const imgRes = await axios.get(imageUrl, { responseType: "arraybuffer", timeout: 25000 });
       imageBuffer = Buffer.from(imgRes.data);
     }
 
-    // ─── NON-BLOCKING SCRAPE CLEAR for bridge link ──────────────────────────────
+    // ─── SCRAPE CLEAR — fire-and-forget (don't block the post flow) ───────────
     axios.post(`${FB_BASE}/`, null, {
       params: { id: destinationUrl.trim(), scrape: "true", access_token: pageToken },
       headers: customHeaders,
       timeout: 8000,
+    }).then(() => {
+      console.log("Scrape: Cache cleared for", destinationUrl.trim());
     }).catch((e: any) => {
       console.warn("Scrape: Clear skipped:", e?.response?.data?.error?.message || e?.message);
     });
@@ -126,18 +149,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ════════════════════════════════════════════════════════════════════════════
     let activeAdAccountId = adAccountId || "";
 
-    // Auto-resolve ad account if not provided
+    // ✅ Auto-resolve ad account IN PARALLEL with nothing (no blocking dependency yet)
     if (!activeAdAccountId && userToken) {
       try {
         console.log("Engine 1: Resolving ad account via /me/adaccounts...");
         const adAccRes = await axios.get(`${FB_BASE}/me/adaccounts`, {
           params: { fields: "id,name,account_status", access_token: userToken },
           headers: customHeaders,
-          timeout: 12000,
+          timeout: 8000, // reduced from 12s → 8s
         });
         const adList: any[] = adAccRes.data?.data || [];
-        // Prefer active accounts (account_status = 1)
-        const activeAcc = adList.find((a) => a.account_status === 1) || adList[0];
+        const activeAcc = adList.find((a: any) => a.account_status === 1) || adList[0];
         if (activeAcc?.id) {
           activeAdAccountId = activeAcc.id;
           console.log("Engine 1: Resolved ad account =", activeAdAccountId, "status =", activeAcc.account_status);
@@ -286,7 +308,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               console.warn("Engine 1: Immediate story fetch failed:", e?.message);
             }
 
-            // If not yet available, retry once after 3s (FB takes a moment)
+            // If not yet available, retry once after 1s (reduced from 3s)
             if (!storyId) {
               await new Promise((r) => setTimeout(r, 1000));
               try {
