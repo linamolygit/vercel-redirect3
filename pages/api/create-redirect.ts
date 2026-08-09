@@ -92,25 +92,20 @@ export default async function handler(
     let ogImageProcessedUrl: string | null = customImage || null;
 
     if (customImage && typeof customImage === "string") {
-      try {
-        let imageBuffer: Buffer | null = null;
-
-        if (customImage.startsWith("http://") || customImage.startsWith("https://")) {
-          const imgRes = await axios.get(customImage, { responseType: "arraybuffer", timeout: 10000 });
-          imageBuffer = Buffer.from(imgRes.data);
-        } else if (customImage.startsWith("data:image")) {
+      if (customImage.startsWith("http://") || customImage.startsWith("https://")) {
+        // Already a hosted URL (e.g. ImgBB) — skip heavy sharp/re-upload processing
+        ogImageProcessedUrl = customImage;
+      } else if (customImage.startsWith("data:image")) {
+        try {
           const base64Data = customImage.split(",")[1];
           if (base64Data) {
-            imageBuffer = Buffer.from(base64Data, "base64");
+            const imageBuffer = Buffer.from(base64Data, "base64");
+            ogImageProcessedUrl = await processSquareImage(imageBuffer);
           }
+        } catch (imgError: any) {
+          console.error("Square image processing failed, falling back to base64 input:", imgError?.message || imgError);
+          ogImageProcessedUrl = customImage;
         }
-
-        if (imageBuffer) {
-          ogImageProcessedUrl = await processSquareImage(imageBuffer);
-        }
-      } catch (imgError: any) {
-        console.error("Square image processing failed, falling back to unprocessed image:", imgError?.message || imgError);
-        ogImageProcessedUrl = customImage || null;
       }
     }
 

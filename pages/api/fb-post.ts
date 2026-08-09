@@ -52,15 +52,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let lastFbError: any = null;
 
   // ─── TOKEN RESOLUTION ──────────────────────────────────────────────────────
-  let resolvedPageToken = "";
+  let resolvedPageToken = pageAccessToken || "";
   const primaryToken = userAccessToken || pageAccessToken;
 
-  if (primaryToken) {
+  // Only resolve via Graph API if pageAccessToken was not provided directly
+  if (!resolvedPageToken && primaryToken) {
     try {
       const meAccRes = await axios.get(`${FB_BASE}/me/accounts`, {
         params: { fields: "id,name,access_token", access_token: primaryToken },
         headers: customHeaders,
-        timeout: 15000,
+        timeout: 10000,
       });
       const pageList = meAccRes.data?.data || [];
       const found = pageList.find((p: any) => String(p.id) === String(pageId));
@@ -72,22 +73,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } catch (e: any) {
       console.warn("Token: /me/accounts failed:", e?.response?.data?.error?.message || e?.message);
-    }
-
-    if (!resolvedPageToken) {
-      try {
-        const pageRes = await axios.get(`${FB_BASE}/${pageId}`, {
-          params: { fields: "access_token", access_token: primaryToken },
-          headers: customHeaders,
-          timeout: 10000,
-        });
-        if (pageRes.data?.access_token) {
-          resolvedPageToken = pageRes.data.access_token;
-          console.log("Token: Resolved page token via GET /{pageId}");
-        }
-      } catch (e: any) {
-        console.warn("Token: Direct page token fetch failed:", e?.response?.data?.error?.message || e?.message);
-      }
     }
   }
 
@@ -110,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const imgbbRes = await axios.post(
             "https://api.imgbb.com/1/upload?key=7acb2b5955d0a1e35ba91e981a8d1da8",
             imgFormData,
-            { headers: imgFormData.getHeaders(), timeout: 20000 }
+            { headers: imgFormData.getHeaders(), timeout: 15000 }
           );
           if (imgbbRes.data?.data?.url) {
             publicImageUrl = imgbbRes.data.data.url;
@@ -121,21 +106,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
     } else {
-      const imgRes = await axios.get(imageUrl, { responseType: "arraybuffer", timeout: 25000 });
+      const imgRes = await axios.get(imageUrl, { responseType: "arraybuffer", timeout: 20000 });
       imageBuffer = Buffer.from(imgRes.data);
     }
 
-    // ─── SCRAPE CLEAR for bridge link ─────────────────────────────────────────
-    try {
-      await axios.post(`${FB_BASE}/`, null, {
-        params: { id: destinationUrl.trim(), scrape: "true", access_token: pageToken },
-        headers: customHeaders,
-        timeout: 10000,
-      });
-      console.log("Scrape: Cache cleared for", destinationUrl.trim());
-    } catch (e: any) {
+    // ─── NON-BLOCKING SCRAPE CLEAR for bridge link ──────────────────────────────
+    axios.post(`${FB_BASE}/`, null, {
+      params: { id: destinationUrl.trim(), scrape: "true", access_token: pageToken },
+      headers: customHeaders,
+      timeout: 8000,
+    }).catch((e: any) => {
       console.warn("Scrape: Clear skipped:", e?.response?.data?.error?.message || e?.message);
-    }
+    });
 
     // ════════════════════════════════════════════════════════════════════════════
     // ENGINE 1: META AD CREATIVE ONE CARD V2
@@ -306,7 +288,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // If not yet available, retry once after 3s (FB takes a moment)
             if (!storyId) {
-              await new Promise((r) => setTimeout(r, 3000));
+              await new Promise((r) => setTimeout(r, 1000));
               try {
                 const storyRes2 = await axios.get(`${FB_BASE}/${creativeId}`, {
                   params: {
