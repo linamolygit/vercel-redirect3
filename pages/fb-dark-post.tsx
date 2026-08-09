@@ -633,7 +633,7 @@ const FbDarkPost: NextPage = () => {
         const formData = new FormData();
         formData.append("image", base64Data);
 
-        const IMGBB_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY || "369527ad0caec6bb3e52adfbcc28b2be";
+        const IMGBB_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY || "7acb2b5955d0a1e35ba91e981a8d1da8";
         const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
           method: "POST",
           body: formData,
