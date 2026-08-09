@@ -4,8 +4,11 @@ import FormData from "form-data";
 
 /**
  * POST /api/fb-post
- * Primary Engine: Meta Ad Creative One Card V2 Engine
- * Creates exact Facebook Ad-style Clickable 1:1 Image Cards with custom image_hash + destination link.
+ * Clean Metus.vn One Card V2 Publisher Engine
+ * Strictly creates single 100% Clickable Link Cards with zero photo upload splitting.
+ *
+ * Engine 1: Meta Ad Creative Engine (adimages + adcreatives via image_hash)
+ * Engine 2: Metus Bridge Link Engine (POST /{page_id}/feed with link: bridgeLink)
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -117,61 +120,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       imageBuffer = Buffer.from(imgRes.data);
     }
 
-    // ─── HELPER: Upload photo to page ────────────────────────────────────────
-    const uploadPhoto = async (token: string, published: "false" | "true"): Promise<string | null> => {
-      if (publicImageUrl) {
-        try {
-          const params = new URLSearchParams({
-            url: publicImageUrl,
-            published,
-            access_token: token,
-          });
-          const r = await axios.post(`${FB_BASE}/${pageId}/photos`, params, {
-            headers: { "Content-Type": "application/x-www-form-urlencoded", ...customHeaders },
-            timeout: 30000,
-          });
-          if (r.data?.id) return r.data.id;
-        } catch (e: any) {
-          if (e?.response?.data?.error) lastFbError = e.response.data.error;
-        }
-      }
-      try {
-        const fd = new FormData();
-        fd.append("source", imageBuffer, { filename: "card.jpg", contentType: "image/jpeg" });
-        fd.append("published", published);
-        fd.append("access_token", token);
-        const r = await axios.post(`${FB_BASE}/${pageId}/photos`, fd, {
-          headers: { ...fd.getHeaders(), ...customHeaders },
-          timeout: 30000,
-        });
-        if (r.data?.id) return r.data.id;
-      } catch (e: any) {
-        if (e?.response?.data?.error) lastFbError = e.response.data.error;
-      }
-      return null;
-    };
-
-    // ─── HELPER: Post to feed with object_attachment ──────────────────────────
-    const postFeed = async (token: string, photoId: string, published: "false" | "true"): Promise<string | null> => {
-      try {
-        const params = new URLSearchParams({
-          link: destinationUrl.trim(),
-          object_attachment: photoId,
-          published,
-          access_token: token,
-        });
-        if (caption) params.append("message", caption);
-        const r = await axios.post(`${FB_BASE}/${pageId}/feed`, params.toString(), {
-          headers: { "Content-Type": "application/x-www-form-urlencoded", ...customHeaders },
-          timeout: 30000,
-        });
-        return r.data?.id || null;
-      } catch (e: any) {
-        if (e?.response?.data?.error) lastFbError = e.response.data.error;
-        console.warn(`Feed post failed (published=${published}):`, e?.response?.data?.error?.message || e?.message);
-        return null;
-      }
-    };
+    // ─── FORCE FACEBOOK GRAPH API SCRAPE CLEAR FOR BRIDGE LINK ───────────────
+    try {
+      console.log("FB Post: Force clearing Facebook scrape cache for bridge link:", destinationUrl.trim());
+      await axios.post(`${FB_BASE}/`, null, {
+        params: { id: destinationUrl.trim(), scrape: "true", access_token: pageToken },
+        headers: customHeaders,
+        timeout: 10000,
+      });
+      console.log("FB Post: Bridge link scrape cache cleared successfully!");
+    } catch (e: any) {
+      console.warn("FB Post: Bridge link scrape clear skipped:", e?.response?.data?.error?.message || e?.message);
+    }
 
     // ════════════════════════════════════════════════════════════════════════════
     // ENGINE 1 (PRIMARY): META AD CREATIVE ONE CARD V2 ENGINE
@@ -198,7 +158,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (activeAdAccountId && userToken) {
       try {
-        console.log(`Engine 1 (Ad Creative): Uploading canvas image to Ad Account (${activeAdAccountId})...`);
+        console.log(`Engine 1 (Ad Creative): Uploading 1:1 image to Ad Account (${activeAdAccountId})...`);
         const base64ImageStr = imageBuffer.toString("base64");
         const adImagesParams = new URLSearchParams({
           bytes: base64ImageStr,
@@ -300,58 +260,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // ENGINE 2: OBJECT ATTACHMENT DARK POST (Unpublished Photo Attachment)
-    // ════════════════════════════════════════════════════════════════════════════
-    if (resolvedPageToken) {
-      console.log("Engine 2: Dark Post with resolved Page Token...");
-      const photoId = await uploadPhoto(resolvedPageToken, "false");
-      if (photoId) {
-        const postId = await postFeed(resolvedPageToken, photoId, "false");
-        if (postId) {
-          console.log("Engine 2 SUCCESS! Dark Post ID =", postId);
-          return res.status(200).json({
-            success: true,
-            postId,
-            postUrl: `https://www.facebook.com/${postId}`,
-            photoId,
-            engine: "Dark Post Clickable Card Engine (Engine 2)",
-            isPublished: false,
-          });
-        }
-      }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // ENGINE 3: PUBLISHED OBJECT ATTACHMENT CARD
+    // ENGINE 2: METUS BRIDGE LINK ENGINE (Pure link post — no photo upload!)
+    // Posts ONLY link: bridgeLink to /{page_id}/feed.
+    // Facebook scrapes the bridge link, sees the 1080x1080 og:image, and automatically
+    // renders ONE single 100% Clickable Square Card Post.
+    // Zero photo uploads, zero object_attachment, zero double posts!
     // ════════════════════════════════════════════════════════════════════════════
     const tokensToTry = [pageToken, userToken].filter(Boolean);
     const uniqueTokens = Array.from(new Set(tokensToTry));
 
     for (const token of uniqueTokens) {
-      console.log(`Engine 3: Published Post with token (${token.slice(0, 12)}...)...`);
-      const photoId = await uploadPhoto(token, "true");
-      if (photoId) {
-        const postId = await postFeed(token, photoId, "true");
-        if (postId) {
-          console.log("Engine 3 SUCCESS! Post ID =", postId);
-          return res.status(200).json({
-            success: true,
-            postId,
-            postUrl: `https://www.facebook.com/${postId}`,
-            photoId,
-            engine: "Published Clickable Card Engine (Engine 3)",
-            isPublished: true,
-          });
-        }
-      }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════════
-    // ENGINE 4: METUS BRIDGE LINK FALLBACK
-    // ════════════════════════════════════════════════════════════════════════════
-    for (const token of uniqueTokens) {
       try {
-        console.log(`Engine 4 (Bridge Link): Posting link-only to /${pageId}/feed...`);
+        console.log(`Engine 2 (Metus Bridge Link): Posting link-only to /${pageId}/feed with token (${token.slice(0, 12)}...)...`);
         const params = new URLSearchParams({ link: destinationUrl.trim(), access_token: token });
         if (caption) params.append("message", caption);
         params.append("published", saveAsDraft ? "false" : "true");
@@ -360,18 +280,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           headers: { "Content-Type": "application/x-www-form-urlencoded", ...customHeaders },
           timeout: 30000,
         });
+
         if (r.data?.id) {
-          console.log("Engine 4 SUCCESS! postId =", r.data.id);
+          console.log("Engine 2 (Metus Bridge Link) SUCCESS! postId =", r.data.id);
           return res.status(200).json({
             success: true,
             postId: r.data.id,
             postUrl: `https://www.facebook.com/${r.data.id.replace("_", "/posts/")}`,
-            engine: "Metus Bridge Link Engine (Engine 4)",
+            engine: "Metus Bridge Link Engine (Engine 2)",
             isPublished: !saveAsDraft,
           });
         }
       } catch (e: any) {
         if (e?.response?.data?.error) lastFbError = e.response.data.error;
+        console.warn(`Engine 2 failed (token ${token.slice(0, 12)}...):`, e?.response?.data?.error?.message || e?.message);
       }
     }
 

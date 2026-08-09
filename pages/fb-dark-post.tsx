@@ -428,7 +428,7 @@ const FbDarkPost: NextPage = () => {
   // Generate 1200x1080 Canvas Buffer (Wider horizontal aspect ratio)
   const generateCollage = useCallback(async (): Promise<string> => {
     const canvas = document.createElement("canvas");
-    const W = 1200;
+    const W = 1080;
     const H = 1080;
     canvas.width = W;
     canvas.height = H;
