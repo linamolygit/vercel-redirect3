@@ -181,149 +181,136 @@ const extensionFetch = (
   });
 };
 
-// ========== FORCE STORY GENERATION VIA PAUSED AD ==========
-const forceStoryGenerationViaPausedAd = async (
-  creativeId: string,
-  adAccountId: string,
-  userAccessToken: string,
-  hasExt: boolean
-): Promise<string | null> => {
-  const FB_BASE = "https://graph.facebook.com/v19.0";
-  const adAccPath = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+// ========== FORCE STORY GENERATION VIA PAUSED AD (CAMPAIGN + ADSET + AD) ==========
+async function forceStoryIdFromCreative(params: {
+  creativeId: string;
+  adAccountId: string;
+  userAccessToken: string;
+  extensionFetch?: (url: string, options?: any) => Promise<any>;
+  hasExt: boolean;
+}) {
+  const { creativeId, adAccountId, userAccessToken, hasExt } = params;
+  const FB = "https://graph.facebook.com/v19.0";
+  const token = userAccessToken;
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
 
-  try {
-    console.log("Forcing story generation: Step A - Creating PAUSED Campaign...");
-    const campaignBody = {
-      name: `OneCard_Campaign_Temp_${Date.now()}`,
-      objective: "OUTCOME_TRAFFIC",
-      status: "PAUSED",
-      special_ad_categories: [],
-      access_token: userAccessToken,
-    };
-
-    let campRes: any;
-    if (hasExt) {
-      campRes = await extensionFetch(`${FB_BASE}/${adAccPath}/campaigns`, {
-        method: "POST",
+  const api = async (method: string, path: string, body?: any) => {
+    const url = path.startsWith("http") ? path : `${FB}${path}`;
+    if (hasExt && params.extensionFetch) {
+      const res = await params.extensionFetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(campaignBody),
+        body: body ? JSON.stringify({ ...body, access_token: token }) : undefined,
       });
-    } else {
-      const r = await fetch(`${FB_BASE}/${adAccPath}/campaigns`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(campaignBody),
-      });
-      campRes = { ok: r.ok, data: await r.json() };
-    }
-
-    const campaignId = campRes.data?.id;
-    if (!campaignId) {
-      console.warn("Forcing story: Campaign creation failed:", campRes.data?.error?.message || campRes.error);
-      return null;
-    }
-
-    console.log("Forcing story: Step B - Creating PAUSED AdSet...");
-    const adsetBody = {
-      name: `OneCard_Adset_Temp_${Date.now()}`,
-      campaign_id: campaignId,
-      status: "PAUSED",
-      billing_event: "IMPRESSIONS",
-      optimization_goal: "LINK_CLICKS",
-      bid_amount: 100,
-      daily_budget: 1000,
-      targeting: { geo_locations: { countries: ["IN"] } },
-      access_token: userAccessToken,
-    };
-
-    let adsetRes: any;
-    if (hasExt) {
-      adsetRes = await extensionFetch(`${FB_BASE}/${adAccPath}/adsets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(adsetBody),
-      });
-    } else {
-      const r = await fetch(`${FB_BASE}/${adAccPath}/adsets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(adsetBody),
-      });
-      adsetRes = { ok: r.ok, data: await r.json() };
-    }
-
-    const adsetId = adsetRes.data?.id;
-    if (!adsetId) {
-      console.warn("Forcing story: AdSet creation failed:", adsetRes.data?.error?.message || adsetRes.error);
-      return null;
-    }
-
-    console.log("Forcing story: Step C - Creating PAUSED Ad with creative_id =", creativeId);
-    const adBody = {
-      name: `OneCard_Ad_Temp_${Date.now()}`,
-      adset_id: adsetId,
-      creative: { creative_id: creativeId },
-      status: "PAUSED",
-      access_token: userAccessToken,
-    };
-
-    let adRes: any;
-    if (hasExt) {
-      adRes = await extensionFetch(`${FB_BASE}/${adAccPath}/ads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(adBody),
-      });
-    } else {
-      const r = await fetch(`${FB_BASE}/${adAccPath}/ads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(adBody),
-      });
-      adRes = { ok: r.ok, data: await r.json() };
-    }
-
-    const adId = adRes.data?.id;
-    console.log("Forcing story: PAUSED Ad created =", adId || "failed");
-
-    // Wait 3 seconds for Meta to link story
-    await new Promise((r) => setTimeout(r, 3000));
-
-    // Step D: Re-fetch creative & ad fields
-    const storyUrl = `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id&access_token=${userAccessToken}`;
-    let finalRes: any;
-    if (hasExt) {
-      finalRes = await extensionFetch(storyUrl);
-    } else {
-      const r = await fetch(storyUrl);
-      finalRes = { data: await r.json() };
-    }
-
-    let foundStory = finalRes.data?.effective_object_story_id || finalRes.data?.object_story_id || null;
-
-    if (!foundStory && adId) {
-      const adStoryUrl = `${FB_BASE}/${adId}?fields=effective_object_story_id,creative{effective_object_story_id,object_story_id}&access_token=${userAccessToken}`;
-      let adStoryRes: any;
-      if (hasExt) {
-        adStoryRes = await extensionFetch(adStoryUrl);
-      } else {
-        const r = await fetch(adStoryUrl);
-        adStoryRes = { data: await r.json() };
+      if (!res.ok && res.data?.error) {
+        throw new Error(res.data.error.message || JSON.stringify(res.data.error));
       }
-      foundStory =
-        adStoryRes.data?.effective_object_story_id ||
-        adStoryRes.data?.creative?.effective_object_story_id ||
-        adStoryRes.data?.creative?.object_story_id ||
-        null;
+      return res.data;
     }
+    const r = await fetch(
+      method === "GET" ? `${url}${url.includes("?") ? "&" : "?"}access_token=${token}` : url,
+      method === "GET"
+        ? undefined
+        : {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...body, access_token: token }),
+          }
+    );
+    const data = await r.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    return data;
+  };
 
-    console.log("Forcing story: Final storyId result =", foundStory);
-    return foundStory;
-  } catch (err: any) {
-    console.warn("Forcing story exception:", err?.message || err);
-    return null;
+  // 1) Initial quick checks directly from creative
+  for (let i = 0; i < 4; i++) {
+    if (i) await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const c = await api(
+        "GET",
+        `/${creativeId}?fields=effective_object_story_id,object_story_id`
+      );
+      const sid = c.effective_object_story_id || c.object_story_id;
+      if (sid) return { storyId: sid, creativeId };
+    } catch (e: any) {
+      console.warn(`Creative initial poll attempt ${i + 1} failed:`, e?.message);
+    }
   }
-};
+
+  // 2) Force: PAUSED campaign + adset + ad
+  console.log("Forcing story via PAUSED campaign/adset/ad...");
+
+  const campaign = await api("POST", `/${act}/campaigns`, {
+    name: `OneCard_TMP_${Date.now()}`,
+    objective: "OUTCOME_TRAFFIC",
+    status: "PAUSED",
+    special_ad_categories: [],
+  });
+
+  const adset = await api("POST", `/${act}/adsets`, {
+    name: `OneCard_Adset_TMP_${Date.now()}`,
+    campaign_id: campaign.id,
+    status: "PAUSED",
+    billing_event: "IMPRESSIONS",
+    optimization_goal: "LINK_CLICKS",
+    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    daily_budget: 1000, // minor units; account currency
+    targeting: {
+      geo_locations: { countries: ["IN"] },
+    },
+  });
+
+  const ad = await api("POST", `/${act}/ads`, {
+    name: `OneCard_Ad_TMP_${Date.now()}`,
+    adset_id: adset.id,
+    creative: { creative_id: creativeId },
+    status: "PAUSED",
+  });
+
+  console.log("Temp PAUSED ad created =", ad.id);
+
+  // 3) Re-poll creative / ad for story ID
+  for (let i = 0; i < 8; i++) {
+    await new Promise((r) => setTimeout(r, 2500));
+
+    try {
+      const c = await api(
+        "GET",
+        `/${creativeId}?fields=effective_object_story_id,object_story_id`
+      );
+      let sid = c.effective_object_story_id || c.object_story_id;
+
+      if (!sid && ad?.id) {
+        const a = await api(
+          "GET",
+          `/${ad.id}?fields=effective_object_story_id,creative{effective_object_story_id,object_story_id}`
+        );
+        sid =
+          a.effective_object_story_id ||
+          a.creative?.effective_object_story_id ||
+          a.creative?.object_story_id ||
+          null;
+      }
+
+      if (sid) {
+        return {
+          storyId: sid,
+          creativeId,
+          adId: ad.id,
+          campaignId: campaign.id,
+          adsetId: adset.id,
+        };
+      }
+    } catch (e: any) {
+      console.warn(`Ad story poll attempt ${i + 1} failed:`, e?.message);
+    }
+  }
+
+  throw new Error(
+    `Creative ${creativeId} + temp Ad ${ad.id} ban gaye, lekin story ID abhi null hai. ` +
+      `Ads Manager me PAUSED ad check karo.`
+  );
+}
 
 // ========== ENGINE 1 via EXTENSION ==========
 const runEngine1ViaExtension = async (params: {
@@ -415,40 +402,17 @@ const runEngine1ViaExtension = async (params: {
   const creativeId = creativeRes.data.id;
   console.log("Engine 1 (Ext): Creative created =", creativeId);
 
-  // ── Step 3: Get effective_object_story_id (polling + Paused Ad fallback) ───
-  let storyId: string | null = null;
+  // ── Step 3: Get effective_object_story_id (using forceStoryIdFromCreative) ───
+  const forced = await forceStoryIdFromCreative({
+    creativeId,
+    adAccountId,
+    userAccessToken,
+    extensionFetch,
+    hasExt: true,
+  });
 
-  for (let attempt = 0; attempt < 6; attempt++) {
-    if (attempt > 0) {
-      await new Promise((r) => setTimeout(r, 2000));
-    }
-
-    const storyRes = await extensionFetch(
-      `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id,status&access_token=${userAccessToken}`
-    );
-
-    storyId =
-      storyRes.data?.effective_object_story_id ||
-      storyRes.data?.object_story_id ||
-      null;
-
-    console.log(`Engine 1 (Ext) Story fetch attempt ${attempt + 1}:`, storyId || storyRes.data?.status || "pending");
-
-    if (storyId) break;
-  }
-
-  // Fallback: If storyId is still null, create a PAUSED Ad to force Facebook story generation
-  if (!storyId) {
-    console.log("Engine 1 (Ext): storyId null after 6 attempts → triggering Paused Ad fallback...");
-    storyId = await forceStoryGenerationViaPausedAd(creativeId, adAccountId, userAccessToken, true);
-  }
-
-  if (!storyId) {
-    throw new Error(
-      `Ad Creative created (ID: ${creativeId}) but effective_object_story_id is not ready yet. ` +
-        `Wait 20–30s and check Ads Manager → Account → Creatives, or try publishing again.`
-    );
-  }
+  const storyId = String(forced.storyId);
+  console.log("Engine 1 (Ext) SUCCESS → storyId =", storyId);
 
   console.log("Engine 1 (Ext) SUCCESS → storyId =", storyId);
 
@@ -529,45 +493,17 @@ const runEngine1WithManualHash = async (params: {
   const creativeId = creativeRes.data.id;
   console.log("Engine 1 (Manual Hash): Creative =", creativeId);
 
-  // Get story ID (polling + Paused Ad fallback)
-  let storyId: string | null = null;
-  for (let i = 0; i < 6; i++) {
-    if (i > 0) await new Promise((r) => setTimeout(r, 2000));
+  // ── Step 3: Get effective_object_story_id (using forceStoryIdFromCreative) ───
+  const forced = await forceStoryIdFromCreative({
+    creativeId,
+    adAccountId,
+    userAccessToken,
+    extensionFetch,
+    hasExt,
+  });
 
-    const storyUrl = `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id,status&access_token=${userAccessToken}`;
-    let storyRes: any;
-
-    if (hasExt) {
-      storyRes = await extensionFetch(storyUrl);
-    } else {
-      const r = await fetch(storyUrl);
-      storyRes = { data: await r.json() };
-    }
-
-    storyId =
-      storyRes.data?.effective_object_story_id ||
-      storyRes.data?.object_story_id ||
-      null;
-
-    console.log(`Engine 1 (Manual Hash) Story fetch attempt ${i + 1}:`, storyId || storyRes.data?.status || "pending");
-
-    if (storyId) break;
-  }
-
-  // Fallback: If storyId is still null, create a PAUSED Ad to force Facebook story generation
-  if (!storyId) {
-    console.log("Engine 1 (Manual Hash): storyId null after 6 attempts → triggering Paused Ad fallback...");
-    storyId = await forceStoryGenerationViaPausedAd(creativeId, adAccountId, userAccessToken, hasExt);
-  }
-
-  if (!storyId) {
-    throw new Error(
-      `Ad Creative created (ID: ${creativeId}) but effective_object_story_id is not ready yet. ` +
-        `Wait 20–30s and check Ads Manager → Account → Creatives, or try publishing again with the same Image Hash.`
-    );
-  }
-
-  console.log("Engine 1 (Manual Hash) SUCCESS →", storyId);
+  const storyId = String(forced.storyId);
+  console.log("Engine 1 (Manual Hash) SUCCESS → storyId =", storyId);
 
   return {
     success: true,
