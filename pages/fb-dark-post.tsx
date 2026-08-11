@@ -1272,14 +1272,22 @@ const FbDarkPost: NextPage = () => {
                   {fbAdAccounts.length === 0 ? (
                     <option value="">-- No Ad Account Connected --</option>
                   ) : (
-                    fbAdAccounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name || a.id}
-                      </option>
-                    ))
+                    fbAdAccounts.map((a) => {
+                      const displayId = a.id.startsWith("act_") ? a.id : `act_${a.id}`;
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {a.name || "Ad Account"} — {displayId}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
               </div>
+              {selectedAdAccountId && (
+                <small className="selected-ad-hint">
+                  Selected: {selectedAdAccountId.startsWith("act_") ? selectedAdAccountId : `act_${selectedAdAccountId}`}
+                </small>
+              )}
             </div>
 
             {/* Message / Caption Textarea (Auto-Cached) */}
@@ -2693,6 +2701,15 @@ const FbDarkPost: NextPage = () => {
 
         .btn-delete-slot:hover {
           background: #ef4444;
+        }
+
+        .selected-ad-hint {
+          display: block;
+          margin-top: 6px;
+          font-size: 0.78rem;
+          color: var(--text-muted);
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-weight: 600;
         }
 
         .fake-more-overlay {
