@@ -608,9 +608,35 @@ const FbDarkPost: NextPage = () => {
   const [isExtensionInstalled, setIsExtensionInstalled] = useState(false);
   const [extUser, setExtUser] = useState<{ id: string; name: string; profilePic?: string } | null>(null);
 
-  // Manual Image Hash state
+  // Manual Image Hash state & FB Image URL
   const [manualImageHash, setManualImageHash] = useState("");
   const [useManualHash, setUseManualHash] = useState(false);
+  const [fbImageUrl, setFbImageUrl] = useState("");
+
+  const handleLoadFbImageToCanvas = async () => {
+    if (!fbImageUrl) return;
+
+    try {
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(fbImageUrl.trim())}`;
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        setSingleImageSrc(proxyUrl);
+        setSingleImageMode(true);
+        showToast("Image canvas pe load ho gayi!", "success");
+      };
+      img.onerror = () => {
+        showToast(
+          "Image load fail (CORS/URL expired). Image Hash se post karo, ya image download karke local file upload karo.",
+          "error"
+        );
+      };
+      img.src = proxyUrl;
+    } catch (err: any) {
+      showToast(err.message || "Failed to load FB image", "error");
+    }
+  };
 
   const [posting, setPosting] = useState(false);
   const [postResult, setPostResult] = useState<{ postId: string; postUrl: string } | null>(null);
@@ -1474,24 +1500,24 @@ const FbDarkPost: NextPage = () => {
               </div>
             </div>
 
-            {/* ─── MANUAL IMAGE HASH (One Card) ───────────────────────── */}
+            {/* ─── MANUAL IMAGE HASH & FB IMAGE URL (One Card) ─────────── */}
             <div className="manual-hash-card">
               <div className="hash-header">
-                <h4>1:1 Square One Card — Image Hash (Recommended)</h4>
+                <h4>1:1 Square One Card — Manual Hash / FB Image</h4>
                 <label className="hash-toggle">
                   <input
                     type="checkbox"
                     checked={useManualHash}
                     onChange={(e) => setUseManualHash(e.target.checked)}
                   />
-                  <span>Use Manual Image Hash</span>
+                  <span>Use Manual Hash / FB Image</span>
                 </label>
               </div>
 
               {useManualHash && (
                 <>
                   <div className="hash-steps">
-                    <p><strong>Steps:</strong></p>
+                    <p><strong>Option A — Image Hash (Post ke liye zaroori):</strong></p>
                     <ol>
                       <li>
                         Open{" "}
@@ -1501,18 +1527,42 @@ const FbDarkPost: NextPage = () => {
                           rel="noreferrer"
                           className="hash-link"
                         >
-                          Facebook Ads Manager → Media Library ↗
+                          Media Library ↗
                         </a>
                       </li>
-                      <li>Create a folder (optional) → Upload your <strong>1:1 square image</strong> (1080×1080)</li>
-                      <li>Click the uploaded image → open <strong>Image details</strong></li>
-                      <li>Copy the <strong>Image Hash</strong> (32-character code)</li>
-                      <li>Paste it below</li>
+                      <li>Upload 1:1 image → Image details → copy <strong>Image Hash</strong></li>
+                    </ol>
+
+                    <p style={{ marginTop: 12 }}><strong>Option B — Facebook Image URL (Canvas Preview):</strong></p>
+                    <ol>
+                      <li>Media Library me image open karo</li>
+                      <li>Image pe right-click → Copy image address (scontent...fbcdn.net URL)</li>
+                      <li>Neeche paste karo → canvas pe load ho jayegi</li>
                     </ol>
                   </div>
 
+                  {/* Option B: FB Image URL */}
                   <div className="form-group">
-                    <label className="input-label">Image Hash</label>
+                    <label className="input-label">Facebook Image URL (scontent... / fbcdn)</label>
+                    <input
+                      type="text"
+                      placeholder="https://scontent....fbcdn.net/v/t39.99422-6/...."
+                      value={fbImageUrl}
+                      onChange={(e) => setFbImageUrl(e.target.value.trim())}
+                    />
+                    <button
+                      type="button"
+                      className="btn-load-fb-image"
+                      onClick={handleLoadFbImageToCanvas}
+                      disabled={!fbImageUrl}
+                    >
+                      Load image to Canvas
+                    </button>
+                  </div>
+
+                  {/* Option A: Image Hash */}
+                  <div className="form-group" style={{ marginTop: 12 }}>
+                    <label className="input-label">Image Hash (post ke liye zaroori)</label>
                     <input
                       type="text"
                       placeholder="e.g. 534d15a4029a206c1cf01c3ac7a954b4"
@@ -1520,7 +1570,7 @@ const FbDarkPost: NextPage = () => {
                       onChange={(e) => setManualImageHash(e.target.value.trim())}
                     />
                     <small className="hint">
-                      Jab hash paste hoga, canvas upload skip hoga aur seedha Ad Creative se 1:1 card banega.
+                      URL sirf canvas preview ke liye hai. 1:1 One Card post ke liye <strong>Image Hash</strong> hi chahiye (usi Ad Account ki Media Library se).
                     </small>
                   </div>
                 </>
@@ -2867,6 +2917,27 @@ const FbDarkPost: NextPage = () => {
 
         .btn-delete-slot:hover {
           background: #ef4444;
+        }
+
+        .btn-load-fb-image {
+          margin-top: 8px;
+          padding: 8px 14px;
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--glass-border);
+          background: var(--btn-hover);
+          color: var(--text-main);
+          font-weight: 700;
+          font-size: 0.82rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .btn-load-fb-image:hover:not(:disabled) {
+          background: var(--primary);
+          color: #fff;
+        }
+        .btn-load-fb-image:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .selected-ad-hint {
