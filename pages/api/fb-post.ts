@@ -299,44 +299,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // ── Fetch effective_object_story_id (the real dark post) ──────────
             let storyId: string | null = null;
 
-            // Try immediately
-            try {
-              const storyRes = await axios.get(`${FB_BASE}/${creativeId}`, {
-                params: {
-                  fields: "effective_object_story_id,object_story_id,status",
-                  access_token: userToken,
-                },
-                headers: customHeaders,
-                timeout: 15000,
-              });
-              storyId =
-                storyRes.data?.effective_object_story_id ||
-                storyRes.data?.object_story_id ||
-                null;
-              console.log("Engine 1: storyId (immediate) =", storyId);
-            } catch (e: any) {
-              console.warn("Engine 1: Immediate story fetch failed:", e?.message);
-            }
+            for (let attempt = 0; attempt < 8; attempt++) {
+              if (attempt > 0) {
+                await new Promise((r) => setTimeout(r, 2500));
+              }
 
-            // If not yet available, retry once after 1s (reduced from 3s)
-            if (!storyId) {
-              await new Promise((r) => setTimeout(r, 1000));
               try {
-                const storyRes2 = await axios.get(`${FB_BASE}/${creativeId}`, {
+                const storyRes = await axios.get(`${FB_BASE}/${creativeId}`, {
                   params: {
-                    fields: "effective_object_story_id,object_story_id",
+                    fields: "effective_object_story_id,object_story_id,status",
                     access_token: userToken,
                   },
                   headers: customHeaders,
                   timeout: 15000,
                 });
+
                 storyId =
-                  storyRes2.data?.effective_object_story_id ||
-                  storyRes2.data?.object_story_id ||
+                  storyRes.data?.effective_object_story_id ||
+                  storyRes.data?.object_story_id ||
                   null;
-                console.log("Engine 1: storyId (retry) =", storyId);
+
+                console.log(`Engine 1 storyId poll attempt ${attempt + 1}:`, storyId || storyRes.data?.status || "pending");
+
+                if (storyId) break;
               } catch (e: any) {
-                console.warn("Engine 1: Retry story fetch failed:", e?.message);
+                console.warn(`Engine 1 story fetch attempt ${attempt + 1} failed:`, e?.message);
               }
             }
 

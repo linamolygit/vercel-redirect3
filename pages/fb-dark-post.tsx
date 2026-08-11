@@ -271,17 +271,16 @@ const runEngine1ViaExtension = async (params: {
   const creativeId = creativeRes.data.id;
   console.log("Engine 1 (Ext): Creative created =", creativeId);
 
-  // ── Step 3: Get effective_object_story_id ────────────────────────────
-  // Small delay + retry (Facebook kabhi-kabhi turant nahi deta)
+  // ── Step 3: Get effective_object_story_id (strong polling up to 25s) ───
   let storyId: string | null = null;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 10; attempt++) {
     if (attempt > 0) {
-      await new Promise((r) => setTimeout(r, 1200));
+      await new Promise((r) => setTimeout(r, 2500));
     }
 
     const storyRes = await extensionFetch(
-      `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id&access_token=${userAccessToken}`
+      `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id,status&access_token=${userAccessToken}`
     );
 
     storyId =
@@ -289,11 +288,16 @@ const runEngine1ViaExtension = async (params: {
       storyRes.data?.object_story_id ||
       null;
 
+    console.log(`Engine 1 (Ext) Story fetch attempt ${attempt + 1}:`, storyId || storyRes.data?.status || "pending");
+
     if (storyId) break;
   }
 
   if (!storyId) {
-    throw new Error("No effective_object_story_id returned after retries");
+    throw new Error(
+      `Ad Creative created (ID: ${creativeId}) but effective_object_story_id is not ready yet. ` +
+        `Wait 20–30s and check Ads Manager → Account → Creatives, or try publishing again.`
+    );
   }
 
   console.log("Engine 1 (Ext) SUCCESS → storyId =", storyId);
@@ -375,12 +379,12 @@ const runEngine1WithManualHash = async (params: {
   const creativeId = creativeRes.data.id;
   console.log("Engine 1 (Manual Hash): Creative =", creativeId);
 
-  // Get story ID (retry)
+  // Get story ID (retry up to 10 times, 2.5s each = 25s window)
   let storyId: string | null = null;
-  for (let i = 0; i < 3; i++) {
-    if (i > 0) await new Promise((r) => setTimeout(r, 1200));
+  for (let i = 0; i < 10; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 2500));
 
-    const storyUrl = `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id&access_token=${userAccessToken}`;
+    const storyUrl = `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id,status&access_token=${userAccessToken}`;
     let storyRes: any;
 
     if (hasExt) {
@@ -394,11 +398,17 @@ const runEngine1WithManualHash = async (params: {
       storyRes.data?.effective_object_story_id ||
       storyRes.data?.object_story_id ||
       null;
+
+    console.log(`Engine 1 (Manual Hash) Story fetch attempt ${i + 1}:`, storyId || storyRes.data?.status || "pending");
+
     if (storyId) break;
   }
 
   if (!storyId) {
-    throw new Error("No effective_object_story_id returned");
+    throw new Error(
+      `Ad Creative created (ID: ${creativeId}) but effective_object_story_id is not ready yet. ` +
+        `Wait 20–30s and check Ads Manager → Account → Creatives, or try publishing again with the same Image Hash.`
+    );
   }
 
   console.log("Engine 1 (Manual Hash) SUCCESS →", storyId);
