@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       timeout: 20000,
     });
 
-    const contentType = response.headers["content-type"] || "image/jpeg";
+    const contentType = (response.headers["content-type"] as string) || "image/jpeg";
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=86400");
     return res.send(Buffer.from(response.data));
