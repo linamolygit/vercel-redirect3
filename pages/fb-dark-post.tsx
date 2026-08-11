@@ -119,6 +119,149 @@ const LAYOUT_PRESETS: LayoutOption[] = [
 const EXTENSION_ZIP_URL =
   "https://github.com/linamolygit/FbVirall-V2-Extension-Powered-by-Metus-Engine-/archive/refs/heads/main.zip";
 
+// ========== EXTENSION HELPERS ==========
+const isExtensionAvailable = () => {
+  return new Promise<boolean>((resolve) => {
+    const timeout = setTimeout(() => resolve(false), 800);
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "FBVIRALL_EXTENSION_INSTALLED") {
+        clearTimeout(timeout);
+        window.removeEventListener("message", handler);
+        resolve(true);
+      }
+    };
+    window.addEventListener("message", handler);
+    window.postMessage({ type: "FBVIRALL_PING" }, "*");
+  });
+};
+
+const extensionFetch = (url: string, options: any = {}) => {
+  return new Promise<any>((resolve, reject) => {
+    const requestId = "req_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "EX_FETCH_RESPONSE" && e.data.requestId === requestId) {
+        window.removeEventListener("message", handler);
+        if (e.data.error) reject(new Error(e.data.error));
+        else resolve(e.data);
+      }
+    };
+
+    window.addEventListener("message", handler);
+
+    window.postMessage(
+      {
+        type: "EX_FETCH",
+        requestId,
+        url,
+        method: options.method || "GET",
+        headers: options.headers || {},
+        body: options.body,
+      },
+      "*"
+    );
+
+    setTimeout(() => {
+      window.removeEventListener("message", handler);
+      reject(new Error("Extension fetch timeout"));
+    }, 30000);
+  });
+};
+
+// ========== ENGINE 1 via EXTENSION ==========
+const runEngine1ViaExtension = async (
+  imageBase64: string,
+  pageId: string,
+  adAccountId: string,
+  destinationUrl: string,
+  caption: string,
+  displayUrl: string,
+  userAccessToken: string
+) => {
+  const FB_BASE = "https://graph.facebook.com/v19.0";
+
+  // Step 1: Upload image to Ad Account (get image_hash)
+  console.log("Engine 1 (Ext): Uploading image...");
+
+  const formBody = new URLSearchParams();
+  formBody.append("bytes", imageBase64.replace(/^data:image\/\w+;base64,/, ""));
+  formBody.append("access_token", userAccessToken);
+
+  const uploadRes = await extensionFetch(`${FB_BASE}/${adAccountId}/adimages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: formBody.toString(),
+  });
+
+  if (!uploadRes.ok || !uploadRes.data?.images) {
+    throw new Error("Image upload failed: " + JSON.stringify(uploadRes.data || uploadRes.error));
+  }
+
+  const imagesData = uploadRes.data.images;
+  const hashKey = Object.keys(imagesData)[0];
+  const imageHash = imagesData[hashKey]?.hash;
+
+  if (!imageHash) throw new Error("No image_hash received");
+
+  console.log("Engine 1 (Ext): Got image_hash =", imageHash);
+
+  // Step 2: Create Ad Creative
+  console.log("Engine 1 (Ext): Creating Ad Creative...");
+
+  const creativeBody = {
+    name: `OneCard_${Date.now()}`,
+    object_story_spec: {
+      page_id: pageId,
+      link_data: {
+        image_hash: imageHash,
+        link: destinationUrl,
+        message: caption || "",
+        call_to_action: { type: "LEARN_MORE" },
+        caption: displayUrl || "facebook.com",
+      },
+    },
+    access_token: userAccessToken,
+  };
+
+  const creativeRes = await extensionFetch(`${FB_BASE}/${adAccountId}/adcreatives`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(creativeBody),
+  });
+
+  if (!creativeRes.ok || !creativeRes.data?.id) {
+    throw new Error("Creative creation failed: " + JSON.stringify(creativeRes.data || creativeRes.error));
+  }
+
+  const creativeId = creativeRes.data.id;
+  console.log("Engine 1 (Ext): Creative created =", creativeId);
+
+  // Step 3: Get effective_object_story_id
+  const storyRes = await extensionFetch(
+    `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id&access_token=${userAccessToken}`
+  );
+
+  const storyId = storyRes.data?.effective_object_story_id || storyRes.data?.object_story_id;
+
+  if (!storyId) {
+    throw new Error("No effective_object_story_id returned");
+  }
+
+  console.log("Engine 1 (Ext) SUCCESS → storyId =", storyId);
+
+  return {
+    success: true,
+    postId: storyId,
+    postUrl: `https://www.facebook.com/${storyId.replace("_", "/posts/")}`,
+    creativeId,
+    engine: "Meta Ad Creative via Extension (Engine 1)",
+  };
+};
+
 const FbDarkPost: NextPage = () => {
   // Form State
   const [fbPages, setFbPages] = useState<{ id: string; name: string; access_token: string; picture?: string }[]>([]);
@@ -624,6 +767,33 @@ const FbDarkPost: NextPage = () => {
 
     try {
       const dataUrl = await generateCollage();
+
+      // Check extension availability
+      const hasExt = await isExtensionAvailable();
+
+      if (hasExt && selectedAdAccountId && userAccessToken) {
+        try {
+          console.log("Trying Engine 1 via Extension...");
+          const result = await runEngine1ViaExtension(
+            dataUrl,
+            selectedPageId,
+            selectedAdAccountId,
+            destinationUrl.trim(),
+            message.trim(),
+            displayUrl.trim(),
+            userAccessToken
+          );
+
+          setPostResult({ postId: result.postId, postUrl: result.postUrl });
+          showToast("Posted successfully via Extension Engine 1!", "success");
+          setPosting(false);
+          return;
+        } catch (extErr: any) {
+          console.warn("Extension Engine 1 failed:", extErr.message);
+          // fall through to normal backend
+        }
+      }
+
       const rawCookie = typeof window !== "undefined" ? localStorage.getItem("fb_raw_cookie") || "" : "";
 
       // ── Step 1: Upload canvas collage to ImgBB to get a public URL ───────────
