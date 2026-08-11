@@ -299,9 +299,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // ── Fetch effective_object_story_id (the real dark post) ──────────
             let storyId: string | null = null;
 
-            for (let attempt = 0; attempt < 8; attempt++) {
+            for (let attempt = 0; attempt < 5; attempt++) {
               if (attempt > 0) {
-                await new Promise((r) => setTimeout(r, 2500));
+                await new Promise((r) => setTimeout(r, 2000));
               }
 
               try {
@@ -325,6 +325,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               } catch (e: any) {
                 console.warn(`Engine 1 story fetch attempt ${attempt + 1} failed:`, e?.message);
               }
+            }
+
+            // Fallback: If storyId is still null, create a PAUSED Ad to force Facebook story generation
+            if (!storyId && activeAdAccountId) {
+              console.log("Engine 1: storyId null after 5 attempts → creating Paused Ad to force story generation...");
+              storyId = await forceStoryGenerationViaPausedAdBackend(
+                creativeId,
+                activeAdAccountId,
+                userToken,
+                FB_BASE,
+                customHeaders
+              );
             }
 
             if (storyId) {
@@ -480,4 +492,99 @@ function getHint(code: number, message: string = ""): string {
     hints[code] ||
     "Ensure you are Admin of the selected Facebook Page and your ad account has an active payment method. Re-sync from 'FB Connect'."
   );
+}
+
+async function forceStoryGenerationViaPausedAdBackend(
+  creativeId: string,
+  adAccountId: string,
+  userToken: string,
+  FB_BASE: string,
+  customHeaders: Record<string, string>
+): Promise<string | null> {
+  const adAccPath = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+
+  try {
+    console.log("Backend Forcing story: Step A - Creating PAUSED Campaign...");
+    const campRes = await axios.post(
+      `${FB_BASE}/${adAccPath}/campaigns`,
+      {
+        name: `OneCard_Campaign_Temp_${Date.now()}`,
+        objective: "OUTCOME_TRAFFIC",
+        status: "PAUSED",
+        special_ad_categories: [],
+        access_token: userToken,
+      },
+      { headers: customHeaders, timeout: 15000 }
+    );
+
+    const campaignId = campRes.data?.id;
+    if (!campaignId) return null;
+
+    console.log("Backend Forcing story: Step B - Creating PAUSED AdSet...");
+    const adsetRes = await axios.post(
+      `${FB_BASE}/${adAccPath}/adsets`,
+      {
+        name: `OneCard_Adset_Temp_${Date.now()}`,
+        campaign_id: campaignId,
+        status: "PAUSED",
+        billing_event: "IMPRESSIONS",
+        optimization_goal: "LINK_CLICKS",
+        bid_amount: 100,
+        daily_budget: 1000,
+        targeting: { geo_locations: { countries: ["IN"] } },
+        access_token: userToken,
+      },
+      { headers: customHeaders, timeout: 15000 }
+    );
+
+    const adsetId = adsetRes.data?.id;
+    if (!adsetId) return null;
+
+    console.log("Backend Forcing story: Step C - Creating PAUSED Ad with creative_id =", creativeId);
+    const adRes = await axios.post(
+      `${FB_BASE}/${adAccPath}/ads`,
+      {
+        name: `OneCard_Ad_Temp_${Date.now()}`,
+        adset_id: adsetId,
+        creative: { creative_id: creativeId },
+        status: "PAUSED",
+        access_token: userToken,
+      },
+      { headers: customHeaders, timeout: 15000 }
+    );
+
+    const adId = adRes.data?.id;
+    console.log("Backend Forcing story: PAUSED Ad created =", adId || "failed");
+    await new Promise((r) => setTimeout(r, 3000));
+
+    const finalRes = await axios.get(`${FB_BASE}/${creativeId}`, {
+      params: { fields: "effective_object_story_id,object_story_id", access_token: userToken },
+      headers: customHeaders,
+      timeout: 10000,
+    });
+
+    let foundStory = finalRes.data?.effective_object_story_id || finalRes.data?.object_story_id || null;
+
+    if (!foundStory && adId) {
+      const adStoryRes = await axios.get(`${FB_BASE}/${adId}`, {
+        params: {
+          fields: "effective_object_story_id,creative{effective_object_story_id,object_story_id}",
+          access_token: userToken,
+        },
+        headers: customHeaders,
+        timeout: 10000,
+      });
+      foundStory =
+        adStoryRes.data?.effective_object_story_id ||
+        adStoryRes.data?.creative?.effective_object_story_id ||
+        adStoryRes.data?.creative?.object_story_id ||
+        null;
+    }
+
+    console.log("Backend Forcing story: Final storyId result =", foundStory);
+    return foundStory;
+  } catch (err: any) {
+    console.warn("Backend Forcing story exception:", err?.response?.data?.error?.message || err?.message);
+    return null;
+  }
 }
