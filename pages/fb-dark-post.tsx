@@ -120,9 +120,10 @@ const EXTENSION_ZIP_URL =
   "https://github.com/linamolygit/FbVirall-V2-Extension-Powered-by-Metus-Engine-/archive/refs/heads/main.zip";
 
 // ========== EXTENSION HELPERS ==========
-const isExtensionAvailable = () => {
-  return new Promise<boolean>((resolve) => {
-    const timeout = setTimeout(() => resolve(false), 800);
+const isExtensionAvailable = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(false), 900);
+
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "FBVIRALL_EXTENSION_INSTALLED") {
         clearTimeout(timeout);
@@ -130,20 +131,31 @@ const isExtensionAvailable = () => {
         resolve(true);
       }
     };
+
     window.addEventListener("message", handler);
     window.postMessage({ type: "FBVIRALL_PING" }, "*");
   });
 };
 
-const extensionFetch = (url: string, options: any = {}) => {
-  return new Promise<any>((resolve, reject) => {
-    const requestId = "req_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+const extensionFetch = (
+  url: string,
+  options: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: any;
+  } = {}
+): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    const requestId = "req_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
 
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "EX_FETCH_RESPONSE" && e.data.requestId === requestId) {
         window.removeEventListener("message", handler);
-        if (e.data.error) reject(new Error(e.data.error));
-        else resolve(e.data);
+        if (e.data.error) {
+          reject(new Error(e.data.error));
+        } else {
+          resolve(e.data);
+        }
       }
     };
 
@@ -161,30 +173,42 @@ const extensionFetch = (url: string, options: any = {}) => {
       "*"
     );
 
+    // 35s timeout
     setTimeout(() => {
       window.removeEventListener("message", handler);
-      reject(new Error("Extension fetch timeout"));
-    }, 30000);
+      reject(new Error("Extension fetch timeout (35s)"));
+    }, 35000);
   });
 };
 
 // ========== ENGINE 1 via EXTENSION ==========
-const runEngine1ViaExtension = async (
-  imageBase64: string,
-  pageId: string,
-  adAccountId: string,
-  destinationUrl: string,
-  caption: string,
-  displayUrl: string,
-  userAccessToken: string
-) => {
-  const FB_BASE = "https://graph.facebook.com/v19.0";
+const runEngine1ViaExtension = async (params: {
+  imageBase64: string;
+  pageId: string;
+  adAccountId: string;
+  destinationUrl: string;
+  caption: string;
+  displayUrl: string;
+  userAccessToken: string;
+}) => {
+  const {
+    imageBase64,
+    pageId,
+    adAccountId,
+    destinationUrl,
+    caption,
+    displayUrl,
+    userAccessToken,
+  } = params;
 
-  // Step 1: Upload image to Ad Account (get image_hash)
-  console.log("Engine 1 (Ext): Uploading image...");
+  const FB_BASE = "https://graph.facebook.com/v19.0";
+  const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
+  // ── Step 1: Upload image → image_hash ────────────────────────────────
+  console.log("Engine 1 (Ext): Uploading image to Ad Account...");
 
   const formBody = new URLSearchParams();
-  formBody.append("bytes", imageBase64.replace(/^data:image\/\w+;base64,/, ""));
+  formBody.append("bytes", cleanBase64);
   formBody.append("access_token", userAccessToken);
 
   const uploadRes = await extensionFetch(`${FB_BASE}/${adAccountId}/adimages`, {
@@ -196,27 +220,31 @@ const runEngine1ViaExtension = async (
   });
 
   if (!uploadRes.ok || !uploadRes.data?.images) {
-    throw new Error("Image upload failed: " + JSON.stringify(uploadRes.data || uploadRes.error));
+    throw new Error(
+      "Image upload failed: " + JSON.stringify(uploadRes.data || uploadRes.error || "Unknown")
+    );
   }
 
   const imagesData = uploadRes.data.images;
   const hashKey = Object.keys(imagesData)[0];
   const imageHash = imagesData[hashKey]?.hash;
 
-  if (!imageHash) throw new Error("No image_hash received");
+  if (!imageHash) {
+    throw new Error("No image_hash received from Ad Account");
+  }
 
   console.log("Engine 1 (Ext): Got image_hash =", imageHash);
 
-  // Step 2: Create Ad Creative
+  // ── Step 2: Create Ad Creative ───────────────────────────────────────
   console.log("Engine 1 (Ext): Creating Ad Creative...");
 
-  const creativeBody = {
+  const creativePayload = {
     name: `OneCard_${Date.now()}`,
     object_story_spec: {
       page_id: pageId,
       link_data: {
         image_hash: imageHash,
-        link: destinationUrl,
+        link: destinationUrl.trim(),
         message: caption || "",
         call_to_action: { type: "LEARN_MORE" },
         caption: displayUrl || "facebook.com",
@@ -230,25 +258,42 @@ const runEngine1ViaExtension = async (
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(creativeBody),
+    body: JSON.stringify(creativePayload),
   });
 
   if (!creativeRes.ok || !creativeRes.data?.id) {
-    throw new Error("Creative creation failed: " + JSON.stringify(creativeRes.data || creativeRes.error));
+    const errMsg =
+      creativeRes.data?.error?.message ||
+      JSON.stringify(creativeRes.data || creativeRes.error || "Unknown error");
+    throw new Error("Ad Creative creation failed: " + errMsg);
   }
 
   const creativeId = creativeRes.data.id;
   console.log("Engine 1 (Ext): Creative created =", creativeId);
 
-  // Step 3: Get effective_object_story_id
-  const storyRes = await extensionFetch(
-    `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id&access_token=${userAccessToken}`
-  );
+  // ── Step 3: Get effective_object_story_id ────────────────────────────
+  // Small delay + retry (Facebook kabhi-kabhi turant nahi deta)
+  let storyId: string | null = null;
 
-  const storyId = storyRes.data?.effective_object_story_id || storyRes.data?.object_story_id;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+
+    const storyRes = await extensionFetch(
+      `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id&access_token=${userAccessToken}`
+    );
+
+    storyId =
+      storyRes.data?.effective_object_story_id ||
+      storyRes.data?.object_story_id ||
+      null;
+
+    if (storyId) break;
+  }
 
   if (!storyId) {
-    throw new Error("No effective_object_story_id returned");
+    throw new Error("No effective_object_story_id returned after retries");
   }
 
   console.log("Engine 1 (Ext) SUCCESS → storyId =", storyId);
@@ -745,8 +790,8 @@ const FbDarkPost: NextPage = () => {
   }, [images, activeLayout, fakeMore, fakeCount, singleImageMode, singleImageSrc]);
 
 
-  // Upload to ImgBB then post via Marketing API
   const handleRunPost = async () => {
+    // ── Validation ──────────────────────────────────────────────────────
     if (!userAccessToken) {
       setErrorMessage("Please enter your Facebook Access Token or install the Extension.");
       return;
@@ -755,7 +800,6 @@ const FbDarkPost: NextPage = () => {
       setErrorMessage("Please select a Facebook Page.");
       return;
     }
-
     if (!destinationUrl.trim()) {
       setErrorMessage("Please enter a Destination URL.");
       return;
@@ -766,44 +810,59 @@ const FbDarkPost: NextPage = () => {
     setPostResult(null);
 
     try {
+      // ── Generate Canvas ───────────────────────────────────────────────
       const dataUrl = await generateCollage();
+      if (!dataUrl) {
+        throw new Error("Failed to generate canvas image");
+      }
 
-      // Check extension availability
+      const rawCookie =
+        typeof window !== "undefined" ? localStorage.getItem("fb_raw_cookie") || "" : "";
+
+      // ── Try Engine 1 via Extension first ──────────────────────────────
       const hasExt = await isExtensionAvailable();
 
       if (hasExt && selectedAdAccountId && userAccessToken) {
         try {
-          console.log("Trying Engine 1 via Extension...");
-          const result = await runEngine1ViaExtension(
-            dataUrl,
-            selectedPageId,
-            selectedAdAccountId,
-            destinationUrl.trim(),
-            message.trim(),
-            displayUrl.trim(),
-            userAccessToken
-          );
+          console.log("→ Trying Engine 1 via Extension...");
 
-          setPostResult({ postId: result.postId, postUrl: result.postUrl });
+          const result = await runEngine1ViaExtension({
+            imageBase64: dataUrl,
+            pageId: selectedPageId,
+            adAccountId: selectedAdAccountId,
+            destinationUrl: destinationUrl.trim(),
+            caption: message.trim(),
+            displayUrl: displayUrl.trim() || "facebook.com",
+            userAccessToken,
+          });
+
+          setPostResult({
+            postId: result.postId,
+            postUrl: result.postUrl,
+          });
           showToast("Posted successfully via Extension Engine 1!", "success");
           setPosting(false);
-          return;
+          return; // SUCCESS — stop here
         } catch (extErr: any) {
-          console.warn("Extension Engine 1 failed:", extErr.message);
-          // fall through to normal backend
+          console.warn("Extension Engine 1 failed:", extErr?.message || extErr);
+          // Fall through to normal backend flow
         }
+      } else {
+        console.log("Extension not available or no Ad Account → using backend");
       }
 
-      const rawCookie = typeof window !== "undefined" ? localStorage.getItem("fb_raw_cookie") || "" : "";
+      // ── FALLBACK: Normal backend flow (Bridge Link + /api/fb-post) ────
 
-      // ── Step 1: Upload canvas collage to ImgBB to get a public URL ───────────
+      // Step A: Upload canvas to ImgBB (for bridge link OG)
       let imageUrl = "";
       try {
         const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
         const formData = new FormData();
         formData.append("image", base64Data);
 
-        const IMGBB_KEY = process.env.NEXT_PUBLIC_IMGBB_API_KEY || "7acb2b5955d0a1e35ba91e981a8d1da8";
+        const IMGBB_KEY =
+          process.env.NEXT_PUBLIC_IMGBB_API_KEY || "7acb2b5955d0a1e35ba91e981a8d1da8";
+
         const imgbbRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
           method: "POST",
           body: formData,
@@ -814,15 +873,10 @@ const FbDarkPost: NextPage = () => {
           imageUrl = imgbbData.data.url;
         }
       } catch (imgbbErr) {
-        console.warn("ImgBB upload failed, falling back to direct base64 image data...", imgbbErr);
+        console.warn("ImgBB upload failed:", imgbbErr);
       }
 
-      // ── Step 2: Metus Bridge Link Architecture ───────────────────────────────
-      // Goal: Post to Facebook with a bridge link whose og:image = our canvas.
-      // Case A: destinationUrl is already a SaaS bridge link → just update OG image.
-      // Case B: destinationUrl is an external URL → auto-create a bridge link first.
-      // In both cases, Engine 0 in fb-post.ts posts link: bridgeLink so Facebook
-      // scrapes our canvas image and creates a pure 1:1 clickable square card.
+      // Step B: Bridge Link logic
       let effectiveBridgeLink = destinationUrl.trim();
       let effectiveDisplayUrl = displayUrl.trim() || "facebook.com";
 
@@ -838,19 +892,17 @@ const FbDarkPost: NextPage = () => {
             parsedUrl.hostname === window.location.hostname;
 
           if (shortId && isSaasBridgeLink) {
-            // ── Case A: Already a bridge link — just update its OG image ──────
-            console.log(`Bridge Link [A]: Updating OG image for existing shortId=${shortId}...`);
+            // Case A: Already a bridge link → update OG image
+            console.log(`Bridge Link [A]: Updating OG for shortId=${shortId}`);
             await fetch("/api/update-redirect-og", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ shortId, ogImageUrl: imageUrl }),
             });
-            console.log("Bridge Link [A]: OG image updated to canvas image!");
-            // effectiveBridgeLink stays as destinationUrl (the bridge link)
           } else {
-            // ── Case B: External URL — auto-create a bridge link ─────────────
-            console.log("Bridge Link [B]: Creating new bridge link for external URL:", destinationUrl.trim());
-            effectiveDisplayUrl = parsedUrl.hostname.replace("www.", ""); // e.g. "blog.pixelplayzone.online"
+            // Case B: External URL → create new bridge link
+            console.log("Bridge Link [B]: Creating new bridge link");
+            effectiveDisplayUrl = parsedUrl.hostname.replace("www.", "");
 
             const createRes = await fetch("/api/create-redirect", {
               method: "POST",
@@ -863,40 +915,31 @@ const FbDarkPost: NextPage = () => {
             const createData = await createRes.json();
 
             if (createData.shortLink && createData.shortId) {
-              effectiveBridgeLink = createData.shortLink; // e.g. https://fbvirall.vercel.app/abc123
-              console.log("Bridge Link [B]: Created bridge link:", effectiveBridgeLink);
+              effectiveBridgeLink = createData.shortLink;
 
-              // Now set the canvas image as this bridge link's OG image
               await fetch("/api/update-redirect-og", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ shortId: createData.shortId, ogImageUrl: imageUrl }),
+                body: JSON.stringify({
+                  shortId: createData.shortId,
+                  ogImageUrl: imageUrl,
+                }),
               });
-              console.log("Bridge Link [B]: OG image set to canvas image for shortId:", createData.shortId);
-            } else {
-              console.warn("Bridge Link [B]: Failed to create bridge link, using original URL.");
-              // Falls back to original external URL — Engine 1-4 in fb-post will handle it
             }
           }
-          // ── Fire-and-forget scrape (don't block fb-post) ───────────────────
-          try {
-            console.log("Bridge Link: Firing Facebook OG scrape (non-blocking) for:", effectiveBridgeLink);
-            fetch("/api/force-fb-scrape", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url: effectiveBridgeLink, token: userAccessToken }),
-            }).catch((scrapeErr: any) => {
-              console.warn("Bridge Link: Force scrape failed (non-blocking):", scrapeErr);
-            });
-          } catch (scrapeErr) {
-            // non-blocking — ignore
-          }
+
+          // Fire-and-forget scrape (non-blocking)
+          fetch("/api/force-fb-scrape", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: effectiveBridgeLink }),
+          }).catch(() => {});
         } catch (parseErr) {
-          console.warn("Bridge Link: URL parse error, using original destinationUrl.", parseErr);
+          console.warn("Bridge Link parse error:", parseErr);
         }
       }
 
-      // ── Step 3: Post to Facebook ─────────────────────────────────────────────
+      // Step C: Call backend /api/fb-post
       const postRes = await fetch("/api/fb-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -907,7 +950,7 @@ const FbDarkPost: NextPage = () => {
           adAccountId: selectedAdAccountId,
           base64Image: dataUrl,
           imageUrl,
-          destinationUrl: effectiveBridgeLink, // Bridge link (may differ from original URL)
+          destinationUrl: effectiveBridgeLink,
           caption: message.trim() || "Click to view full album...",
           displayUrl: effectiveDisplayUrl,
           scheduledTime: schedule ? scheduledTime : undefined,
@@ -916,9 +959,8 @@ const FbDarkPost: NextPage = () => {
         }),
       });
 
-
-
       const postData = await postRes.json();
+
       if (!postRes.ok || !postData.success) {
         const fullErr = postData.hint
           ? `${postData.error}\n💡 Hint: ${postData.hint}`
@@ -926,8 +968,10 @@ const FbDarkPost: NextPage = () => {
         throw new Error(fullErr);
       }
 
-
-      setPostResult({ postId: postData.postId, postUrl: postData.postUrl });
+      setPostResult({
+        postId: postData.postId,
+        postUrl: postData.postUrl,
+      });
       showToast("Posted to Facebook successfully!", "success");
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred.");
@@ -935,7 +979,6 @@ const FbDarkPost: NextPage = () => {
     } finally {
       setPosting(false);
     }
-
   };
 
 
