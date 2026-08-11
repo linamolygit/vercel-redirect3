@@ -20,6 +20,8 @@ import {
   Check,
   FileText,
   Users,
+  Puzzle,
+  Sparkles,
 } from "lucide-react";
 
 const GET_TOKEN_EXTENSION_URL =
@@ -42,9 +44,39 @@ const FbConnect: NextPage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
+  // Custom Extension detection & integration state
+  const [isExtInstalled, setIsExtInstalled] = useState(false);
+
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  // Extension detection & auto-fill listener
+  useEffect(() => {
+    const handleMsg = (event: MessageEvent) => {
+      if (event.source !== window) return;
+      const { type, data } = event.data || {};
+
+      if (type === "FBVIRALL_EXTENSION_INSTALLED") {
+        setIsExtInstalled(true);
+      }
+
+      if (type === "FBVIRALL_EXTENSION_RESPONSE" && data?.cookieString) {
+        setRawCookie(data.cookieString);
+        if (data.accessToken) setAccessToken(data.accessToken);
+        showToast("Credentials loaded from Extension!", "success");
+      }
+    };
+
+    window.addEventListener("message", handleMsg);
+    window.postMessage({ type: "FBVIRALL_PING" }, "*");
+
+    return () => window.removeEventListener("message", handleMsg);
+  }, []);
+
+  const handleAutoFillFromExtension = () => {
+    window.postMessage({ type: "FBVIRALL_FETCH_TOKEN", requestId: "connect_page" }, "*");
   };
 
   // Auto-parse c_user and xs when raw cookie is updated
@@ -136,7 +168,7 @@ const FbConnect: NextPage = () => {
     <div className="fb-connect-wrapper">
       <Head>
         <title>Facebook Account Setup & Token Manager — LinkPika</title>
-        <meta name="description" content="Connect your Facebook Account using Get Token Cookie extension." />
+        <meta name="description" content="Connect your Facebook Account using LinkPika Extension or Get Token Cookie extension." />
       </Head>
 
       <Header />
@@ -150,11 +182,21 @@ const FbConnect: NextPage = () => {
               <span>Facebook Account Setup & Token Manager</span>
             </h1>
             <p className="sub-heading">
-              Connect your Facebook Account using Access Tokens or Session Cookies for 1-Click Dark Posting.
+              Connect your Facebook Account using Custom LinkPika Extension (Auto-fill) or manual Session Cookies / Access Tokens.
             </p>
           </div>
 
           <div className="banner-actions">
+            {isExtInstalled ? (
+              <div className="ext-badge active">
+                <CheckCircle2 size={15} /> LinkPika Extension Active
+              </div>
+            ) : (
+              <div className="ext-badge inactive">
+                <Puzzle size={15} /> Extension Not Detected
+              </div>
+            )}
+
             <button className="btn-info-guide" onClick={() => setShowGuideModal(true)} title="Extension Installation Guide">
               <HelpCircle size={16} />
               <span>Guide (i)</span>
@@ -257,7 +299,7 @@ const FbConnect: NextPage = () => {
                 <AlertCircle size={36} className="pending-icon" />
                 <h4>No Facebook Account Connected</h4>
                 <p>
-                  Paste your Facebook Cookie and Access Tokens in the form on the right to sync your Pages and Ad Accounts.
+                  Use the LinkPika Extension for 1-click auto fill, or manually paste your Facebook Cookie and Access Tokens on the right.
                 </p>
                 <button className="btn-open-guide" onClick={() => setShowGuideModal(true)}>
                   <HelpCircle size={15} /> View Setup Instructions
@@ -268,9 +310,23 @@ const FbConnect: NextPage = () => {
 
           {/* ─── RIGHT SIDE: CREDENTIALS INPUT FORM ──────────────────────── */}
           <section className="form-card">
-            <h3>
-              <Cookie size={18} /> Enter Facebook Credentials
-            </h3>
+            <div className="form-card-header">
+              <h3>
+                <Cookie size={18} /> Enter Facebook Credentials
+              </h3>
+
+              {isExtInstalled ? (
+                <button type="button" className="btn-auto-fill" onClick={handleAutoFillFromExtension}>
+                  <Zap size={16} />
+                  <span>Auto Fill from Extension</span>
+                </button>
+              ) : (
+                <div className="ext-not-found-pill">
+                  <Puzzle size={14} />
+                  <span>Custom Extension not detected. You can still paste manually.</span>
+                </div>
+              )}
+            </div>
 
             {/* Full Cookie Input */}
             <div className="form-group">
@@ -344,7 +400,7 @@ const FbConnect: NextPage = () => {
           <div className="guide-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>
-                <HelpCircle size={18} /> Extension Setup Guide
+                <HelpCircle size={18} /> Extension & Token Setup Guide
               </h3>
               <button className="btn-close-modal" onClick={() => setShowGuideModal(false)}>
                 <X size={18} />
@@ -352,36 +408,48 @@ const FbConnect: NextPage = () => {
             </div>
 
             <div className="modal-body">
-              <div className="step-list">
-                <div className="step-item">
-                  <span className="step-num">1</span>
-                  <div className="step-text">
-                    Install the official <strong>&quot;Get Token Cookie&quot;</strong> Chrome Extension.
-                    <br />
-                    <a href={GET_TOKEN_EXTENSION_URL} target="_blank" rel="noreferrer" className="inline-link">
-                      Open Chrome Web Store ↗
-                    </a>
+              <div className="option-block">
+                <h4>⚡ Option A: Custom LinkPika Extension (Recommended)</h4>
+                <div className="step-list">
+                  <div className="step-item">
+                    <span className="step-num">1</span>
+                    <div className="step-text">
+                      Load the <strong>LinkPika Custom Extension</strong> in Chrome Developer Mode (chrome://extensions).
+                    </div>
+                  </div>
+                  <div className="step-item">
+                    <span className="step-num">2</span>
+                    <div className="step-text">
+                      Log in to your <strong>Facebook Account</strong> in the browser.
+                    </div>
+                  </div>
+                  <div className="step-item">
+                    <span className="step-num">3</span>
+                    <div className="step-text">
+                      Click the <strong>&quot;Auto Fill from Extension&quot;</strong> button above to automatically extract your cookie and access token!
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="step-item">
-                  <span className="step-num">2</span>
-                  <div className="step-text">
-                    Log in to your <strong>Facebook Account</strong> in your Chrome browser.
+              <div className="option-block" style={{ marginTop: "20px" }}>
+                <h4>📋 Option B: Public &quot;Get Token Cookie&quot; Extension (Manual)</h4>
+                <div className="step-list">
+                  <div className="step-item">
+                    <span className="step-num">1</span>
+                    <div className="step-text">
+                      Install <strong>&quot;Get Token Cookie&quot;</strong> from Chrome Web Store.
+                      <br />
+                      <a href={GET_TOKEN_EXTENSION_URL} target="_blank" rel="noreferrer" className="inline-link">
+                        Open Chrome Web Store ↗
+                      </a>
+                    </div>
                   </div>
-                </div>
-
-                <div className="step-item">
-                  <span className="step-num">3</span>
-                  <div className="step-text">
-                    Click the <strong>Get Token Cookie</strong> extension icon in your Chrome toolbar.
-                  </div>
-                </div>
-
-                <div className="step-item">
-                  <span className="step-num">4</span>
-                  <div className="step-text">
-                    Copy the <strong>Cookie</strong> string and <strong>Access Token</strong> (EAAG... or EAAB...) and paste them in the form.
+                  <div className="step-item">
+                    <span className="step-num">2</span>
+                    <div className="step-text">
+                      Click the extension icon while logged into Facebook, copy the Cookie string and Access Token, and paste them manually into the form.
+                    </div>
                   </div>
                 </div>
               </div>
@@ -457,6 +525,29 @@ const FbConnect: NextPage = () => {
           display: flex;
           align-items: center;
           gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .ext-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          border-radius: var(--radius-sm);
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
+
+        .ext-badge.active {
+          background: rgba(34, 197, 94, 0.12);
+          border: 1px solid rgba(34, 197, 94, 0.3);
+          color: #16a34a;
+        }
+
+        .ext-badge.inactive {
+          background: rgba(234, 179, 8, 0.12);
+          border: 1px solid rgba(234, 179, 8, 0.3);
+          color: #d97706;
         }
 
         .btn-info-guide {
@@ -520,12 +611,54 @@ const FbConnect: NextPage = () => {
 
         .assets-card h3,
         .form-card h3 {
-          margin: 0 0 16px 0;
+          margin: 0;
           font-size: 1.05rem;
           color: var(--text-main);
           display: flex;
           align-items: center;
           gap: 8px;
+        }
+
+        .form-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+
+        .btn-auto-fill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          border-radius: var(--radius-sm);
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          border: none;
+          color: white;
+          font-size: 0.82rem;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+          transition: transform 0.15s, opacity 0.15s;
+        }
+
+        .btn-auto-fill:hover {
+          opacity: 0.95;
+          transform: translateY(-1px);
+        }
+
+        .ext-not-found-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.76rem;
+          color: var(--text-muted);
+          background: var(--input-bg);
+          padding: 6px 12px;
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--glass-border);
         }
 
         /* Profile Dashboard */
@@ -816,7 +949,7 @@ const FbConnect: NextPage = () => {
           border: 1px solid var(--glass-border);
           border-radius: var(--radius-lg);
           width: 100%;
-          max-width: 480px;
+          max-width: 520px;
           box-shadow: var(--glass-shadow);
           overflow: hidden;
         }
@@ -849,10 +982,16 @@ const FbConnect: NextPage = () => {
           padding: 20px;
         }
 
+        .option-block h4 {
+          margin: 0 0 10px 0;
+          font-size: 0.9rem;
+          color: var(--primary);
+        }
+
         .step-list {
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 12px;
         }
 
         .step-item {
@@ -862,13 +1001,13 @@ const FbConnect: NextPage = () => {
         }
 
         .step-num {
-          width: 26px;
-          height: 26px;
+          width: 24px;
+          height: 24px;
           border-radius: 50%;
           background: rgba(0, 113, 227, 0.12);
           color: var(--primary);
           font-weight: 800;
-          font-size: 0.85rem;
+          font-size: 0.8rem;
           display: flex;
           align-items: center;
           justify-content: center;
