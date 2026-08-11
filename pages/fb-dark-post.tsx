@@ -307,6 +307,111 @@ const runEngine1ViaExtension = async (params: {
   };
 };
 
+// ========== ENGINE 1 WITH MANUAL HASH ==========
+const runEngine1WithManualHash = async (params: {
+  imageHash: string;
+  pageId: string;
+  adAccountId: string;
+  destinationUrl: string;
+  caption: string;
+  displayUrl: string;
+  userAccessToken: string;
+}) => {
+  const {
+    imageHash,
+    pageId,
+    adAccountId,
+    destinationUrl,
+    caption,
+    displayUrl,
+    userAccessToken,
+  } = params;
+
+  const FB_BASE = "https://graph.facebook.com/v19.0";
+
+  console.log("Engine 1 (Manual Hash): Creating Ad Creative with hash =", imageHash);
+
+  const creativePayload = {
+    name: `OneCard_${Date.now()}`,
+    object_story_spec: {
+      page_id: pageId,
+      link_data: {
+        image_hash: imageHash,
+        link: destinationUrl.trim(),
+        message: caption || "",
+        call_to_action: { type: "LEARN_MORE" },
+        caption: displayUrl || "facebook.com",
+      },
+    },
+    access_token: userAccessToken,
+  };
+
+  // Prefer Extension if available
+  const hasExt = await isExtensionAvailable();
+  let creativeRes: any;
+
+  if (hasExt) {
+    creativeRes = await extensionFetch(`${FB_BASE}/${adAccountId}/adcreatives`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(creativePayload),
+    });
+  } else {
+    const r = await fetch(`${FB_BASE}/${adAccountId}/adcreatives`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(creativePayload),
+    });
+    creativeRes = { ok: r.ok, data: await r.json(), status: r.status };
+  }
+
+  if (!creativeRes.ok || !creativeRes.data?.id) {
+    const errMsg =
+      creativeRes.data?.error?.message ||
+      JSON.stringify(creativeRes.data || creativeRes.error || "Unknown");
+    throw new Error("Ad Creative failed: " + errMsg);
+  }
+
+  const creativeId = creativeRes.data.id;
+  console.log("Engine 1 (Manual Hash): Creative =", creativeId);
+
+  // Get story ID (retry)
+  let storyId: string | null = null;
+  for (let i = 0; i < 3; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 1200));
+
+    const storyUrl = `${FB_BASE}/${creativeId}?fields=effective_object_story_id,object_story_id&access_token=${userAccessToken}`;
+    let storyRes: any;
+
+    if (hasExt) {
+      storyRes = await extensionFetch(storyUrl);
+    } else {
+      const r = await fetch(storyUrl);
+      storyRes = { data: await r.json() };
+    }
+
+    storyId =
+      storyRes.data?.effective_object_story_id ||
+      storyRes.data?.object_story_id ||
+      null;
+    if (storyId) break;
+  }
+
+  if (!storyId) {
+    throw new Error("No effective_object_story_id returned");
+  }
+
+  console.log("Engine 1 (Manual Hash) SUCCESS →", storyId);
+
+  return {
+    success: true,
+    postId: storyId,
+    postUrl: `https://www.facebook.com/${storyId.replace("_", "/posts/")}`,
+    creativeId,
+    engine: "Manual Image Hash One Card (Engine 1)",
+  };
+};
+
 const FbDarkPost: NextPage = () => {
   // Form State
   const [fbPages, setFbPages] = useState<{ id: string; name: string; access_token: string; picture?: string }[]>([]);
@@ -336,6 +441,10 @@ const FbDarkPost: NextPage = () => {
   // Extension & Posting states
   const [isExtensionInstalled, setIsExtensionInstalled] = useState(false);
   const [extUser, setExtUser] = useState<{ id: string; name: string; profilePic?: string } | null>(null);
+
+  // Manual Image Hash state
+  const [manualImageHash, setManualImageHash] = useState("");
+  const [useManualHash, setUseManualHash] = useState(false);
 
   const [posting, setPosting] = useState(false);
   const [postResult, setPostResult] = useState<{ postId: string; postUrl: string } | null>(null);
@@ -805,6 +914,50 @@ const FbDarkPost: NextPage = () => {
       return;
     }
 
+    // ── Manual Image Hash path (highest priority for 1:1 One Card) ──
+    if (useManualHash && manualImageHash.length >= 16) {
+      if (!selectedAdAccountId) {
+        setErrorMessage("Ad Account select karo (Manual Hash ke liye zaroori hai).");
+        setPosting(false);
+        return;
+      }
+      if (!selectedPageId) {
+        setErrorMessage("Facebook Page select karo.");
+        setPosting(false);
+        return;
+      }
+      if (!destinationUrl.trim()) {
+        setErrorMessage("Destination URL daalo.");
+        setPosting(false);
+        return;
+      }
+
+      try {
+        setPosting(true);
+        setErrorMessage("");
+        setPostResult(null);
+
+        const result = await runEngine1WithManualHash({
+          imageHash: manualImageHash,
+          pageId: selectedPageId,
+          adAccountId: selectedAdAccountId,
+          destinationUrl: destinationUrl.trim(),
+          caption: message.trim(),
+          displayUrl: displayUrl.trim() || "facebook.com",
+          userAccessToken,
+        });
+
+        setPostResult({ postId: result.postId, postUrl: result.postUrl });
+        showToast("1:1 One Card posted via Image Hash!", "success");
+      } catch (err: any) {
+        setErrorMessage(err.message || "Manual hash post failed");
+        showToast(err.message || "Failed", "error");
+      } finally {
+        setPosting(false);
+      }
+      return; // stop — baaki Engine 1/2 mat chalao
+    }
+
     setPosting(true);
     setErrorMessage("");
     setPostResult(null);
@@ -1145,6 +1298,59 @@ const FbDarkPost: NextPage = () => {
                   <Smile size={16} />
                 </button>
               </div>
+            </div>
+
+            {/* ─── MANUAL IMAGE HASH (One Card) ───────────────────────── */}
+            <div className="manual-hash-card">
+              <div className="hash-header">
+                <h4>1:1 Square One Card — Image Hash (Recommended)</h4>
+                <label className="hash-toggle">
+                  <input
+                    type="checkbox"
+                    checked={useManualHash}
+                    onChange={(e) => setUseManualHash(e.target.checked)}
+                  />
+                  <span>Use Manual Image Hash</span>
+                </label>
+              </div>
+
+              {useManualHash && (
+                <>
+                  <div className="hash-steps">
+                    <p><strong>Steps:</strong></p>
+                    <ol>
+                      <li>
+                        Open{" "}
+                        <a
+                          href="https://business.facebook.com/asset_library/business_creatives/"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hash-link"
+                        >
+                          Facebook Ads Manager → Media Library ↗
+                        </a>
+                      </li>
+                      <li>Create a folder (optional) → Upload your <strong>1:1 square image</strong> (1080×1080)</li>
+                      <li>Click the uploaded image → open <strong>Image details</strong></li>
+                      <li>Copy the <strong>Image Hash</strong> (32-character code)</li>
+                      <li>Paste it below</li>
+                    </ol>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="input-label">Image Hash</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 534d15a4029a206c1cf01c3ac7a954b4"
+                      value={manualImageHash}
+                      onChange={(e) => setManualImageHash(e.target.value.trim())}
+                    />
+                    <small className="hint">
+                      Jab hash paste hoga, canvas upload skip hoga aur seedha Ad Creative se 1:1 card banega.
+                    </small>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Destination URL (Auto-Cached) */}
@@ -2638,6 +2844,71 @@ const FbDarkPost: NextPage = () => {
 
         .dark-toast.success { background: #22c55e; }
         .dark-toast.error { background: #ef4444; }
+
+        .manual-hash-card {
+          background: var(--input-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-md);
+          padding: 16px;
+          margin-bottom: 16px;
+        }
+
+        .hash-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 10px;
+        }
+
+        .hash-header h4 {
+          margin: 0;
+          font-size: 0.95rem;
+          font-weight: 700;
+        }
+
+        .hash-toggle {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.82rem;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        .hash-steps {
+          font-size: 0.82rem;
+          color: var(--text-muted);
+          line-height: 1.45;
+          margin-bottom: 12px;
+        }
+
+        .hash-steps ol {
+          margin: 6px 0 0 18px;
+          padding: 0;
+        }
+
+        .hash-steps li {
+          margin-bottom: 4px;
+        }
+
+        .hash-link {
+          color: var(--primary);
+          font-weight: 700;
+          text-decoration: none;
+        }
+
+        .hash-link:hover {
+          text-decoration: underline;
+        }
+
+        .hint {
+          display: block;
+          margin-top: 4px;
+          font-size: 0.75rem;
+          color: var(--text-muted);
+        }
 
         @media (max-width: 900px) {
           .dark-post-container {

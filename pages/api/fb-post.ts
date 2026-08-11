@@ -25,6 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     adAccountId,
     imageUrl,
     base64Image,
+    imageHash: inputImageHash,
+    manualImageHash,
     destinationUrl,
     caption,
     displayUrl = "facebook.com",
@@ -32,10 +34,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     rawCookie = "",
   } = req.body;
 
-  if ((!userAccessToken && !pageAccessToken) || !pageId || (!imageUrl && !base64Image) || !destinationUrl) {
+  const providedHash = inputImageHash || manualImageHash || "";
+
+  if ((!userAccessToken && !pageAccessToken) || !pageId || (!imageUrl && !base64Image && !providedHash) || !destinationUrl) {
     return res.status(400).json({
       error: "Missing required fields",
-      required: ["pageId", "destinationUrl", "imageUrl OR base64Image"],
+      required: ["pageId", "destinationUrl", "imageUrl OR base64Image OR imageHash"],
     });
   }
 
@@ -172,10 +176,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (activeAdAccountId && userToken) {
-      let imageHash: string | null = null;
+      let imageHash: string | null = providedHash ? providedHash.trim() : null;
+
+      if (imageHash) {
+        console.log("Engine 1: Using provided manual image_hash =", imageHash);
+      }
 
       // ── METHOD A: Multipart /adimages upload (proper Meta API format) ──────
-      try {
+      if (!imageHash && imageBuffer) {
+        try {
         console.log(`Engine 1: Uploading via multipart to ${activeAdAccountId}/adimages...`);
         const fd = new FormData();
         fd.append("filename", imageBuffer, {
@@ -197,8 +206,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (imageHash) {
           console.log("Engine 1 [Method A]: Got image_hash =", imageHash);
         }
-      } catch (e: any) {
-        console.warn("Engine 1 [Method A] multipart failed:", e?.response?.data?.error?.message || e?.message);
+        } catch (e: any) {
+          console.warn("Engine 1 [Method A] multipart failed:", e?.response?.data?.error?.message || e?.message);
+        }
       }
 
       // ── METHOD B: Base64 encoded bytes (fallback) ──────────────────────────
